@@ -15,10 +15,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-/**
- * Главный класс приложения
- * Инициализирует зависимости и запускает JavaFX приложение
- */
 public class HelloApplication extends Application {
     @Override
     public void start(Stage stage) throws IOException {
@@ -31,7 +27,6 @@ public class HelloApplication extends Application {
         Path dbPath = dbDirectory.resolve("lessons.db");
         SQLiteConnectionProvider provider = new SQLiteConnectionProvider(dbPath);
         SchemaInitializer.init(provider);
-
         // Инициализация слоев архитектуры
         LessonRepository lessonRepository = new LessonRepositorySQLite(provider);
         LessonUseCase lessonUseCase = new LessonUseCase(lessonRepository);

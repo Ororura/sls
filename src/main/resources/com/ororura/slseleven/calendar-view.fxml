@@ -9,26 +9,29 @@
     <top>
         <VBox spacing="10" style="-fx-padding: 20;">
             <HBox alignment="CENTER" spacing="20">
-                <Button fx:id="previousMonthButton" text="◀ Предыдущий месяц" />
-                <Label fx:id="monthYearLabel" style="-fx-font-size: 18pt; -fx-font-weight: bold;" />
-                <Button fx:id="nextMonthButton" text="Следующий месяц ▶" />
+                <Button fx:id="previousMonthButton" text="◀ Предыдущий месяц"/>
+                <Label fx:id="monthYearLabel" style="-fx-font-size: 18pt; -fx-font-weight: bold;"/>
+                <Button fx:id="nextMonthButton" text="Следующий месяц ▶"/>
+                <Pane HBox.hgrow="ALWAYS"/>
+                <Button text="Все занятия"
+                        onAction="#onOpenLessonsList"/>
             </HBox>
-            <Label text="Левый клик - выбрать дату, Правый клик - добавить занятие" 
-                   style="-fx-text-fill: gray; -fx-font-size: 10pt;" />
+            <Label text="Левый клик - выбрать дату, Правый клик - добавить занятие"
+                   style="-fx-text-fill: gray; -fx-font-size: 10pt;"/>
         </VBox>
     </top>
-    
+
     <center>
         <HBox spacing="20" style="-fx-padding: 20;">
             <VBox spacing="10" style="-fx-pref-width: 700;">
-                <GridPane fx:id="calendarGrid" 
+                <GridPane fx:id="calendarGrid"
                           hgap="5" vgap="5"
-                          style="-fx-padding: 10;" />
+                          style="-fx-padding: 10;"/>
             </VBox>
-            
-            <VBox fx:id="lessonsList" spacing="10" 
+
+            <VBox fx:id="lessonsList" spacing="10"
                   style="-fx-pref-width: 350; -fx-padding: 10; -fx-border-color: #cccccc; -fx-border-width: 1;">
-                <Label text="Занятия" style="-fx-font-size: 14pt; -fx-font-weight: bold;" />
+                <Label text="Занятия" style="-fx-font-size: 14pt; -fx-font-weight: bold;"/>
             </VBox>
         </HBox>
     </center>

@@ -4,6 +4,7 @@ import com.ororura.slseleven.domain.model.Lesson;
 import com.ororura.slseleven.usecase.LessonUseCase;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
+import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
@@ -11,7 +12,9 @@ import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
+import javafx.stage.Stage;
 
+import java.io.IOException;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
@@ -36,7 +39,7 @@ public class CalendarController {
     private YearMonth currentYearMonth;
     private LocalDate selectedDate;
     private LessonUseCase lessonUseCase;
-    private final DateTimeFormatter monthYearFormatter = 
+    private final DateTimeFormatter monthYearFormatter =
             DateTimeFormatter.ofPattern("MMMM yyyy", new Locale("ru"));
 
     public CalendarController() {
@@ -48,6 +51,28 @@ public class CalendarController {
      */
     public void setLessonUseCase(LessonUseCase lessonUseCase) {
         this.lessonUseCase = lessonUseCase;
+    }
+
+    @FXML
+    private void onOpenLessonsList() {
+        try {
+            FXMLLoader loader = new FXMLLoader(
+                    getClass().getResource("/com/ororura/slseleven/lessons-list.fxml")
+            );
+
+            Scene scene = new Scene(loader.load(), 1000, 700);
+
+            LessonsListController controller = loader.getController();
+            controller.setLessonUseCase(lessonUseCase);
+
+            Stage stage = new Stage();
+            stage.setTitle("Все занятия");
+            stage.setScene(scene);
+            stage.show();
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     @FXML
@@ -107,7 +132,7 @@ public class CalendarController {
     private VBox createDayCell(LocalDate date, int day, boolean isToday) {
         VBox cell = new VBox(2);
         cell.setPrefSize(100, 80);
-        
+
         boolean isSelected = date.equals(selectedDate);
         if (isToday && isSelected) {
             cell.setStyle("-fx-border-color: #0066cc; -fx-border-width: 3; -fx-padding: 5; -fx-background-color: #cce6ff;");
@@ -172,7 +197,7 @@ public class CalendarController {
 
     private void showLessonsForDate(LocalDate date) {
         lessonsList.getChildren().clear();
-        
+
         Label dateLabel = new Label(date.format(DateTimeFormatter.ofPattern("d MMMM yyyy", new Locale("ru"))));
         dateLabel.setFont(Font.font("System", FontWeight.BOLD, 16));
         lessonsList.getChildren().add(dateLabel);
@@ -218,7 +243,7 @@ public class CalendarController {
         HBox actionsBox = new HBox(5);
         Button editButton = new Button("Редактировать");
         Button deleteButton = new Button("Удалить");
-        
+
         editButton.setOnAction(event -> showEditLessonDialog(lesson));
         deleteButton.setOnAction(event -> {
             Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
@@ -264,9 +289,9 @@ public class CalendarController {
             dialog.setTitle(lesson == null ? "Добавить занятие" : "Редактировать занятие");
             dialog.getDialogPane().setContent(dialogContent);
             dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
-            
+
             controller.setLesson(lesson, date, lessonUseCase, dialog);
-            
+
             dialog.showAndWait().ifPresent(result -> {
                 if (result == ButtonType.OK) {
                     // Сохранение уже обработано в контроллере
