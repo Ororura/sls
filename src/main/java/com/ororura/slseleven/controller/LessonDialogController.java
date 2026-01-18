@@ -1,7 +1,7 @@
 package com.ororura.slseleven.controller;
 
-import com.ororura.slseleven.domain.Lesson;
-import com.ororura.slseleven.service.LessonService;
+import com.ororura.slseleven.domain.model.Lesson;
+import com.ororura.slseleven.usecase.LessonUseCase;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 
@@ -28,16 +28,16 @@ public class LessonDialogController {
     private DatePicker datePicker;
 
     private Lesson lesson;
-    private LessonService lessonService;
+    private LessonUseCase lessonUseCase;
 
     @FXML
     public void initialize() {
         // Инициализация при загрузке FXML
     }
 
-    public void setLesson(Lesson lesson, LocalDate date, LessonService lessonService, Dialog<ButtonType> dialog) {
+    public void setLesson(Lesson lesson, LocalDate date, LessonUseCase lessonUseCase, Dialog<ButtonType> dialog) {
         this.lesson = lesson;
-        this.lessonService = lessonService;
+        this.lessonUseCase = lessonUseCase;
 
         datePicker.setValue(date);
 
@@ -113,10 +113,12 @@ public class LessonDialogController {
             lesson.setInstructor(instructorField.getText().trim());
             lesson.setDate(datePicker.getValue());
 
-            if (lesson.getId() == null || lessonService.getLesson(lesson.getId()) == null) {
-                lessonService.addLesson(lesson);
+            if (lesson.getId() == null || !lessonUseCase.getLessonById(lesson.getId()).isPresent()) {
+                // Создание нового занятия
+                lessonUseCase.createLesson(lesson);
             } else {
-                lessonService.updateLesson(lesson);
+                // Обновление существующего занятия
+                lessonUseCase.updateLesson(lesson);
             }
             
             return true;

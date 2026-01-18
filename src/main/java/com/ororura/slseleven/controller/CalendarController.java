@@ -1,7 +1,7 @@
 package com.ororura.slseleven.controller;
 
-import com.ororura.slseleven.domain.Lesson;
-import com.ororura.slseleven.service.LessonService;
+import com.ororura.slseleven.domain.model.Lesson;
+import com.ororura.slseleven.usecase.LessonUseCase;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.control.*;
@@ -35,14 +35,19 @@ public class CalendarController {
 
     private YearMonth currentYearMonth;
     private LocalDate selectedDate;
-    private final LessonService lessonService;
+    private LessonUseCase lessonUseCase;
     private final DateTimeFormatter monthYearFormatter = 
             DateTimeFormatter.ofPattern("MMMM yyyy", new Locale("ru"));
 
     public CalendarController() {
-        this.lessonService = new LessonService();
         this.currentYearMonth = YearMonth.now();
-        this.lessonService.addListener(this::refreshCalendar);
+    }
+
+    /**
+     * Установить use case (вызывается из Application)
+     */
+    public void setLessonUseCase(LessonUseCase lessonUseCase) {
+        this.lessonUseCase = lessonUseCase;
     }
 
     @FXML
@@ -119,12 +124,14 @@ public class CalendarController {
         cell.getChildren().add(dayLabel);
 
         // Показать количество занятий на этот день
-        List<Lesson> dayLessons = lessonService.getLessonsByDate(date);
-        if (!dayLessons.isEmpty()) {
-            Label lessonsCount = new Label(dayLessons.size() + " занятий");
-            lessonsCount.setFont(Font.font("System", 10));
-            lessonsCount.setTextFill(Color.BLUE);
-            cell.getChildren().add(lessonsCount);
+        if (lessonUseCase != null) {
+            List<Lesson> dayLessons = lessonUseCase.getLessonsByDate(date);
+            if (!dayLessons.isEmpty()) {
+                Label lessonsCount = new Label(dayLessons.size() + " занятий");
+                lessonsCount.setFont(Font.font("System", 10));
+                lessonsCount.setTextFill(Color.BLUE);
+                cell.getChildren().add(lessonsCount);
+            }
         }
 
         // Обработка кликов
@@ -170,7 +177,14 @@ public class CalendarController {
         dateLabel.setFont(Font.font("System", FontWeight.BOLD, 16));
         lessonsList.getChildren().add(dateLabel);
 
-        List<Lesson> lessons = lessonService.getLessonsByDate(date);
+        if (lessonUseCase == null) {
+            Label errorLabel = new Label("Ошибка: Use case не инициализирован");
+            errorLabel.setStyle("-fx-text-fill: red;");
+            lessonsList.getChildren().add(errorLabel);
+            return;
+        }
+
+        List<Lesson> lessons = lessonUseCase.getLessonsByDate(date);
         if (lessons.isEmpty()) {
             Label noLessonsLabel = new Label("Нет занятий на этот день");
             noLessonsLabel.setStyle("-fx-text-fill: gray;");
@@ -205,15 +219,23 @@ public class CalendarController {
         Button editButton = new Button("Редактировать");
         Button deleteButton = new Button("Удалить");
         
-        editButton.setOnAction(e -> showEditLessonDialog(lesson));
-        deleteButton.setOnAction(e -> {
+        editButton.setOnAction(event -> showEditLessonDialog(lesson));
+        deleteButton.setOnAction(event -> {
             Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
             alert.setTitle("Подтверждение");
             alert.setHeaderText("Удалить занятие?");
             alert.setContentText("Вы уверены, что хотите удалить это занятие?");
             alert.showAndWait().ifPresent(response -> {
-                if (response == ButtonType.OK) {
-                    lessonService.deleteLesson(lesson.getId());
+                if (response == ButtonType.OK && lessonUseCase != null) {
+                    try {
+                        lessonUseCase.deleteLesson(lesson.getId());
+                        refreshCalendar();
+                    } catch (Exception ex) {
+                        Alert errorAlert = new Alert(Alert.AlertType.ERROR);
+                        errorAlert.setTitle("Ошибка");
+                        errorAlert.setContentText("Не удалось удалить занятие: " + ex.getMessage());
+                        errorAlert.showAndWait();
+                    }
                 }
             });
         });
@@ -243,7 +265,7 @@ public class CalendarController {
             dialog.getDialogPane().setContent(dialogContent);
             dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
             
-            controller.setLesson(lesson, date, lessonService, dialog);
+            controller.setLesson(lesson, date, lessonUseCase, dialog);
             
             dialog.showAndWait().ifPresent(result -> {
                 if (result == ButtonType.OK) {

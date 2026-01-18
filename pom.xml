@@ -9,7 +9,7 @@
     <version>1.0-SNAPSHOT</version>
     <name>slseleven</name>
 
-    <properties>
+        <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.source>11</maven.compiler.source>
         <maven.compiler.target>11</maven.compiler.target>
@@ -27,6 +27,15 @@
             <artifactId>javafx-controls</artifactId>
             <version>${javafx.version}</version>
         </dependency>
+
+        <!-- Source: https://mvnrepository.com/artifact/org.xerial/sqlite-jdbc -->
+        <dependency>
+            <groupId>org.xerial</groupId>
+            <artifactId>sqlite-jdbc</artifactId>
+            <version>3.51.1.0</version>
+            <scope>compile</scope>
+        </dependency>
+
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-fxml</artifactId>
@@ -47,8 +56,9 @@
         </dependency>
     </dependencies>
 
-    <build>
+       <build>
         <plugins>
+            <!-- Compiler plugin -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
@@ -58,6 +68,8 @@
                     <target>11</target>
                 </configuration>
             </plugin>
+
+            <!-- JavaFX Maven plugin for jlink (creates runtime with JRE) -->
             <plugin>
                 <groupId>org.openjfx</groupId>
                 <artifactId>javafx-maven-plugin</artifactId>
@@ -77,7 +89,7 @@
                         </configuration>
                     </execution>
                     <execution>
-                        <!-- Create runtime image for jpackage -->
+                        <!-- Create runtime image with JRE for jpackage -->
                         <id>create-runtime-image</id>
                         <phase>package</phase>
                         <goals>
@@ -90,12 +102,52 @@
                             <noManPages>true</noManPages>
                             <stripDebug>true</stripDebug>
                             <noHeaderFiles>true</noHeaderFiles>
+                            <compress>2</compress>
+                            <!-- Включаем все необходимые модули -->
+                            <addModules>com.ororura.slseleven,javafx.controls,javafx.fxml,javafx.base</addModules>
+                            <!-- Включаем модули для SQLite JDBC (автоматические модули) -->
+                            <options>
+                                <option>--add-modules</option>
+                                <option>java.sql,java.naming</option>
+                                <option>--add-opens</option>
+                                <option>java.base/java.lang=ALL-UNNAMED</option>
+                                <option>--add-opens</option>
+                                <option>java.base/java.util=ALL-UNNAMED</option>
+                            </options>
                         </configuration>
                     </execution>
                 </executions>
             </plugin>
-            
-            <!-- Plugin for creating DMG using jpackage -->
+
+            <!-- Copy SQLite JDBC to runtime image (after jlink creates it) -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <version>3.6.0</version>
+                <executions>
+                    <execution>
+                        <id>copy-sqlite-jdbc</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>copy</goal>
+                        </goals>
+                        <configuration>
+                            <skip>${skipTests}</skip>
+                            <artifactItems>
+                                <artifactItem>
+                                    <groupId>org.xerial</groupId>
+                                    <artifactId>sqlite-jdbc</artifactId>
+                                    <version>3.51.1.0</version>
+                                    <outputDirectory>${project.build.directory}/calendar-runtime/lib</outputDirectory>
+                                    <destFileName>sqlite-jdbc.jar</destFileName>
+                                </artifactItem>
+                            </artifactItems>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Plugin for creating DMG with embedded JRE using jpackage -->
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>exec-maven-plugin</artifactId>
@@ -110,24 +162,49 @@
                         <configuration>
                             <executable>jpackage</executable>
                             <arguments>
+                                <!-- Тип пакета -->
                                 <argument>--type</argument>
                                 <argument>dmg</argument>
+
+                                <!-- Runtime image с JRE (созданный через jlink) -->
                                 <argument>--runtime-image</argument>
                                 <argument>${project.build.directory}/calendar-runtime</argument>
+
+                                <!-- Имя приложения -->
                                 <argument>--name</argument>
                                 <argument>${app.name}</argument>
+
+                                <!-- Версия приложения -->
                                 <argument>--app-version</argument>
                                 <argument>${app.version}</argument>
+
+                                <!-- Производитель -->
                                 <argument>--vendor</argument>
                                 <argument>${app.vendor}</argument>
-                                <argument>--main-class</argument>
-                                <argument>com.ororura.slseleven.HelloApplication</argument>
+
+                                <!-- Главный модуль и класс -->
+                                <argument>--module</argument>
+                                <argument>com.ororura.slseleven/com.ororura.slseleven.HelloApplication</argument>
+
+                                <!-- macOS специфичные настройки -->
                                 <argument>--mac-package-identifier</argument>
                                 <argument>${app.identifier}</argument>
                                 <argument>--mac-package-name</argument>
                                 <argument>${app.name}</argument>
+
+                                <!-- Опции JVM -->
+                                <argument>--java-options</argument>
+                                <argument>-Xmx512m</argument>
+                                <argument>--java-options</argument>
+                                <argument>-Dfile.encoding=UTF-8</argument>
+
+                                <!-- Директория для выходного файла -->
                                 <argument>--dest</argument>
                                 <argument>${project.build.directory}/installer</argument>
+
+                                <!-- Описание приложения -->
+                                <argument>--description</argument>
+                                <argument>Календарь занятий с возможностью добавления, редактирования и удаления занятий</argument>
                             </arguments>
                         </configuration>
                     </execution>

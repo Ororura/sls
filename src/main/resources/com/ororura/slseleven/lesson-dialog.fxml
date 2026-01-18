@@ -14,7 +14,7 @@
     
     <Label text="Тема:" GridPane.columnIndex="0" GridPane.rowIndex="0" />
     <TextField fx:id="topicField" GridPane.columnIndex="1" GridPane.rowIndex="0" />
-    
+
     <Label text="Занятие:" GridPane.columnIndex="0" GridPane.rowIndex="1" />
     <TextField fx:id="lessonNameField" GridPane.columnIndex="1" GridPane.rowIndex="1" />
     

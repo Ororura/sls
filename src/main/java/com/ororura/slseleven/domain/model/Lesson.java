@@ -1,4 +1,4 @@
-package com.ororura.slseleven.domain;
+package com.ororura.slseleven.domain.model;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
