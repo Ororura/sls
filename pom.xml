@@ -262,6 +262,9 @@
                                 <argument>${app.identifier}</argument>
                                 <argument>--mac-package-name</argument>
                                 <argument>${app.name}</argument>
+                                <argument>--icon</argument>
+                                <argument
+                                >${project.basedir}/src/main/resources/macos.icns</argument>
 
                                 <!-- Опции JVM -->
                                 <argument>--java-options</argument>
@@ -423,6 +426,9 @@
                                         <argument>${app.identifier}</argument>
                                         <argument>--mac-package-name</argument>
                                         <argument>${app.name}</argument>
+                                        <argument>--icon</argument>
+                                        <argument
+                                        >${project.basedir}/src/main/resources/macos.icns</argument>
 
                                         <argument>--java-options</argument>
                                         <argument>-Xmx512m</argument>

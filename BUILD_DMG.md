@@ -1,80 +1,58 @@
-# Инструкция по сборке DMG файла
+# Сборка DMG (macOS)
 
-## Требования
+> Требуется JDK 17+ с поддержкой `jpackage`.
 
-1. **JDK 14 или выше** с поддержкой `jpackage` (рекомендуется JDK 17+)
-2. **macOS** - DMG можно собрать только на macOS
-3. **Maven 3.6+**
-
-## Проверка JDK
-
-Убедитесь, что у вас установлен JDK с поддержкой jpackage:
-
-```bash
-java -version
-jpackage --version
-```
-
-Если `jpackage` не найден, установите JDK 14+ (например, через Homebrew: `brew install openjdk@17`)
-
-## Сборка DMG
-
-### Вариант 1: Полная сборка (рекомендуется)
+## Быстрый старт (Intel macOS)
 
 ```bash
 mvn clean package
 ```
 
-Эта команда:
-1. Очистит предыдущие сборки
-2. Скомпилирует проект
-3. Создаст runtime image через jlink
-4. Создаст DMG файл через jpackage
-
-DMG файл будет находиться в: `target/installer/Календарь занятий-1.0.0.dmg`
-
-### Вариант 2: Только создание runtime image
+## Apple Silicon (arm64)
 
 ```bash
-mvn clean javafx:jlink@create-runtime-image
+mvn clean package -Pmac-arm
 ```
 
-### Вариант 3: Только создание DMG (после создания runtime image)
+## Выходные файлы
 
-```bash
-mvn exec:exec@create-dmg
+DMG находится в:
+
+```
+target/installer/
 ```
 
-## Настройка параметров
+## Иконка приложения
 
-Вы можете изменить параметры приложения в `pom.xml`:
+Используется:
 
-```xml
-<app.name>Календарь занятий</app.name>
-<app.version>1.0.0</app.version>
-<app.vendor>SLSEleven</app.vendor>
-<app.identifier>com.ororura.slseleven</app.identifier>
+```
+src/main/resources/macos.icns
 ```
 
-## Добавление иконки (опционально)
+## Как устроена сборка
 
-Если хотите добавить иконку приложения, создайте файл `src/main/resources/icon.icns` и добавьте в конфигурацию jpackage:
+Проект собирается в **classpath‑режиме** (без `jlink`), т.к. Apache POI является автоматическим модулем и несовместим с `jlink`.
 
-```xml
-<argument>--icon</argument>
-<argument>${project.basedir}/src/main/resources/icon.icns</argument>
+`jpackage` получает:
+
+- `--input target/app-libs` (все зависимости)
+- `--main-jar target/${project.build.finalName}.jar`
+- `--main-class com.ororura.slseleven.HelloApplication`
+
+## Частые ошибки
+
+### JavaFX runtime components are missing
+
+Проверьте, что в `target/app-libs` есть JavaFX jars:
+
+```
+ls target/app-libs | grep javafx
 ```
 
-## Возможные проблемы
+### DMG не создаётся
 
-### Ошибка: "jpackage: command not found"
-- Установите JDK 14+ с поддержкой jpackage
-- Убедитесь, что JDK в PATH
+Убедитесь, что:
 
-### Ошибка: "No suitable JavaFX runtime found"
-- Убедитесь, что JavaFX зависимости правильно настроены
-- Проверьте версию JavaFX в pom.xml
-
-### Ошибка при создании DMG
-- Убедитесь, что вы на macOS
-- Проверьте права доступа к директории target
+- используется `mvn clean package`;
+- `jpackage` доступен (`jpackage --version`).
