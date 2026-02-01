@@ -199,6 +199,7 @@ public class CalendarController {
         VBox cell = new VBox(2);
         cell.getStyleClass().add("day-cell");
         cell.setPrefSize(100, 80);
+        UiStyles.applyInteractiveAnimations(cell);
 
         boolean isSelected = date.equals(selectedDate);
         cell.pseudoClassStateChanged(PSEUDO_TODAY, isToday);
@@ -281,6 +282,7 @@ public class CalendarController {
         VBox card = new VBox(5);
         card.getStyleClass().add("lesson-card");
         card.setPrefWidth(300);
+        UiStyles.applyInteractiveAnimations(card);
 
         Label timeLabel = new Label(
             lesson.getTime().format(UiFormatters.TIME_FORMATTER)

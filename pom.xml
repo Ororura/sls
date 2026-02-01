@@ -11,7 +11,7 @@
     <version>1.0-SNAPSHOT</version>
     <name>slseleven</name>
 
-        <properties>
+    <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.source>11</maven.compiler.source>
         <maven.compiler.target>11</maven.compiler.target>
@@ -22,6 +22,7 @@
         <app.version>1.0.0</app.version>
         <app.vendor>SLSEleven</app.vendor>
         <app.identifier>com.ororura.slseleven</app.identifier>
+        <skipJlink>true</skipJlink>
     </properties>
 
     <dependencies>
@@ -34,6 +35,7 @@
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-controls</artifactId>
             <version>${javafx.version}</version>
+            <classifier>${javafx.platform}</classifier>
         </dependency>
 
         <!-- Source: https://mvnrepository.com/artifact/org.xerial/sqlite-jdbc -->
@@ -48,6 +50,7 @@
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-fxml</artifactId>
             <version>${javafx.version}</version>
+            <classifier>${javafx.platform}</classifier>
         </dependency>
 
         <dependency>
@@ -104,6 +107,7 @@
                             <goal>jlink</goal>
                         </goals>
                         <configuration>
+                            <skip>${skipJlink}</skip>
                             <mainClass>${main.class}</mainClass>
                             <launcher>calendar-app</launcher>
                             <jlinkImageName>calendar-runtime</jlinkImageName>
@@ -154,6 +158,58 @@
                             </artifactItems>
                         </configuration>
                     </execution>
+                    <execution>
+                        <id>copy-runtime-deps</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>copy-dependencies</goal>
+                        </goals>
+                        <configuration>
+                            <includeScope>runtime</includeScope>
+                            <outputDirectory
+                            >${project.build.directory}/app-libs</outputDirectory>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>3.3.0</version>
+                <configuration>
+                    <excludes>
+                        <exclude>module-info.class</exclude>
+                    </excludes>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <version>3.3.1</version>
+                <executions>
+                    <execution>
+                        <id>copy-app-jar</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory
+                            >${project.build.directory}/app-libs</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory
+                                    >${project.build.directory}</directory>
+                                    <includes>
+                                        <include
+                                        >${project.build.finalName}.jar</include>
+                                    </includes>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
                 </executions>
             </plugin>
 
@@ -176,10 +232,18 @@
                                 <argument>--type</argument>
                                 <argument>dmg</argument>
 
-                                <!-- Runtime image с JRE (созданный через jlink) -->
-                                <argument>--runtime-image</argument>
+                                <!-- Classpath input -->
+                                <argument>--input</argument>
                                 <argument
-                                >${project.build.directory}/calendar-runtime</argument>
+                                >${project.build.directory}/app-libs</argument>
+
+                                <argument>--main-jar</argument>
+                                <argument
+                                >${project.build.finalName}.jar</argument>
+
+                                <argument>--main-class</argument>
+                                <argument
+                                >com.ororura.slseleven.HelloApplication</argument>
 
                                 <!-- Имя приложения -->
                                 <argument>--name</argument>
@@ -193,11 +257,6 @@
                                 <argument>--vendor</argument>
                                 <argument>${app.vendor}</argument>
 
-                                <!-- Главный модуль и класс -->
-                                <argument>--module</argument>
-                                <argument
-                                >com.ororura.slseleven/com.ororura.slseleven.HelloApplication</argument>
-
                                 <!-- macOS специфичные настройки -->
                                 <argument>--mac-package-identifier</argument>
                                 <argument>${app.identifier}</argument>
@@ -207,6 +266,12 @@
                                 <!-- Опции JVM -->
                                 <argument>--java-options</argument>
                                 <argument>-Xmx512m</argument>
+                                <argument>--java-options</argument>
+                                <argument
+                                >--module-path=$APPDIR/../app</argument>
+                                <argument>--java-options</argument>
+                                <argument
+                                >--add-modules=javafx.controls,javafx.fxml</argument>
                                 <argument>--java-options</argument>
                                 <argument>-Dfile.encoding=UTF-8</argument>
 
@@ -229,15 +294,250 @@
 
     <profiles>
         <profile>
+            <id>mac-arm</id>
+            <activation>
+                <os>
+                    <family>Mac</family>
+                    <arch>aarch64</arch>
+                </os>
+            </activation>
+            <properties>
+                <javafx.platform>mac-aarch64</javafx.platform>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.openjfx</groupId>
+                        <artifactId>javafx-maven-plugin</artifactId>
+                        <version>0.0.8</version>
+                        <executions>
+                            <execution>
+                                <id>create-runtime-image</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>jlink</goal>
+                                </goals>
+                                <configuration>
+                                    <skip>true</skip>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-jar-plugin</artifactId>
+                        <version>3.3.0</version>
+                        <configuration>
+                            <excludes>
+                                <exclude>module-info.class</exclude>
+                            </excludes>
+                        </configuration>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-dependency-plugin</artifactId>
+                        <version>3.6.0</version>
+                        <executions>
+                            <execution>
+                                <id>copy-runtime-deps</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>copy-dependencies</goal>
+                                </goals>
+                                <configuration>
+                                    <includeScope>runtime</includeScope>
+                                    <outputDirectory
+                                    >${project.build.directory}/app-libs</outputDirectory>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-resources-plugin</artifactId>
+                        <version>3.3.1</version>
+                        <executions>
+                            <execution>
+                                <id>copy-app-jar</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>copy-resources</goal>
+                                </goals>
+                                <configuration>
+                                    <outputDirectory
+                                    >${project.build.directory}/app-libs</outputDirectory>
+                                    <resources>
+                                        <resource>
+                                            <directory
+                                            >${project.build.directory}</directory>
+                                            <includes>
+                                                <include
+                                                >${project.build.finalName}.jar</include>
+                                            </includes>
+                                        </resource>
+                                    </resources>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>exec-maven-plugin</artifactId>
+                        <version>3.1.0</version>
+                        <executions>
+                            <execution>
+                                <id>create-dmg-arm</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <executable>jpackage</executable>
+                                    <arguments>
+                                        <argument>--type</argument>
+                                        <argument>dmg</argument>
+
+                                        <argument>--input</argument>
+                                        <argument
+                                        >${project.build.directory}/app-libs</argument>
+
+                                        <argument>--main-jar</argument>
+                                        <argument
+                                        >${project.build.finalName}.jar</argument>
+
+                                        <argument>--main-class</argument>
+                                        <argument
+                                        >com.ororura.slseleven.HelloApplication</argument>
+
+                                        <argument>--name</argument>
+                                        <argument>${app.name}</argument>
+
+                                        <argument>--app-version</argument>
+                                        <argument>${app.version}</argument>
+
+                                        <argument>--vendor</argument>
+                                        <argument>${app.vendor}</argument>
+
+                                        <argument
+                                        >--mac-package-identifier</argument>
+                                        <argument>${app.identifier}</argument>
+                                        <argument>--mac-package-name</argument>
+                                        <argument>${app.name}</argument>
+
+                                        <argument>--java-options</argument>
+                                        <argument>-Xmx512m</argument>
+                                        <argument>--java-options</argument>
+                                        <argument
+                                        >--module-path=$APPDIR/../app</argument>
+                                        <argument>--java-options</argument>
+                                        <argument
+                                        >--add-modules=javafx.controls,javafx.fxml</argument>
+                                        <argument>--java-options</argument>
+                                        <argument
+                                        >-Dfile.encoding=UTF-8</argument>
+
+                                        <argument>--dest</argument>
+                                        <argument
+                                        >${project.build.directory}/installer</argument>
+
+                                        <argument>--description</argument>
+                                        <argument
+                                        >Календарь занятий с возможностью добавления, редактирования и удаления занятий</argument>
+                                    </arguments>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
             <id>windows</id>
             <activation>
                 <os>
                     <family>Windows</family>
                 </os>
             </activation>
+            <properties>
+                <javafx.platform>win</javafx.platform>
+            </properties>
             <build>
                 <plugins>
                     <!-- Create Windows installer with embedded JRE via jpackage -->
+                    <plugin>
+                        <groupId>org.openjfx</groupId>
+                        <artifactId>javafx-maven-plugin</artifactId>
+                        <version>0.0.8</version>
+                        <executions>
+                            <execution>
+                                <id>create-runtime-image</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>jlink</goal>
+                                </goals>
+                                <configuration>
+                                    <skip>true</skip>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-jar-plugin</artifactId>
+                        <version>3.3.0</version>
+                        <configuration>
+                            <excludes>
+                                <exclude>module-info.class</exclude>
+                            </excludes>
+                        </configuration>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-dependency-plugin</artifactId>
+                        <version>3.6.0</version>
+                        <executions>
+                            <execution>
+                                <id>copy-runtime-deps</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>copy-dependencies</goal>
+                                </goals>
+                                <configuration>
+                                    <includeScope>runtime</includeScope>
+                                    <outputDirectory
+                                    >${project.build.directory}/app-libs</outputDirectory>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-resources-plugin</artifactId>
+                        <version>3.3.1</version>
+                        <executions>
+                            <execution>
+                                <id>copy-app-jar</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>copy-resources</goal>
+                                </goals>
+                                <configuration>
+                                    <outputDirectory
+                                    >${project.build.directory}/app-libs</outputDirectory>
+                                    <resources>
+                                        <resource>
+                                            <directory
+                                            >${project.build.directory}</directory>
+                                            <includes>
+                                                <include
+                                                >${project.build.finalName}.jar</include>
+                                            </includes>
+                                        </resource>
+                                    </resources>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
                     <plugin>
                         <groupId>org.codehaus.mojo</groupId>
                         <artifactId>exec-maven-plugin</artifactId>
@@ -255,9 +555,17 @@
                                         <argument>--type</argument>
                                         <argument>exe</argument>
 
-                                        <argument>--runtime-image</argument>
+                                        <argument>--input</argument>
                                         <argument
-                                        >${project.build.directory}/calendar-runtime</argument>
+                                        >${project.build.directory}/app-libs</argument>
+
+                                        <argument>--main-jar</argument>
+                                        <argument
+                                        >${project.build.finalName}.jar</argument>
+
+                                        <argument>--main-class</argument>
+                                        <argument
+                                        >com.ororura.slseleven.HelloApplication</argument>
 
                                         <argument>--name</argument>
                                         <argument>${app.name}</argument>
@@ -268,12 +576,14 @@
                                         <argument>--vendor</argument>
                                         <argument>${app.vendor}</argument>
 
-                                        <argument>--module</argument>
-                                        <argument
-                                        >com.ororura.slseleven/com.ororura.slseleven.HelloApplication</argument>
-
                                         <argument>--java-options</argument>
                                         <argument>-Xmx512m</argument>
+                                        <argument>--java-options</argument>
+                                        <argument
+                                        >--module-path=$APPDIR\\app</argument>
+                                        <argument>--java-options</argument>
+                                        <argument
+                                        >--add-modules=javafx.controls,javafx.fxml</argument>
                                         <argument>--java-options</argument>
                                         <argument
                                         >-Dfile.encoding=UTF-8</argument>
