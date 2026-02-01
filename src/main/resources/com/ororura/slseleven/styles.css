@@ -1,0 +1,232 @@
+.app-root {
+    -fx-font-family: "Avenir Next";
+    -fx-background-color: linear-gradient(to bottom, #f8f5f2, #ffffff);
+    -fx-text-fill: #1f2933;
+}
+
+.top-section {
+    -fx-padding: 20 24 10 24;
+}
+
+.top-bar {
+    -fx-alignment: center-left;
+    -fx-spacing: 16;
+}
+
+.title {
+    -fx-font-size: 22px;
+    -fx-font-weight: 700;
+}
+
+.hint {
+    -fx-text-fill: #7a828a;
+    -fx-font-size: 11px;
+}
+
+.content {
+    -fx-padding: 18 24 24 24;
+    -fx-spacing: 20;
+}
+
+.calendar-panel {
+    -fx-background-color: rgba(255, 255, 255, 0.75);
+    -fx-background-radius: 16;
+    -fx-padding: 16;
+    -fx-border-color: #e5e1db;
+    -fx-border-radius: 16;
+    -fx-pref-width: 720;
+}
+
+.calendar-grid {
+    -fx-hgap: 8;
+    -fx-vgap: 8;
+}
+
+.day-cell {
+    -fx-background-color: rgba(255, 255, 255, 0.9);
+    -fx-background-radius: 12;
+    -fx-border-radius: 12;
+    -fx-border-color: #e6e3de;
+    -fx-border-width: 1;
+    -fx-padding: 6 8;
+}
+
+.day-cell:hover {
+    -fx-border-color: #7aa7ff;
+    -fx-background-color: #f0f6ff;
+}
+
+.day-cell:today {
+    -fx-border-color: #5a9cff;
+    -fx-background-color: #e9f1ff;
+}
+
+.day-cell:selected {
+    -fx-border-color: #3b7cff;
+    -fx-background-color: #dceaff;
+    -fx-border-width: 2;
+}
+
+.day-cell:today:selected {
+    -fx-border-color: #1f6feb;
+    -fx-background-color: #cfe3ff;
+    -fx-border-width: 2;
+}
+
+.day-number {
+    -fx-font-size: 14px;
+    -fx-font-weight: 700;
+}
+
+.dow-label {
+    -fx-font-size: 12px;
+    -fx-font-weight: 700;
+    -fx-text-fill: #54606b;
+}
+
+.lesson-count {
+    -fx-font-size: 10px;
+    -fx-text-fill: #1f6feb;
+    -fx-background-color: rgba(31, 111, 235, 0.12);
+    -fx-background-radius: 8;
+    -fx-padding: 2 6;
+}
+
+.sidebar {
+    -fx-background-color: rgba(255, 255, 255, 0.88);
+    -fx-background-radius: 16;
+    -fx-padding: 16;
+    -fx-border-color: #e5e1db;
+    -fx-border-radius: 16;
+    -fx-pref-width: 340;
+}
+
+.section-title {
+    -fx-font-size: 16px;
+    -fx-font-weight: 700;
+}
+
+.muted {
+    -fx-text-fill: #7a828a;
+}
+
+.error-text {
+    -fx-text-fill: #b42318;
+}
+
+.lesson-card {
+    -fx-background-color: #ffffff;
+    -fx-background-radius: 12;
+    -fx-border-radius: 12;
+    -fx-border-color: #e6e3de;
+    -fx-padding: 10 12;
+    -fx-effect: dropshadow(gaussian, rgba(16, 24, 40, 0.12), 12, 0.2, 0, 2);
+}
+
+.lesson-time {
+    -fx-font-size: 14px;
+    -fx-font-weight: 700;
+    -fx-text-fill: #1f6feb;
+}
+
+.lesson-meta {
+    -fx-text-fill: #364152;
+    -fx-font-size: 12px;
+}
+
+.card-actions {
+    -fx-spacing: 6;
+    -fx-padding: 6 0 0 0;
+}
+
+.button {
+    -fx-background-radius: 10;
+    -fx-padding: 6 14;
+    -fx-font-weight: 600;
+}
+
+.button-primary {
+    -fx-background-color: #1f6feb;
+    -fx-text-fill: white;
+}
+
+.button-primary:hover {
+    -fx-background-color: #1859bf;
+}
+
+.button-ghost {
+    -fx-background-color: transparent;
+    -fx-border-color: #d6d3ce;
+    -fx-border-radius: 10;
+    -fx-text-fill: #334155;
+}
+
+.button-secondary {
+    -fx-background-color: #e8eefb;
+    -fx-text-fill: #1f3a8a;
+}
+
+.button-danger {
+    -fx-background-color: #fef3f2;
+    -fx-text-fill: #b42318;
+    -fx-border-color: #fecdca;
+    -fx-border-radius: 10;
+}
+
+.toolbar {
+    -fx-background-color: transparent;
+    -fx-padding: 14 18;
+}
+
+.footer-bar {
+    -fx-background-color: rgba(255, 255, 255, 0.8);
+    -fx-padding: 10 14;
+    -fx-spacing: 12;
+    -fx-border-color: #e6e3de;
+    -fx-border-width: 1 0 0 0;
+}
+
+.table-view {
+    -fx-background-color: transparent;
+    -fx-control-inner-background: #ffffff;
+    -fx-background-radius: 12;
+    -fx-border-radius: 12;
+    -fx-border-color: #e6e3de;
+}
+
+.table-view .column-header-background {
+    -fx-background-color: #f8fafc;
+    -fx-background-radius: 12 12 0 0;
+}
+
+.table-view .column-header,
+.table-view .filler {
+    -fx-size: 32;
+    -fx-border-color: transparent;
+}
+
+.table-row-cell:filled:selected,
+.table-row-cell:filled:selected:focused {
+    -fx-background-color: #dceaff;
+}
+
+.dialog-grid {
+    -fx-padding: 18;
+    -fx-hgap: 12;
+    -fx-vgap: 12;
+}
+
+.form-label {
+    -fx-text-fill: #475467;
+    -fx-font-size: 12px;
+}
+
+.form-field {
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+    -fx-border-color: #d0d5dd;
+}
+
+.app-dialog {
+    -fx-background-color: #fefefe;
+}

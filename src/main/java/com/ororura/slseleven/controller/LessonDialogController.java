@@ -1,29 +1,34 @@
 package com.ororura.slseleven.controller;
 
 import com.ororura.slseleven.domain.model.Lesson;
+import com.ororura.slseleven.ui.UiFormatters;
 import com.ororura.slseleven.usecase.LessonUseCase;
-import javafx.fxml.FXML;
-import javafx.scene.control.*;
-
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import javafx.fxml.FXML;
+import javafx.scene.control.*;
 
 /**
  * Контроллер диалога добавления/редактирования занятия
  */
 public class LessonDialogController {
+
     @FXML
     private TextField topicField;
+
     @FXML
     private TextField lessonNameField;
+
     @FXML
     private TextField timeField;
+
     @FXML
     private TextField locationField;
+
     @FXML
     private TextField instructorField;
+
     @FXML
     private DatePicker datePicker;
 
@@ -35,7 +40,12 @@ public class LessonDialogController {
         // Инициализация при загрузке FXML
     }
 
-    public void setLesson(Lesson lesson, LocalDate date, LessonUseCase lessonUseCase, Dialog<ButtonType> dialog) {
+    public void setLesson(
+        Lesson lesson,
+        LocalDate date,
+        LessonUseCase lessonUseCase,
+        Dialog<ButtonType> dialog
+    ) {
         this.lesson = lesson;
         this.lessonUseCase = lessonUseCase;
 
@@ -45,7 +55,9 @@ public class LessonDialogController {
             // Редактирование существующего занятия
             topicField.setText(lesson.getTopic());
             lessonNameField.setText(lesson.getLessonName());
-            timeField.setText(lesson.getTime().format(DateTimeFormatter.ofPattern("HH:mm")));
+            timeField.setText(
+                lesson.getTime().format(UiFormatters.TIME_FORMATTER)
+            );
             locationField.setText(lesson.getLocation());
             instructorField.setText(lesson.getInstructor());
             datePicker.setValue(lesson.getDate());
@@ -66,6 +78,10 @@ public class LessonDialogController {
 
     private boolean saveLesson() {
         try {
+            if (lessonUseCase == null) {
+                showError("Ошибка: Use case не инициализирован");
+                return false;
+            }
             // Валидация
             if (topicField.getText().trim().isEmpty()) {
                 showError("Тема не может быть пустой");
@@ -95,9 +111,14 @@ public class LessonDialogController {
             // Парсинг времени
             LocalTime time;
             try {
-                time = LocalTime.parse(timeField.getText().trim(), DateTimeFormatter.ofPattern("HH:mm"));
+                time = LocalTime.parse(
+                    timeField.getText().trim(),
+                    UiFormatters.TIME_FORMATTER
+                );
             } catch (DateTimeParseException e) {
-                showError("Неверный формат времени. Используйте формат HH:mm (например, 14:30)");
+                showError(
+                    "Неверный формат времени. Используйте формат HH:mm (например, 14:30)"
+                );
                 return false;
             }
 
@@ -113,14 +134,17 @@ public class LessonDialogController {
             lesson.setInstructor(instructorField.getText().trim());
             lesson.setDate(datePicker.getValue());
 
-            if (lesson.getId() == null || !lessonUseCase.getLessonById(lesson.getId()).isPresent()) {
+            if (
+                lesson.getId() == null ||
+                !lessonUseCase.getLessonById(lesson.getId()).isPresent()
+            ) {
                 // Создание нового занятия
                 lessonUseCase.createLesson(lesson);
             } else {
                 // Обновление существующего занятия
                 lessonUseCase.updateLesson(lesson);
             }
-            
+
             return true;
         } catch (Exception e) {
             showError("Ошибка при сохранении: " + e.getMessage());

@@ -4,21 +4,21 @@
 <?import javafx.scene.layout.*?>
 
 <BorderPane xmlns:fx="http://javafx.com/fxml"
-            fx:controller="com.ororura.slseleven.controller.LessonsListController">
+            fx:controller="com.ororura.slseleven.controller.LessonsListController"
+            styleClass="app-root">
 
     <!-- Верхняя панель -->
     <top>
-        <ToolBar>
-            <Label text="Все занятия"
-                   style="-fx-font-size: 18px; -fx-font-weight: bold;" />
+        <ToolBar styleClass="toolbar">
+            <Label text="Все занятия" styleClass="title"/>
             <Pane HBox.hgrow="ALWAYS"/>
-            <Button text="Обновить" onAction="#onRefresh"/>
+            <Button text="Обновить" onAction="#onRefresh" styleClass="button-ghost"/>
         </ToolBar>
     </top>
 
     <!-- Таблица занятий -->
     <center>
-        <TableView fx:id="lessonTable">
+        <TableView fx:id="lessonTable" styleClass="table-view">
 
             <columns>
                 <TableColumn fx:id="dateColumn" text="Дата"/>
@@ -34,10 +34,11 @@
 
     <!-- Нижняя панель -->
     <bottom>
-        <HBox spacing="10" style="-fx-padding: 10;">
+        <HBox spacing="10" styleClass="footer-bar">
             <Label fx:id="countLabel" text="Всего занятий: 0"/>
             <Pane HBox.hgrow="ALWAYS"/>
-            <Button text="Удалить" onAction="#onDelete"/>
+            <Button text="Удалить" onAction="#onDelete" styleClass="button-danger"/>
+            <Button text="Добавить" onAction="#onSave" styleClass="button-primary"/>
         </HBox>
     </bottom>
 
