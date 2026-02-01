@@ -2,7 +2,6 @@ package com.ororura.slseleven.usecase;
 
 import com.ororura.slseleven.domain.model.Lesson;
 import com.ororura.slseleven.domain.repository.LessonRepository;
-
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -12,6 +11,7 @@ import java.util.Optional;
  * Содержит бизнес-логику приложения
  */
 public class LessonUseCase {
+
     private final LessonRepository lessonRepository;
 
     public LessonUseCase(LessonRepository lessonRepository) {
@@ -33,10 +33,14 @@ public class LessonUseCase {
      */
     public void updateLesson(Lesson lesson) {
         if (lesson == null || lesson.getId() == null) {
-            throw new IllegalArgumentException("Занятие или ID не может быть null");
+            throw new IllegalArgumentException(
+                "Занятие или ID не может быть null"
+            );
         }
         if (!lessonRepository.existsById(lesson.getId())) {
-            throw new IllegalArgumentException("Занятие с ID " + lesson.getId() + " не найдено");
+            throw new IllegalArgumentException(
+                "Занятие с ID " + lesson.getId() + " не найдено"
+            );
         }
         lessonRepository.save(lesson);
     }
@@ -46,12 +50,23 @@ public class LessonUseCase {
      */
     public void deleteLesson(String lessonId) {
         if (lessonId == null || lessonId.trim().isEmpty()) {
-            throw new IllegalArgumentException("ID занятия не может быть пустым");
+            throw new IllegalArgumentException(
+                "ID занятия не может быть пустым"
+            );
         }
         if (!lessonRepository.existsById(lessonId)) {
-            throw new IllegalArgumentException("Занятие с ID " + lessonId + " не найдено");
+            throw new IllegalArgumentException(
+                "Занятие с ID " + lessonId + " не найдено"
+            );
         }
         lessonRepository.deleteById(lessonId);
+    }
+
+    /**
+     * Удалить все занятия
+     */
+    public void deleteAllLessons() {
+        lessonRepository.deleteAll();
     }
 
     /**
@@ -59,7 +74,9 @@ public class LessonUseCase {
      */
     public Optional<Lesson> getLessonById(String lessonId) {
         if (lessonId == null || lessonId.trim().isEmpty()) {
-            throw new IllegalArgumentException("ID занятия не может быть пустым");
+            throw new IllegalArgumentException(
+                "ID занятия не может быть пустым"
+            );
         }
         return lessonRepository.findById(lessonId);
     }
@@ -84,12 +101,17 @@ public class LessonUseCase {
     /**
      * Получить занятия в диапазоне дат
      */
-    public List<Lesson> getLessonsByDateRange(LocalDate startDate, LocalDate endDate) {
+    public List<Lesson> getLessonsByDateRange(
+        LocalDate startDate,
+        LocalDate endDate
+    ) {
         if (startDate == null || endDate == null) {
             throw new IllegalArgumentException("Даты не могут быть null");
         }
         if (startDate.isAfter(endDate)) {
-            throw new IllegalArgumentException("Начальная дата не может быть позже конечной");
+            throw new IllegalArgumentException(
+                "Начальная дата не может быть позже конечной"
+            );
         }
         return lessonRepository.findByDateRange(startDate, endDate);
     }

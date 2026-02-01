@@ -5,7 +5,6 @@ import com.ororura.slseleven.domain.model.ScheduleItem;
 import com.ororura.slseleven.domain.repository.LessonRepository;
 import com.ororura.slseleven.domain.repository.ScheduleItemRepository;
 import com.ororura.slseleven.domain.repository.ScheduleSettingsRepository;
-
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -17,6 +16,7 @@ import java.util.Map;
 import java.util.Set;
 
 public class ScheduleUseCase {
+
     private static final LocalTime DEFAULT_START_TIME = LocalTime.of(9, 0);
     private static final int MAX_DAILY_SLOTS = 24;
 
@@ -45,20 +45,30 @@ public class ScheduleUseCase {
 
     public void updateItem(ScheduleItem item) {
         if (item == null || item.getId() == null) {
-            throw new IllegalArgumentException("Элемент списка или ID не может быть null");
+            throw new IllegalArgumentException(
+                "Элемент списка или ID не может быть null"
+            );
         }
         validateItem(item);
         if (!scheduleItemRepository.existsById(item.getId())) {
-            throw new IllegalArgumentException("Элемент списка с ID " + item.getId() + " не найден");
+            throw new IllegalArgumentException(
+                "Элемент списка с ID " + item.getId() + " не найден"
+            );
         }
         scheduleItemRepository.save(item);
     }
 
     public void deleteItem(String id) {
         if (id == null || id.trim().isEmpty()) {
-            throw new IllegalArgumentException("ID элемента списка не может быть пустым");
+            throw new IllegalArgumentException(
+                "ID элемента списка не может быть пустым"
+            );
         }
         scheduleItemRepository.deleteById(id);
+    }
+
+    public void deleteAllItems() {
+        scheduleItemRepository.deleteAll();
     }
 
     public Map<DayOfWeek, Integer> getMaxHoursByDay() {
@@ -71,7 +81,9 @@ public class ScheduleUseCase {
 
     public AutoScheduleResult autoSchedule(LocalDate startDate) {
         if (startDate == null) {
-            throw new IllegalArgumentException("Дата начала не может быть пустой");
+            throw new IllegalArgumentException(
+                "Дата начала не может быть пустой"
+            );
         }
 
         List<ScheduleItem> items = scheduleItemRepository.findAll();
@@ -79,10 +91,17 @@ public class ScheduleUseCase {
             return new AutoScheduleResult(0, null, 0);
         }
 
-        Map<DayOfWeek, Integer> maxHoursByDay = new EnumMap<>(scheduleSettingsRepository.getMaxHoursByDay());
-        boolean hasCapacity = maxHoursByDay.values().stream().anyMatch(hours -> hours != null && hours > 0);
+        Map<DayOfWeek, Integer> maxHoursByDay = new EnumMap<>(
+            scheduleSettingsRepository.getMaxHoursByDay()
+        );
+        boolean hasCapacity = maxHoursByDay
+            .values()
+            .stream()
+            .anyMatch(hours -> hours != null && hours > 0);
         if (!hasCapacity) {
-            throw new IllegalStateException("Нужно задать часы занятий хотя бы для одного дня недели");
+            throw new IllegalStateException(
+                "Нужно задать часы занятий хотя бы для одного дня недели"
+            );
         }
 
         int totalHours = items.stream().mapToInt(ScheduleItem::getHours).sum();
@@ -102,7 +121,9 @@ public class ScheduleUseCase {
                 continue;
             }
 
-            List<Lesson> existingLessons = lessonRepository.findByDate(currentDate);
+            List<Lesson> existingLessons = lessonRepository.findByDate(
+                currentDate
+            );
             int existingCount = existingLessons.size();
             int availableSlots = maxHours - existingCount;
             if (availableSlots <= 0) {
@@ -121,7 +142,9 @@ public class ScheduleUseCase {
                     break;
                 }
 
-                LocalTime candidateTime = DEFAULT_START_TIME.plusHours(slotOffset);
+                LocalTime candidateTime = DEFAULT_START_TIME.plusHours(
+                    slotOffset
+                );
                 slotOffset++;
 
                 if (occupiedTimes.contains(candidateTime)) {
@@ -165,19 +188,29 @@ public class ScheduleUseCase {
 
     private void validateItem(ScheduleItem item) {
         if (item == null) {
-            throw new IllegalArgumentException("Элемент списка не может быть null");
+            throw new IllegalArgumentException(
+                "Элемент списка не может быть null"
+            );
         }
         if (item.getTopic() == null || item.getTopic().trim().isEmpty()) {
             throw new IllegalArgumentException("Тема не может быть пустой");
         }
-        if (item.getLessonName() == null || item.getLessonName().trim().isEmpty()) {
+        if (
+            item.getLessonName() == null ||
+            item.getLessonName().trim().isEmpty()
+        ) {
             throw new IllegalArgumentException("Занятие не может быть пустым");
         }
         if (item.getLocation() == null || item.getLocation().trim().isEmpty()) {
             throw new IllegalArgumentException("Место не может быть пустым");
         }
-        if (item.getInstructor() == null || item.getInstructor().trim().isEmpty()) {
-            throw new IllegalArgumentException("Преподаватель не может быть пустым");
+        if (
+            item.getInstructor() == null ||
+            item.getInstructor().trim().isEmpty()
+        ) {
+            throw new IllegalArgumentException(
+                "Преподаватель не может быть пустым"
+            );
         }
         if (item.getHours() <= 0) {
             throw new IllegalArgumentException("Часы должны быть больше 0");

@@ -18,5 +18,7 @@ public interface ScheduleItemRepository {
 
     void deleteAllByIds(List<String> ids);
 
+    void deleteAll();
+
     boolean existsById(String id);
 }

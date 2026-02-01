@@ -1,7 +1,6 @@
 package com.ororura.slseleven.domain.repository;
 
 import com.ororura.slseleven.domain.model.Lesson;
-
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -39,6 +38,11 @@ public interface LessonRepository {
      * Удалить занятие по ID
      */
     void deleteById(String id);
+
+    /**
+     * Удалить все занятия
+     */
+    void deleteAll();
 
     /**
      * Проверить существование занятия по ID

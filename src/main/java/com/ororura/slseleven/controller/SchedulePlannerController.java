@@ -4,18 +4,38 @@ import com.ororura.slseleven.domain.model.ScheduleItem;
 import com.ororura.slseleven.ui.UiStyles;
 import com.ororura.slseleven.usecase.AutoScheduleResult;
 import com.ororura.slseleven.usecase.ScheduleUseCase;
+import com.ororura.slseleven.util.DelimitedText;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.StringJoiner;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.input.Clipboard;
+import javafx.scene.input.ClipboardContent;
 import javafx.scene.layout.GridPane;
+import javafx.scene.layout.VBox;
+import javafx.stage.FileChooser;
+import javafx.stage.Window;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.DataFormatter;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 public class SchedulePlannerController {
 
@@ -72,6 +92,9 @@ public class SchedulePlannerController {
     @FXML
     public void initialize() {
         scheduleTable.setItems(data);
+        scheduleTable
+            .getSelectionModel()
+            .setSelectionMode(SelectionMode.MULTIPLE);
         topicColumn.setCellValueFactory(new PropertyValueFactory<>("topic"));
         lessonNameColumn.setCellValueFactory(
             new PropertyValueFactory<>("lessonName")
@@ -120,28 +143,307 @@ public class SchedulePlannerController {
 
     @FXML
     private void onDeleteItem() {
-        ScheduleItem selected = scheduleTable
-            .getSelectionModel()
-            .getSelectedItem();
-        if (selected == null) {
-            showInfo("Выберите строку для удаления.");
+        List<ScheduleItem> selected = List.copyOf(
+            scheduleTable.getSelectionModel().getSelectedItems()
+        );
+        if (selected.isEmpty()) {
+            showInfo("Выберите строки для удаления.");
             return;
         }
 
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
         alert.setTitle("Подтверждение");
-        alert.setHeaderText("Удалить запись?");
+        alert.setHeaderText("Удалить выбранные записи?");
         alert.setContentText(
-            "Вы уверены, что хотите удалить выбранный элемент?"
+            "Количество выбранных записей: " + selected.size()
         );
         alert
             .showAndWait()
             .ifPresent(response -> {
                 if (response == ButtonType.OK) {
-                    scheduleUseCase.deleteItem(selected.getId());
+                    for (ScheduleItem item : selected) {
+                        scheduleUseCase.deleteItem(item.getId());
+                    }
                     reload();
                 }
             });
+    }
+
+    @FXML
+    private void onQuickImport() {
+        if (scheduleUseCase == null) {
+            showError("Ошибка: Use case не инициализирован");
+            return;
+        }
+        String clipboardText = Clipboard.getSystemClipboard().getString();
+        if (clipboardText == null || clipboardText.trim().isEmpty()) {
+            showInfo("Буфер обмена пуст.");
+            return;
+        }
+
+        ImportResult result = importItemsFromText(clipboardText);
+        showImportResult(result);
+    }
+
+    @FXML
+    private void onImport() {
+        if (scheduleUseCase == null) {
+            showError("Ошибка: Use case не инициализирован");
+            return;
+        }
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("Импорт");
+        dialog.setHeaderText("Вставьте данные для импорта");
+
+        TextArea textArea = new TextArea();
+        textArea.setWrapText(false);
+        textArea.setEditable(true);
+        textArea.setPrefRowCount(18);
+
+        Label hint = new Label(
+            "Ожидаемые колонки: Тема, Занятие, Место, Преподаватель, Часы."
+        );
+        Label hint2 = new Label(
+            "Поддерживаются табуляции (TSV) и CSV с ';' или ','. Заголовок необязателен."
+        );
+
+        VBox content = new VBox(8, hint, hint2, textArea);
+        dialog.getDialogPane().setContent(content);
+
+        ButtonType importButtonType = new ButtonType(
+            "Импортировать",
+            ButtonBar.ButtonData.LEFT
+        );
+        ButtonType loadFileButtonType = new ButtonType(
+            "Загрузить файл",
+            ButtonBar.ButtonData.LEFT
+        );
+        dialog
+            .getDialogPane()
+            .getButtonTypes()
+            .addAll(loadFileButtonType, importButtonType, ButtonType.CLOSE);
+        UiStyles.apply(dialog.getDialogPane());
+
+        Button loadFileButton = (Button) dialog
+            .getDialogPane()
+            .lookupButton(loadFileButtonType);
+        loadFileButton.addEventFilter(
+            javafx.event.ActionEvent.ACTION,
+            event -> {
+                loadDelimitedFromFile(
+                    dialog.getDialogPane().getScene().getWindow(),
+                    textArea
+                );
+                event.consume();
+            }
+        );
+
+        Button importButton = (Button) dialog
+            .getDialogPane()
+            .lookupButton(importButtonType);
+        importButton.addEventFilter(javafx.event.ActionEvent.ACTION, event -> {
+            ImportResult result = importItemsFromText(textArea.getText());
+            showImportResult(result);
+            event.consume();
+        });
+
+        dialog.showAndWait();
+    }
+
+    @FXML
+    private void onImportXlsx() {
+        if (scheduleUseCase == null) {
+            showError("Ошибка: Use case не инициализирован");
+            return;
+        }
+
+        FileChooser chooser = new FileChooser();
+        chooser.setTitle("Импорт XLSX");
+        chooser
+            .getExtensionFilters()
+            .add(new FileChooser.ExtensionFilter("Excel (*.xlsx)", "*.xlsx"));
+        java.io.File file = chooser.showOpenDialog(
+            scheduleTable.getScene().getWindow()
+        );
+        if (file == null) {
+            return;
+        }
+
+        List<String> errors = new ArrayList<>();
+        List<List<String>> rows = readXlsxRows(file, errors);
+        ImportResult result = importItemsFromRows(rows, errors);
+        showImportResult(result);
+    }
+
+    @FXML
+    private void onExportXlsx() {
+        if (data.isEmpty()) {
+            showInfo("Нет данных для экспорта.");
+            return;
+        }
+
+        FileChooser chooser = new FileChooser();
+        chooser.setTitle("Экспорт XLSX");
+        chooser
+            .getExtensionFilters()
+            .add(new FileChooser.ExtensionFilter("Excel (*.xlsx)", "*.xlsx"));
+        chooser.setInitialFileName(
+            "schedule_export_" + LocalDate.now() + ".xlsx"
+        );
+        java.io.File file = chooser.showSaveDialog(
+            scheduleTable.getScene().getWindow()
+        );
+        if (file == null) {
+            return;
+        }
+
+        try (Workbook workbook = new XSSFWorkbook()) {
+            Sheet sheet = workbook.createSheet("Авторасписание");
+            Row header = sheet.createRow(0);
+            String[] headers = {
+                "Тема",
+                "Занятие",
+                "Место",
+                "Преподаватель",
+                "Часы",
+            };
+            for (int i = 0; i < headers.length; i++) {
+                header.createCell(i).setCellValue(headers[i]);
+            }
+
+            int rowIndex = 1;
+            for (ScheduleItem item : data) {
+                Row row = sheet.createRow(rowIndex++);
+                row.createCell(0).setCellValue(safeValue(item.getTopic()));
+                row.createCell(1).setCellValue(safeValue(item.getLessonName()));
+                row.createCell(2).setCellValue(safeValue(item.getLocation()));
+                row.createCell(3).setCellValue(safeValue(item.getInstructor()));
+                row.createCell(4).setCellValue(item.getHours());
+            }
+
+            try (FileOutputStream out = new FileOutputStream(file)) {
+                workbook.write(out);
+            }
+
+            showInfo("Файл сохранён: " + file.getName());
+        } catch (Exception ex) {
+            showError("Не удалось сохранить файл: " + ex.getMessage());
+        }
+    }
+
+    @FXML
+    private void onImportAndSchedule() {
+        if (scheduleUseCase == null) {
+            showError("Ошибка: Use case не инициализирован");
+            return;
+        }
+        if (startDatePicker.getValue() == null) {
+            showError("Укажите дату начала");
+            return;
+        }
+
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("Импорт и распределение");
+        dialog.setHeaderText("Вставьте данные для импорта");
+
+        TextArea textArea = new TextArea();
+        textArea.setWrapText(false);
+        textArea.setEditable(true);
+        textArea.setPrefRowCount(18);
+
+        Label hint = new Label(
+            "Ожидаемые колонки: Тема, Занятие, Место, Преподаватель, Часы."
+        );
+        Label hint2 = new Label(
+            "Поддерживаются табуляции (TSV) и CSV с ';' или ','. Заголовок необязателен."
+        );
+
+        VBox content = new VBox(8, hint, hint2, textArea);
+        dialog.getDialogPane().setContent(content);
+
+        ButtonType importButtonType = new ButtonType(
+            "Импортировать и распределить",
+            ButtonBar.ButtonData.LEFT
+        );
+        ButtonType loadFileButtonType = new ButtonType(
+            "Загрузить файл",
+            ButtonBar.ButtonData.LEFT
+        );
+        dialog
+            .getDialogPane()
+            .getButtonTypes()
+            .addAll(loadFileButtonType, importButtonType, ButtonType.CLOSE);
+        UiStyles.apply(dialog.getDialogPane());
+
+        Button loadFileButton = (Button) dialog
+            .getDialogPane()
+            .lookupButton(loadFileButtonType);
+        loadFileButton.addEventFilter(
+            javafx.event.ActionEvent.ACTION,
+            event -> {
+                loadDelimitedFromFile(
+                    dialog.getDialogPane().getScene().getWindow(),
+                    textArea
+                );
+                event.consume();
+            }
+        );
+
+        Button importButton = (Button) dialog
+            .getDialogPane()
+            .lookupButton(importButtonType);
+        importButton.addEventFilter(javafx.event.ActionEvent.ACTION, event -> {
+            ImportResult importResult = importItemsFromText(textArea.getText());
+            if (importResult.added <= 0) {
+                showImportResult(importResult);
+                event.consume();
+                return;
+            }
+
+            saveSettings();
+
+            try {
+                AutoScheduleResult scheduleResult =
+                    scheduleUseCase.autoSchedule(startDatePicker.getValue());
+                reload();
+                showImportAndScheduleResult(importResult, scheduleResult);
+            } catch (Exception ex) {
+                showError("Ошибка при распределении: " + ex.getMessage());
+            }
+
+            event.consume();
+        });
+
+        dialog.showAndWait();
+    }
+
+    @FXML
+    private void onQuickExport() {
+        if (data.isEmpty()) {
+            showInfo("Нет данных для экспорта.");
+            return;
+        }
+
+        String exportText = buildTsvExport(List.copyOf(data));
+        ClipboardContent contentCopy = new ClipboardContent();
+        contentCopy.putString(exportText);
+        Clipboard.getSystemClipboard().setContent(contentCopy);
+        showInfo("Экспорт скопирован в буфер обмена (TSV).");
+    }
+
+    @FXML
+    private void onDeleteAll() {
+        if (data.isEmpty()) {
+            showInfo("Список пуст.");
+            return;
+        }
+
+        if (!confirmDoubleDelete("Удалить все записи авторасписания?")) {
+            return;
+        }
+
+        scheduleUseCase.deleteAllItems();
+        reload();
     }
 
     @FXML
@@ -296,5 +598,372 @@ public class SchedulePlannerController {
         alert.setHeaderText(null);
         alert.setContentText(message);
         alert.showAndWait();
+    }
+
+    private ImportResult importItemsFromText(String text) {
+        List<String> errors = new ArrayList<>();
+        List<List<String>> rows = DelimitedText.parse(text, errors);
+        return importItemsFromRows(rows, errors);
+    }
+
+    private ImportResult importItemsFromRows(
+        List<List<String>> rows,
+        List<String> errors
+    ) {
+        if (rows.isEmpty()) {
+            return new ImportResult(0, errors);
+        }
+
+        HeaderMapping mapping = HeaderMapping.forItems(rows);
+        if (mapping == null) {
+            errors.add("Не удалось определить заголовки или порядок колонок.");
+            return new ImportResult(0, errors);
+        }
+
+        int added = 0;
+        for (int i = mapping.startRowIndex; i < rows.size(); i++) {
+            List<String> row = rows.get(i);
+            int rowNumber = i + 1;
+            try {
+                String topic = mapping.get(row, "topic");
+                String lessonName = mapping.get(row, "lesson");
+                String location = mapping.get(row, "location");
+                String instructor = mapping.get(row, "instructor");
+                String hoursRaw = mapping.get(row, "hours");
+
+                if (
+                    isBlank(topic) ||
+                    isBlank(lessonName) ||
+                    isBlank(location) ||
+                    isBlank(instructor) ||
+                    isBlank(hoursRaw)
+                ) {
+                    errors.add(
+                        "Строка " + rowNumber + ": пропущены обязательные поля."
+                    );
+                    continue;
+                }
+
+                int hours;
+                try {
+                    hours = Integer.parseInt(hoursRaw.trim());
+                } catch (NumberFormatException ex) {
+                    errors.add(
+                        "Строка " + rowNumber + ": неверный формат часов."
+                    );
+                    continue;
+                }
+
+                ScheduleItem item = new ScheduleItem(
+                    topic,
+                    lessonName,
+                    location,
+                    instructor,
+                    hours
+                );
+                scheduleUseCase.createItem(item);
+                added++;
+            } catch (Exception ex) {
+                errors.add("Строка " + rowNumber + ": " + ex.getMessage());
+            }
+        }
+
+        reload();
+        return new ImportResult(added, errors);
+    }
+
+    private void showImportResult(ImportResult result) {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle("Импорт");
+        alert.setHeaderText(null);
+        if (result.errors.isEmpty()) {
+            alert.setContentText("Импортировано строк: " + result.added);
+        } else {
+            StringJoiner joiner = new StringJoiner(System.lineSeparator());
+            joiner.add("Импортировано строк: " + result.added);
+            int limit = Math.min(6, result.errors.size());
+            for (int i = 0; i < limit; i++) {
+                joiner.add(result.errors.get(i));
+            }
+            if (result.errors.size() > limit) {
+                joiner.add("Ошибок ещё: " + (result.errors.size() - limit));
+            }
+            alert.setContentText(joiner.toString());
+        }
+        alert.showAndWait();
+    }
+
+    private void showImportAndScheduleResult(
+        ImportResult importResult,
+        AutoScheduleResult scheduleResult
+    ) {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle("Импорт и распределение");
+        alert.setHeaderText(null);
+        StringJoiner joiner = new StringJoiner(System.lineSeparator());
+        joiner.add("Импортировано строк: " + importResult.added);
+        joiner.add("Создано занятий: " + scheduleResult.getCreatedLessons());
+        if (scheduleResult.getLastScheduledDate() != null) {
+            joiner.add(
+                "Последняя дата: " + scheduleResult.getLastScheduledDate()
+            );
+        }
+        if (!importResult.errors.isEmpty()) {
+            int limit = Math.min(4, importResult.errors.size());
+            for (int i = 0; i < limit; i++) {
+                joiner.add(importResult.errors.get(i));
+            }
+            if (importResult.errors.size() > limit) {
+                joiner.add(
+                    "Ошибок ещё: " + (importResult.errors.size() - limit)
+                );
+            }
+        }
+        alert.setContentText(joiner.toString());
+        alert.showAndWait();
+    }
+
+    private boolean isBlank(String value) {
+        return value == null || value.trim().isEmpty();
+    }
+
+    private String safeValue(String value) {
+        return value == null ? "" : value;
+    }
+
+    private List<List<String>> readXlsxRows(
+        java.io.File file,
+        List<String> errors
+    ) {
+        try (
+            FileInputStream input = new FileInputStream(file);
+            Workbook workbook = new XSSFWorkbook(input)
+        ) {
+            Sheet sheet =
+                workbook.getNumberOfSheets() > 0
+                    ? workbook.getSheetAt(0)
+                    : null;
+            if (sheet == null) {
+                errors.add("XLSX файл не содержит листов.");
+                return List.of();
+            }
+
+            DataFormatter formatter = new DataFormatter();
+            List<List<String>> rows = new ArrayList<>();
+            int lastRow = sheet.getLastRowNum();
+            for (int i = 0; i <= lastRow; i++) {
+                Row row = sheet.getRow(i);
+                if (row == null) {
+                    continue;
+                }
+                int lastCell = row.getLastCellNum();
+                if (lastCell <= 0) {
+                    continue;
+                }
+                List<String> values = new ArrayList<>();
+                boolean hasContent = false;
+                for (int c = 0; c < lastCell; c++) {
+                    Cell cell = row.getCell(c);
+                    String value =
+                        cell == null ? "" : formatter.formatCellValue(cell);
+                    if (!value.isBlank()) {
+                        hasContent = true;
+                    }
+                    values.add(value.trim());
+                }
+                if (hasContent) {
+                    rows.add(values);
+                }
+            }
+            return rows;
+        } catch (Exception ex) {
+            errors.add("Не удалось прочитать XLSX: " + ex.getMessage());
+            return List.of();
+        }
+    }
+
+    private void loadDelimitedFromFile(Window owner, TextArea target) {
+        FileChooser chooser = new FileChooser();
+        chooser.setTitle("Загрузить TSV/CSV");
+        chooser
+            .getExtensionFilters()
+            .addAll(
+                new FileChooser.ExtensionFilter("TSV (*.tsv)", "*.tsv"),
+                new FileChooser.ExtensionFilter("CSV (*.csv)", "*.csv"),
+                new FileChooser.ExtensionFilter("Все файлы (*.*)", "*.*")
+            );
+        java.io.File file = chooser.showOpenDialog(owner);
+        if (file == null) {
+            return;
+        }
+        try {
+            byte[] bytes = Files.readAllBytes(file.toPath());
+            String content = new String(bytes, StandardCharsets.UTF_8);
+            if (content.indexOf('\uFFFD') >= 0) {
+                content = new String(bytes, Charset.forName("Windows-1251"));
+            }
+            target.setText(content);
+        } catch (Exception ex) {
+            showError("Не удалось прочитать файл: " + ex.getMessage());
+        }
+    }
+
+    private String buildTsvExport(List<ScheduleItem> items) {
+        StringJoiner joiner = new StringJoiner(System.lineSeparator());
+        joiner.add("Тема\tЗанятие\tМесто\tПреподаватель\tЧасы");
+        for (ScheduleItem item : items) {
+            joiner.add(
+                safe(item.getTopic()) +
+                    "\t" +
+                    safe(item.getLessonName()) +
+                    "\t" +
+                    safe(item.getLocation()) +
+                    "\t" +
+                    safe(item.getInstructor()) +
+                    "\t" +
+                    item.getHours()
+            );
+        }
+        return joiner.toString();
+    }
+
+    private String safe(String value) {
+        return value == null
+            ? ""
+            : value.replace('\t', ' ').replace('\n', ' ').replace('\r', ' ');
+    }
+
+    private boolean confirmDoubleDelete(String headerText) {
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+        alert.setTitle("Подтверждение");
+        alert.setHeaderText(headerText);
+        alert.setContentText("Это действие нельзя отменить.");
+        if (alert.showAndWait().orElse(ButtonType.CANCEL) != ButtonType.OK) {
+            return false;
+        }
+
+        Alert second = new Alert(Alert.AlertType.CONFIRMATION);
+        second.setTitle("Подтверждение");
+        second.setHeaderText("Подтвердите ещё раз");
+        second.setContentText("Удалить данные без возможности восстановления?");
+        return second.showAndWait().orElse(ButtonType.CANCEL) == ButtonType.OK;
+    }
+
+    private static final class ImportResult {
+
+        private final int added;
+        private final List<String> errors;
+
+        private ImportResult(int added, List<String> errors) {
+            this.added = added;
+            this.errors = errors;
+        }
+    }
+
+    private static final class HeaderMapping {
+
+        private final Map<String, Integer> indexByKey;
+        private final int startRowIndex;
+
+        private HeaderMapping(
+            Map<String, Integer> indexByKey,
+            int startRowIndex
+        ) {
+            this.indexByKey = indexByKey;
+            this.startRowIndex = startRowIndex;
+        }
+
+        private String get(List<String> row, String key) {
+            Integer index = indexByKey.get(key);
+            if (index == null || index >= row.size()) {
+                return "";
+            }
+            return row.get(index);
+        }
+
+        private static HeaderMapping forItems(List<List<String>> rows) {
+            if (rows.isEmpty()) {
+                return null;
+            }
+
+            Map<String, String> aliases = new HashMap<>();
+            aliases.put("тема", "topic");
+            aliases.put("topic", "topic");
+            aliases.put("занятие", "lesson");
+            aliases.put("lesson", "lesson");
+            aliases.put("lessonname", "lesson");
+            aliases.put("место", "location");
+            aliases.put("location", "location");
+            aliases.put("преподаватель", "instructor");
+            aliases.put("инструктор", "instructor");
+            aliases.put("instructor", "instructor");
+            aliases.put("teacher", "instructor");
+            aliases.put("часы", "hours");
+            aliases.put("hours", "hours");
+            aliases.put("hour", "hours");
+
+            List<String> required = List.of(
+                "topic",
+                "lesson",
+                "location",
+                "instructor",
+                "hours"
+            );
+            Map<String, Integer> headerMap = resolveHeaderMap(
+                rows.get(0),
+                aliases
+            );
+            if (!headerMap.isEmpty()) {
+                if (headerMap.keySet().containsAll(required)) {
+                    return new HeaderMapping(headerMap, 1);
+                }
+                if (rows.get(0).size() >= required.size()) {
+                    return new HeaderMapping(
+                        buildDefaultMap(rows.get(0), required),
+                        1
+                    );
+                }
+                return null;
+            }
+
+            return new HeaderMapping(buildDefaultMap(rows.get(0), required), 0);
+        }
+
+        private static Map<String, Integer> buildDefaultMap(
+            List<String> row,
+            List<String> keys
+        ) {
+            int offset = 0;
+            if (row.size() == keys.size() + 1 && row.get(0).isBlank()) {
+                offset = 1;
+            }
+            Map<String, Integer> defaultMap = new HashMap<>();
+            for (int i = 0; i < keys.size(); i++) {
+                defaultMap.put(keys.get(i), i + offset);
+            }
+            return defaultMap;
+        }
+
+        private static Map<String, Integer> resolveHeaderMap(
+            List<String> row,
+            Map<String, String> aliases
+        ) {
+            Map<String, Integer> map = new HashMap<>();
+            for (int i = 0; i < row.size(); i++) {
+                String normalized = DelimitedText.normalizeHeader(row.get(i));
+                if (normalized.isEmpty()) {
+                    continue;
+                }
+                String key = aliases.get(normalized);
+                if (key != null && !map.containsKey(key)) {
+                    map.put(key, i);
+                }
+            }
+
+            if (map.size() < 2) {
+                return Map.of();
+            }
+            return map;
+        }
     }
 }

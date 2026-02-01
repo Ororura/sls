@@ -159,6 +159,20 @@ public class LessonRepositorySQLite implements LessonRepository {
     }
 
     @Override
+    public void deleteAll() {
+        String sql = "DELETE FROM lessons";
+
+        try (
+            Connection conn = provider.getConnection();
+            PreparedStatement ps = conn.prepareStatement(sql)
+        ) {
+            ps.executeUpdate();
+        } catch (Exception e) {
+            throw new RuntimeException("Ошибка при удалении всех занятий", e);
+        }
+    }
+
+    @Override
     public boolean existsById(String id) {
         String sql = "SELECT 1 FROM lessons WHERE id = ? LIMIT 1";
 

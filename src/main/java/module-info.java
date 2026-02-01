@@ -3,11 +3,13 @@ module com.ororura.slseleven {
     requires javafx.fxml;
     requires javafx.base;
     requires java.sql;
+    requires org.apache.poi.ooxml;
+    requires org.apache.poi.poi;
 
     opens com.ororura.slseleven to javafx.fxml;
     opens com.ororura.slseleven.controller to javafx.fxml;
     opens com.ororura.slseleven.domain.model to javafx.base;
-    
+
     exports com.ororura.slseleven;
     exports com.ororura.slseleven.controller;
     exports com.ororura.slseleven.domain.model;
