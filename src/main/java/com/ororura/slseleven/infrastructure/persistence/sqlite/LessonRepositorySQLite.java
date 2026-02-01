@@ -2,7 +2,6 @@ package com.ororura.slseleven.infrastructure.persistence.sqlite;
 
 import com.ororura.slseleven.domain.model.Lesson;
 import com.ororura.slseleven.domain.repository.LessonRepository;
-
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -16,6 +15,7 @@ import java.util.Optional;
  * Реализация репозитория для SQLite
  */
 public class LessonRepositorySQLite implements LessonRepository {
+
     private final SQLiteConnectionProvider provider;
 
     public LessonRepositorySQLite(SQLiteConnectionProvider provider) {
@@ -24,12 +24,14 @@ public class LessonRepositorySQLite implements LessonRepository {
 
     @Override
     public void save(Lesson lesson) {
-        String sql = "INSERT OR REPLACE INTO lessons (id, topic, lesson_name, time, location, instructor, date) " +
-                "VALUES (?, ?, ?, ?, ?, ?, ?)";
+        String sql =
+            "INSERT OR REPLACE INTO lessons (id, topic, lesson_name, time, location, instructor, date) " +
+            "VALUES (?, ?, ?, ?, ?, ?, ?)";
 
-        try (Connection conn = provider.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-
+        try (
+            Connection conn = provider.getConnection();
+            PreparedStatement ps = conn.prepareStatement(sql)
+        ) {
             ps.setString(1, lesson.getId());
             ps.setString(2, lesson.getTopic());
             ps.setString(3, lesson.getLessonName());
@@ -46,12 +48,14 @@ public class LessonRepositorySQLite implements LessonRepository {
 
     @Override
     public Optional<Lesson> findById(String id) {
-        String sql = "SELECT id, topic, lesson_name, time, location, instructor, date " +
-                "FROM lessons WHERE id = ?";
+        String sql =
+            "SELECT id, topic, lesson_name, time, location, instructor, date " +
+            "FROM lessons WHERE id = ?";
 
-        try (Connection conn = provider.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-
+        try (
+            Connection conn = provider.getConnection();
+            PreparedStatement ps = conn.prepareStatement(sql)
+        ) {
             ps.setString(1, id);
             ResultSet rs = ps.executeQuery();
 
@@ -67,14 +71,16 @@ public class LessonRepositorySQLite implements LessonRepository {
 
     @Override
     public List<Lesson> findAll() {
-        String sql = "SELECT id, topic, lesson_name, time, location, instructor, date " +
-                "FROM lessons ORDER BY date, time";
+        String sql =
+            "SELECT id, topic, lesson_name, time, location, instructor, date " +
+            "FROM lessons ORDER BY date, time";
 
         List<Lesson> lessons = new ArrayList<>();
-        try (Connection conn = provider.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
-
+        try (
+            Connection conn = provider.getConnection();
+            PreparedStatement ps = conn.prepareStatement(sql);
+            ResultSet rs = ps.executeQuery()
+        ) {
             while (rs.next()) {
                 lessons.add(mapResultSetToLesson(rs));
             }
@@ -86,13 +92,15 @@ public class LessonRepositorySQLite implements LessonRepository {
 
     @Override
     public List<Lesson> findByDate(LocalDate date) {
-        String sql = "SELECT id, topic, lesson_name, time, location, instructor, date " +
-                "FROM lessons WHERE date = ? ORDER BY time";
+        String sql =
+            "SELECT id, topic, lesson_name, time, location, instructor, date " +
+            "FROM lessons WHERE date = ? ORDER BY time";
 
         List<Lesson> lessons = new ArrayList<>();
-        try (Connection conn = provider.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-
+        try (
+            Connection conn = provider.getConnection();
+            PreparedStatement ps = conn.prepareStatement(sql)
+        ) {
             ps.setString(1, date.toString());
             ResultSet rs = ps.executeQuery();
 
@@ -106,14 +114,19 @@ public class LessonRepositorySQLite implements LessonRepository {
     }
 
     @Override
-    public List<Lesson> findByDateRange(LocalDate startDate, LocalDate endDate) {
-        String sql = "SELECT id, topic, lesson_name, time, location, instructor, date " +
-                "FROM lessons WHERE date >= ? AND date <= ? ORDER BY date, time";
+    public List<Lesson> findByDateRange(
+        LocalDate startDate,
+        LocalDate endDate
+    ) {
+        String sql =
+            "SELECT id, topic, lesson_name, time, location, instructor, date " +
+            "FROM lessons WHERE date >= ? AND date <= ? ORDER BY date, time";
 
         List<Lesson> lessons = new ArrayList<>();
-        try (Connection conn = provider.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-
+        try (
+            Connection conn = provider.getConnection();
+            PreparedStatement ps = conn.prepareStatement(sql)
+        ) {
             ps.setString(1, startDate.toString());
             ps.setString(2, endDate.toString());
             ResultSet rs = ps.executeQuery();
@@ -122,7 +135,10 @@ public class LessonRepositorySQLite implements LessonRepository {
                 lessons.add(mapResultSetToLesson(rs));
             }
         } catch (Exception e) {
-            throw new RuntimeException("Ошибка при поиске занятий в диапазоне дат", e);
+            throw new RuntimeException(
+                "Ошибка при поиске занятий в диапазоне дат",
+                e
+            );
         }
         return lessons;
     }
@@ -131,9 +147,10 @@ public class LessonRepositorySQLite implements LessonRepository {
     public void deleteById(String id) {
         String sql = "DELETE FROM lessons WHERE id = ?";
 
-        try (Connection conn = provider.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-
+        try (
+            Connection conn = provider.getConnection();
+            PreparedStatement ps = conn.prepareStatement(sql)
+        ) {
             ps.setString(1, id);
             ps.executeUpdate();
         } catch (Exception e) {
@@ -145,14 +162,18 @@ public class LessonRepositorySQLite implements LessonRepository {
     public boolean existsById(String id) {
         String sql = "SELECT 1 FROM lessons WHERE id = ? LIMIT 1";
 
-        try (Connection conn = provider.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-
+        try (
+            Connection conn = provider.getConnection();
+            PreparedStatement ps = conn.prepareStatement(sql)
+        ) {
             ps.setString(1, id);
             ResultSet rs = ps.executeQuery();
             return rs.next();
         } catch (Exception e) {
-            throw new RuntimeException("Ошибка при проверке существования занятия", e);
+            throw new RuntimeException(
+                "Ошибка при проверке существования занятия",
+                e
+            );
         }
     }
 
