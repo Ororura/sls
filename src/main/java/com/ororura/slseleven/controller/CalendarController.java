@@ -4,6 +4,7 @@ import com.ororura.slseleven.domain.model.Lesson;
 import com.ororura.slseleven.ui.UiFormatters;
 import com.ororura.slseleven.ui.UiStyles;
 import com.ororura.slseleven.usecase.LessonUseCase;
+import com.ororura.slseleven.usecase.ScheduleUseCase;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.time.YearMonth;
@@ -46,6 +47,7 @@ public class CalendarController {
     private YearMonth currentYearMonth;
     private LocalDate selectedDate;
     private LessonUseCase lessonUseCase;
+    private ScheduleUseCase scheduleUseCase;
     private final Map<LocalDate, List<Lesson>> monthLessons = new HashMap<>();
     private final DateTimeFormatter monthYearFormatter =
         UiFormatters.MONTH_YEAR_FORMATTER;
@@ -66,6 +68,10 @@ public class CalendarController {
         this.lessonUseCase = lessonUseCase;
     }
 
+    public void setScheduleUseCase(ScheduleUseCase scheduleUseCase) {
+        this.scheduleUseCase = scheduleUseCase;
+    }
+
     @FXML
     private void onOpenLessonsList() {
         try {
@@ -83,6 +89,30 @@ public class CalendarController {
 
             Stage stage = new Stage();
             stage.setTitle("Все занятия");
+            stage.setScene(scene);
+            stage.show();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @FXML
+    private void onOpenSchedulePlanner() {
+        try {
+            FXMLLoader loader = new FXMLLoader(
+                getClass().getResource(
+                    "/com/ororura/slseleven/schedule-planner.fxml"
+                )
+            );
+
+            Scene scene = new Scene(loader.load(), 1100, 700);
+            UiStyles.apply(scene);
+
+            SchedulePlannerController controller = loader.getController();
+            controller.setScheduleUseCase(scheduleUseCase);
+
+            Stage stage = new Stage();
+            stage.setTitle("Авторасписание");
             stage.setScene(scene);
             stage.show();
         } catch (IOException e) {

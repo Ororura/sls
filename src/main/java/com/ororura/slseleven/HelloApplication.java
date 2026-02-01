@@ -2,11 +2,16 @@ package com.ororura.slseleven;
 
 import com.ororura.slseleven.controller.CalendarController;
 import com.ororura.slseleven.domain.repository.LessonRepository;
+import com.ororura.slseleven.domain.repository.ScheduleItemRepository;
+import com.ororura.slseleven.domain.repository.ScheduleSettingsRepository;
 import com.ororura.slseleven.infrastructure.persistence.migrations.SchemaInitializer;
 import com.ororura.slseleven.infrastructure.persistence.sqlite.LessonRepositorySQLite;
 import com.ororura.slseleven.infrastructure.persistence.sqlite.SQLiteConnectionProvider;
+import com.ororura.slseleven.infrastructure.persistence.sqlite.ScheduleItemRepositorySQLite;
+import com.ororura.slseleven.infrastructure.persistence.sqlite.ScheduleSettingsRepositorySQLite;
 import com.ororura.slseleven.ui.UiStyles;
 import com.ororura.slseleven.usecase.LessonUseCase;
+import com.ororura.slseleven.usecase.ScheduleUseCase;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -38,6 +43,15 @@ public class HelloApplication extends Application {
             provider
         );
         LessonUseCase lessonUseCase = new LessonUseCase(lessonRepository);
+        ScheduleItemRepository scheduleItemRepository =
+            new ScheduleItemRepositorySQLite(provider);
+        ScheduleSettingsRepository scheduleSettingsRepository =
+            new ScheduleSettingsRepositorySQLite(provider);
+        ScheduleUseCase scheduleUseCase = new ScheduleUseCase(
+            lessonRepository,
+            scheduleItemRepository,
+            scheduleSettingsRepository
+        );
 
         // Загрузка FXML и установка контроллера
         FXMLLoader fxmlLoader = new FXMLLoader(
@@ -49,6 +63,7 @@ public class HelloApplication extends Application {
         // Передача зависимостей в контроллер
         CalendarController controller = fxmlLoader.getController();
         controller.setLessonUseCase(lessonUseCase);
+        controller.setScheduleUseCase(scheduleUseCase);
 
         stage.setTitle("Календарь занятий");
         stage.setScene(scene);

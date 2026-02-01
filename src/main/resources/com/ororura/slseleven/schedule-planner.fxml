@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane xmlns:fx="http://javafx.com/fxml"
+            fx:controller="com.ororura.slseleven.controller.SchedulePlannerController"
+            styleClass="app-root">
+
+    <top>
+        <ToolBar styleClass="toolbar">
+            <Label text="Авторасписание" styleClass="title" />
+            <Pane HBox.hgrow="ALWAYS" />
+            <Button text="Добавить" onAction="#onAddItem" styleClass="button-primary" />
+            <Button text="Редактировать" onAction="#onEditItem" styleClass="button-secondary" />
+            <Button text="Удалить" onAction="#onDeleteItem" styleClass="button-danger" />
+        </ToolBar>
+    </top>
+
+    <center>
+        <TableView fx:id="scheduleTable" styleClass="table-view">
+            <columns>
+                <TableColumn fx:id="topicColumn" text="Тема" />
+                <TableColumn fx:id="lessonNameColumn" text="Занятие" />
+                <TableColumn fx:id="locationColumn" text="Место" />
+                <TableColumn fx:id="instructorColumn" text="Преподаватель" />
+                <TableColumn fx:id="hoursColumn" text="Часы" />
+            </columns>
+        </TableView>
+    </center>
+
+    <bottom>
+        <VBox spacing="10" styleClass="footer-bar">
+            <HBox spacing="12">
+                <Label fx:id="totalHoursLabel" text="Всего часов: 0" />
+                <Pane HBox.hgrow="ALWAYS" />
+                <Label text="Дата начала:" />
+                <DatePicker fx:id="startDatePicker" />
+            </HBox>
+
+            <GridPane hgap="12" vgap="8">
+                <Label text="Пн" GridPane.rowIndex="0" GridPane.columnIndex="0" />
+                <Spinner fx:id="mondayHours" GridPane.rowIndex="0" GridPane.columnIndex="1" />
+
+                <Label text="Вт" GridPane.rowIndex="0" GridPane.columnIndex="2" />
+                <Spinner fx:id="tuesdayHours" GridPane.rowIndex="0" GridPane.columnIndex="3" />
+
+                <Label text="Ср" GridPane.rowIndex="0" GridPane.columnIndex="4" />
+                <Spinner fx:id="wednesdayHours" GridPane.rowIndex="0" GridPane.columnIndex="5" />
+
+                <Label text="Чт" GridPane.rowIndex="1" GridPane.columnIndex="0" />
+                <Spinner fx:id="thursdayHours" GridPane.rowIndex="1" GridPane.columnIndex="1" />
+
+                <Label text="Пт" GridPane.rowIndex="1" GridPane.columnIndex="2" />
+                <Spinner fx:id="fridayHours" GridPane.rowIndex="1" GridPane.columnIndex="3" />
+
+                <Label text="Сб" GridPane.rowIndex="1" GridPane.columnIndex="4" />
+                <Spinner fx:id="saturdayHours" GridPane.rowIndex="1" GridPane.columnIndex="5" />
+
+                <Label text="Вс" GridPane.rowIndex="2" GridPane.columnIndex="0" />
+                <Spinner fx:id="sundayHours" GridPane.rowIndex="2" GridPane.columnIndex="1" />
+            </GridPane>
+
+            <HBox spacing="10">
+                <Pane HBox.hgrow="ALWAYS" />
+                <Button text="Сохранить настройки" onAction="#onSaveSettings" styleClass="button-secondary" />
+                <Button text="Сформировать расписание" onAction="#onAutoSchedule" styleClass="button-primary" />
+            </HBox>
+        </VBox>
+    </bottom>
+
+</BorderPane>
