@@ -9,8 +9,8 @@ import java.util.Objects;
  */
 public class Lesson {
     private String id;
-    private String topic; // Тема
-    private String lessonName; // Занятие
+    private String topic; // Предмет
+    private String lessonName; // Тема
     private LocalTime time; // Время
     private String location; // Расположение проведения занятия
     private String instructor; // Кто проводит

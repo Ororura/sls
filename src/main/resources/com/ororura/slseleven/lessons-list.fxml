@@ -57,8 +57,8 @@
             <columns>
                 <TableColumn fx:id="dateColumn" text="Дата" />
                 <TableColumn fx:id="timeColumn" text="Время" />
-                <TableColumn fx:id="topicColumn" text="Тема" />
-                <TableColumn fx:id="lessonNameColumn" text="Занятие" />
+                <TableColumn fx:id="topicColumn" text="Предмет" />
+                <TableColumn fx:id="lessonNameColumn" text="Тема" />
                 <TableColumn fx:id="locationColumn" text="Место" />
                 <TableColumn fx:id="instructorColumn" text="Преподаватель" />
             </columns>

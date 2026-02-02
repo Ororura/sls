@@ -67,8 +67,8 @@
     <center>
         <TableView fx:id="scheduleTable" styleClass="table-view">
             <columns>
-                <TableColumn fx:id="topicColumn" text="Тема" />
-                <TableColumn fx:id="lessonNameColumn" text="Занятие" />
+                <TableColumn fx:id="topicColumn" text="Предмет" />
+                <TableColumn fx:id="lessonNameColumn" text="Тема" />
                 <TableColumn fx:id="locationColumn" text="Место" />
                 <TableColumn fx:id="instructorColumn" text="Преподаватель" />
                 <TableColumn fx:id="hoursColumn" text="Часы" />

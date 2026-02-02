@@ -73,8 +73,8 @@ public class LessonsListController {
     private static final String[] EXPORT_HEADERS = {
         "Дата",
         "Время",
+        "Предмет",
         "Тема",
-        "Занятие",
         "Место",
         "Преподаватель",
     };
@@ -261,7 +261,7 @@ public class LessonsListController {
         textArea.setPrefRowCount(18);
 
         Label hint = new Label(
-            "Ожидаемые колонки: Дата (необязательно), Время, Тема, Занятие, Место, Преподаватель."
+            "Ожидаемые колонки: Дата (необязательно), Время, Предмет, Тема, Место, Преподаватель."
         );
         Label hint2 = new Label(
             "Поддерживаются табуляции (TSV) и CSV с ';' или ','. Заголовок необязателен."
@@ -996,8 +996,10 @@ public class LessonsListController {
             aliases.put("date", "date");
             aliases.put("время", "time");
             aliases.put("time", "time");
-            aliases.put("тема", "topic");
+            aliases.put("предмет", "topic");
+            aliases.put("subject", "topic");
             aliases.put("topic", "topic");
+            aliases.put("тема", "lesson");
             aliases.put("занятие", "lesson");
             aliases.put("lesson", "lesson");
             aliases.put("lessonname", "lesson");

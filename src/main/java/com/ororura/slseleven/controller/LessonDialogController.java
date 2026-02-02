@@ -84,11 +84,11 @@ public class LessonDialogController {
             }
             // Валидация
             if (topicField.getText().trim().isEmpty()) {
-                showError("Тема не может быть пустой");
+                showError("Предмет не может быть пустым");
                 return false;
             }
             if (lessonNameField.getText().trim().isEmpty()) {
-                showError("Название занятия не может быть пустым");
+                showError("Тема не может быть пустой");
                 return false;
             }
             if (timeField.getText().trim().isEmpty()) {

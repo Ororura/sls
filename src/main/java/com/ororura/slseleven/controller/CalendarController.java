@@ -289,8 +289,8 @@ public class CalendarController {
         );
         timeLabel.getStyleClass().add("lesson-time");
 
-        Label topicLabel = new Label("Тема: " + lesson.getTopic());
-        Label lessonNameLabel = new Label("Занятие: " + lesson.getLessonName());
+        Label topicLabel = new Label("Предмет: " + lesson.getTopic());
+        Label lessonNameLabel = new Label("Тема: " + lesson.getLessonName());
         Label locationLabel = new Label("Место: " + lesson.getLocation());
         Label instructorLabel = new Label(
             "Преподаватель: " + lesson.getInstructor()

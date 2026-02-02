@@ -63,11 +63,11 @@ public class ScheduleItemDialogController {
                 return false;
             }
             if (topicField.getText().trim().isEmpty()) {
-                showError("Тема не может быть пустой");
+                showError("Предмет не может быть пустым");
                 return false;
             }
             if (lessonNameField.getText().trim().isEmpty()) {
-                showError("Занятие не может быть пустым");
+                showError("Тема не может быть пустой");
                 return false;
             }
             if (locationField.getText().trim().isEmpty()) {

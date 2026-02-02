@@ -318,13 +318,13 @@ public class ScheduleUseCase {
             );
         }
         if (item.getTopic() == null || item.getTopic().trim().isEmpty()) {
-            throw new IllegalArgumentException("Тема не может быть пустой");
+            throw new IllegalArgumentException("Предмет не может быть пустым");
         }
         if (
             item.getLessonName() == null ||
             item.getLessonName().trim().isEmpty()
         ) {
-            throw new IllegalArgumentException("Занятие не может быть пустым");
+            throw new IllegalArgumentException("Тема не может быть пустой");
         }
         if (item.getLocation() == null || item.getLocation().trim().isEmpty()) {
             throw new IllegalArgumentException("Место не может быть пустым");

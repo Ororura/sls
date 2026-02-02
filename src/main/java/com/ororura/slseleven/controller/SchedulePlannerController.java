@@ -205,7 +205,7 @@ public class SchedulePlannerController {
         textArea.setPrefRowCount(18);
 
         Label hint = new Label(
-            "Ожидаемые колонки: Тема, Занятие, Место, Преподаватель, Часы."
+            "Ожидаемые колонки: Предмет, Тема, Место, Преподаватель, Часы."
         );
         Label hint2 = new Label(
             "Поддерживаются табуляции (TSV) и CSV с ';' или ','. Заголовок необязателен."
@@ -305,8 +305,8 @@ public class SchedulePlannerController {
             Sheet sheet = workbook.createSheet("Авторасписание");
             Row header = sheet.createRow(0);
             String[] headers = {
+                "Предмет",
                 "Тема",
-                "Занятие",
                 "Место",
                 "Преподаватель",
                 "Часы",
@@ -359,7 +359,7 @@ public class SchedulePlannerController {
         textArea.setPrefRowCount(18);
 
         Label hint = new Label(
-            "Ожидаемые колонки: Тема, Занятие, Место, Преподаватель, Часы."
+            "Ожидаемые колонки: Предмет, Тема, Место, Преподаватель, Часы."
         );
         Label hint2 = new Label(
             "Поддерживаются табуляции (TSV) и CSV с ';' или ','. Заголовок необязателен."
@@ -847,7 +847,7 @@ public class SchedulePlannerController {
 
     private String buildTsvExport(List<ScheduleItem> items) {
         StringJoiner joiner = new StringJoiner(System.lineSeparator());
-        joiner.add("Тема\tЗанятие\tМесто\tПреподаватель\tЧасы");
+        joiner.add("Предмет\tТема\tМесто\tПреподаватель\tЧасы");
         for (ScheduleItem item : items) {
             joiner.add(
                 safe(item.getTopic()) +
@@ -1018,8 +1018,10 @@ public class SchedulePlannerController {
             }
 
             Map<String, String> aliases = new HashMap<>();
-            aliases.put("тема", "topic");
+            aliases.put("предмет", "topic");
+            aliases.put("subject", "topic");
             aliases.put("topic", "topic");
+            aliases.put("тема", "lesson");
             aliases.put("занятие", "lesson");
             aliases.put("lesson", "lesson");
             aliases.put("lessonname", "lesson");
