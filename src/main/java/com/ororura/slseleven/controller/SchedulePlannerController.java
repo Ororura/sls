@@ -49,6 +49,9 @@ public class SchedulePlannerController {
     private TableColumn<ScheduleItem, String> lessonNameColumn;
 
     @FXML
+    private TableColumn<ScheduleItem, String> classNameColumn;
+
+    @FXML
     private TableColumn<ScheduleItem, String> locationColumn;
 
     @FXML
@@ -101,6 +104,9 @@ public class SchedulePlannerController {
         topicColumn.setCellValueFactory(new PropertyValueFactory<>("topic"));
         lessonNameColumn.setCellValueFactory(
             new PropertyValueFactory<>("lessonName")
+        );
+        classNameColumn.setCellValueFactory(
+            new PropertyValueFactory<>("className")
         );
         locationColumn.setCellValueFactory(
             new PropertyValueFactory<>("location")
@@ -205,7 +211,7 @@ public class SchedulePlannerController {
         textArea.setPrefRowCount(18);
 
         Label hint = new Label(
-            "Ожидаемые колонки: Предмет, Тема, Место, Преподаватель, Часы."
+            "Ожидаемые колонки: Предмет, Тема, Занятие, Место, Преподаватель, Часы."
         );
         Label hint2 = new Label(
             "Поддерживаются табуляции (TSV) и CSV с ';' или ','. Заголовок необязателен."
@@ -307,6 +313,7 @@ public class SchedulePlannerController {
             String[] headers = {
                 "Предмет",
                 "Тема",
+                "Занятие",
                 "Место",
                 "Преподаватель",
                 "Часы",
@@ -320,9 +327,10 @@ public class SchedulePlannerController {
                 Row row = sheet.createRow(rowIndex++);
                 row.createCell(0).setCellValue(safeValue(item.getTopic()));
                 row.createCell(1).setCellValue(safeValue(item.getLessonName()));
-                row.createCell(2).setCellValue(safeValue(item.getLocation()));
-                row.createCell(3).setCellValue(safeValue(item.getInstructor()));
-                row.createCell(4).setCellValue(item.getHours());
+                row.createCell(2).setCellValue(safeValue(item.getClassName()));
+                row.createCell(3).setCellValue(safeValue(item.getLocation()));
+                row.createCell(4).setCellValue(safeValue(item.getInstructor()));
+                row.createCell(5).setCellValue(item.getHours());
             }
 
             try (FileOutputStream out = new FileOutputStream(file)) {
@@ -359,7 +367,7 @@ public class SchedulePlannerController {
         textArea.setPrefRowCount(18);
 
         Label hint = new Label(
-            "Ожидаемые колонки: Предмет, Тема, Место, Преподаватель, Часы."
+            "Ожидаемые колонки: Предмет, Тема, Занятие, Место, Преподаватель, Часы."
         );
         Label hint2 = new Label(
             "Поддерживаются табуляции (TSV) и CSV с ';' или ','. Заголовок необязателен."
@@ -660,9 +668,13 @@ public class SchedulePlannerController {
             try {
                 String topic = mapping.get(row, "topic");
                 String lessonName = mapping.get(row, "lesson");
+                String className = mapping.get(row, "class");
                 String location = mapping.get(row, "location");
                 String instructor = mapping.get(row, "instructor");
                 String hoursRaw = mapping.get(row, "hours");
+                if (isBlank(className)) {
+                    className = lessonName;
+                }
 
                 if (
                     isBlank(topic) ||
@@ -690,6 +702,7 @@ public class SchedulePlannerController {
                 ScheduleItem item = new ScheduleItem(
                     topic,
                     lessonName,
+                    className,
                     location,
                     instructor,
                     hours
@@ -847,12 +860,14 @@ public class SchedulePlannerController {
 
     private String buildTsvExport(List<ScheduleItem> items) {
         StringJoiner joiner = new StringJoiner(System.lineSeparator());
-        joiner.add("Предмет\tТема\tМесто\tПреподаватель\tЧасы");
+        joiner.add("Предмет\tТема\tЗанятие\tМесто\tПреподаватель\tЧасы");
         for (ScheduleItem item : items) {
             joiner.add(
                 safe(item.getTopic()) +
                     "\t" +
                     safe(item.getLessonName()) +
+                    "\t" +
+                    safe(item.getClassName()) +
                     "\t" +
                     safe(item.getLocation()) +
                     "\t" +
@@ -940,6 +955,8 @@ public class SchedulePlannerController {
                 .append(item.getTopic())
                 .append(" / ")
                 .append(item.getLessonName())
+                .append(" / ")
+                .append(item.getClassName())
                 .append(": ")
                 .append(item.getHours());
         }
@@ -969,6 +986,8 @@ public class SchedulePlannerController {
                 item.getTopic() +
                 " / " +
                 item.getLessonName() +
+                " / " +
+                item.getClassName() +
                 ": " +
                 item.getHours()
             );
@@ -1006,7 +1025,7 @@ public class SchedulePlannerController {
 
         private String get(List<String> row, String key) {
             Integer index = indexByKey.get(key);
-            if (index == null || index >= row.size()) {
+            if (index == null || index < 0 || index >= row.size()) {
                 return "";
             }
             return row.get(index);
@@ -1022,9 +1041,11 @@ public class SchedulePlannerController {
             aliases.put("subject", "topic");
             aliases.put("topic", "topic");
             aliases.put("тема", "lesson");
-            aliases.put("занятие", "lesson");
             aliases.put("lesson", "lesson");
             aliases.put("lessonname", "lesson");
+            aliases.put("class", "class");
+            aliases.put("classname", "class");
+            aliases.put("занятие", "class");
             aliases.put("место", "location");
             aliases.put("location", "location");
             aliases.put("преподаватель", "instructor");
@@ -1048,6 +1069,9 @@ public class SchedulePlannerController {
             );
             if (!headerMap.isEmpty()) {
                 if (headerMap.keySet().containsAll(required)) {
+                    if (!headerMap.containsKey("class")) {
+                        headerMap.put("class", -1);
+                    }
                     return new HeaderMapping(headerMap, 1);
                 }
                 if (rows.get(0).size() >= required.size()) {
@@ -1066,14 +1090,25 @@ public class SchedulePlannerController {
             List<String> row,
             List<String> keys
         ) {
-            int offset = 0;
-            if (row.size() == keys.size() + 1 && row.get(0).isBlank()) {
-                offset = 1;
-            }
             Map<String, Integer> defaultMap = new HashMap<>();
-            for (int i = 0; i < keys.size(); i++) {
-                defaultMap.put(keys.get(i), i + offset);
+            int offset = row.size() == keys.size() + 1 && row.get(0).isBlank()
+                ? 1
+                : 0;
+            if (row.size() - offset >= 6) {
+                defaultMap.put("topic", 0 + offset);
+                defaultMap.put("lesson", 1 + offset);
+                defaultMap.put("class", 2 + offset);
+                defaultMap.put("location", 3 + offset);
+                defaultMap.put("instructor", 4 + offset);
+                defaultMap.put("hours", 5 + offset);
+                return defaultMap;
             }
+            defaultMap.put("topic", 0 + offset);
+            defaultMap.put("lesson", 1 + offset);
+            defaultMap.put("class", -1);
+            defaultMap.put("location", 2 + offset);
+            defaultMap.put("instructor", 3 + offset);
+            defaultMap.put("hours", 4 + offset);
             return defaultMap;
         }
 

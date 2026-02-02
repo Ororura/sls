@@ -12,6 +12,8 @@ public class SchemaInitializer {
             "    id TEXT PRIMARY KEY,\n" +
             "    topic TEXT NOT NULL,\n" +
             "    lesson_name TEXT NOT NULL,\n" +
+            "    class_name TEXT NOT NULL DEFAULT '',\n" +
+            "    auto_scheduled INTEGER NOT NULL DEFAULT 0,\n" +
             "    time TEXT NOT NULL,\n" +
             "    location TEXT NOT NULL,\n" +
             "    instructor TEXT NOT NULL,\n" +
@@ -23,6 +25,7 @@ public class SchemaInitializer {
             "    id TEXT PRIMARY KEY,\n" +
             "    topic TEXT NOT NULL,\n" +
             "    lesson_name TEXT NOT NULL,\n" +
+            "    class_name TEXT NOT NULL DEFAULT '',\n" +
             "    location TEXT NOT NULL,\n" +
             "    instructor TEXT NOT NULL,\n" +
             "    hours INTEGER NOT NULL,\n" +
@@ -42,6 +45,18 @@ public class SchemaInitializer {
             s.execute(lessonsSql);
             s.execute(scheduleItemsSql);
             s.execute(scheduleSettingsSql);
+            ensureColumnExists(
+                s,
+                "ALTER TABLE lessons ADD COLUMN class_name TEXT NOT NULL DEFAULT ''"
+            );
+            ensureColumnExists(
+                s,
+                "ALTER TABLE lessons ADD COLUMN auto_scheduled INTEGER NOT NULL DEFAULT 0"
+            );
+            ensureColumnExists(
+                s,
+                "ALTER TABLE schedule_items ADD COLUMN class_name TEXT NOT NULL DEFAULT ''"
+            );
             s.execute(
                 "INSERT OR IGNORE INTO schedule_settings (day_of_week, max_hours) VALUES (1, 2)"
             );
@@ -66,5 +81,12 @@ public class SchemaInitializer {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private static void ensureColumnExists(Statement statement, String sql)
+        throws Exception {
+        try {
+            statement.execute(sql);
+        } catch (Exception ignored) {}
     }
 }

@@ -17,6 +17,9 @@ public class ScheduleItemDialogController {
     private TextField lessonNameField;
 
     @FXML
+    private TextField classNameField;
+
+    @FXML
     private TextField locationField;
 
     @FXML
@@ -39,6 +42,7 @@ public class ScheduleItemDialogController {
         if (item != null) {
             topicField.setText(item.getTopic());
             lessonNameField.setText(item.getLessonName());
+            classNameField.setText(item.getClassName());
             locationField.setText(item.getLocation());
             instructorField.setText(item.getInstructor());
             hoursField.setText(String.valueOf(item.getHours()));
@@ -70,6 +74,10 @@ public class ScheduleItemDialogController {
                 showError("Тема не может быть пустой");
                 return false;
             }
+            if (classNameField.getText().trim().isEmpty()) {
+                showError("Занятие не может быть пустым");
+                return false;
+            }
             if (locationField.getText().trim().isEmpty()) {
                 showError("Место не может быть пустым");
                 return false;
@@ -98,6 +106,7 @@ public class ScheduleItemDialogController {
 
             item.setTopic(topicField.getText().trim());
             item.setLessonName(lessonNameField.getText().trim());
+            item.setClassName(classNameField.getText().trim());
             item.setLocation(locationField.getText().trim());
             item.setInstructor(instructorField.getText().trim());
             item.setHours(hours);

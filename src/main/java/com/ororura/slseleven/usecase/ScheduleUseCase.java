@@ -101,6 +101,7 @@ public class ScheduleUseCase {
             ScheduleKey key = new ScheduleKey(
                 item.getTopic(),
                 item.getLessonName(),
+                item.getClassName(),
                 item.getLocation(),
                 item.getInstructor()
             );
@@ -111,6 +112,7 @@ public class ScheduleUseCase {
             ScheduleKey key = new ScheduleKey(
                 lesson.getTopic(),
                 lesson.getLessonName(),
+                lesson.getClassName(),
                 lesson.getLocation(),
                 lesson.getInstructor()
             );
@@ -124,6 +126,7 @@ public class ScheduleUseCase {
                 new ScheduleItem(
                     key.topic,
                     key.lessonName,
+                    key.className,
                     key.location,
                     key.instructor,
                     entry.getValue()
@@ -224,6 +227,8 @@ public class ScheduleUseCase {
                 Lesson lesson = new Lesson(
                     currentItem.getTopic(),
                     currentItem.getLessonName(),
+                    currentItem.getClassName(),
+                    true,
                     candidateTime,
                     currentItem.getLocation(),
                     currentItem.getInstructor(),
@@ -271,6 +276,7 @@ public class ScheduleUseCase {
                 new AutoScheduleResult.RemainingScheduleItem(
                     item.getTopic(),
                     item.getLessonName(),
+                    item.getClassName(),
                     remaining
                 )
             );
@@ -326,6 +332,12 @@ public class ScheduleUseCase {
         ) {
             throw new IllegalArgumentException("Тема не может быть пустой");
         }
+        if (
+            item.getClassName() == null ||
+            item.getClassName().trim().isEmpty()
+        ) {
+            throw new IllegalArgumentException("Занятие не может быть пустым");
+        }
         if (item.getLocation() == null || item.getLocation().trim().isEmpty()) {
             throw new IllegalArgumentException("Место не может быть пустым");
         }
@@ -345,17 +357,20 @@ public class ScheduleUseCase {
     private static final class ScheduleKey {
         private final String topic;
         private final String lessonName;
+        private final String className;
         private final String location;
         private final String instructor;
 
         private ScheduleKey(
             String topic,
             String lessonName,
+            String className,
             String location,
             String instructor
         ) {
             this.topic = topic;
             this.lessonName = lessonName;
+            this.className = className;
             this.location = location;
             this.instructor = instructor;
         }
@@ -371,6 +386,7 @@ public class ScheduleUseCase {
             ScheduleKey other = (ScheduleKey) obj;
             return topic.equals(other.topic) &&
             lessonName.equals(other.lessonName) &&
+            className.equals(other.className) &&
             location.equals(other.location) &&
             instructor.equals(other.instructor);
         }
@@ -379,6 +395,7 @@ public class ScheduleUseCase {
         public int hashCode() {
             int result = topic.hashCode();
             result = 31 * result + lessonName.hashCode();
+            result = 31 * result + className.hashCode();
             result = 31 * result + location.hashCode();
             result = 31 * result + instructor.hashCode();
             return result;

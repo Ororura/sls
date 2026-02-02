@@ -291,12 +291,14 @@ public class CalendarController {
 
         Label topicLabel = new Label("Предмет: " + lesson.getTopic());
         Label lessonNameLabel = new Label("Тема: " + lesson.getLessonName());
+        Label classNameLabel = new Label("Занятие: " + lesson.getClassName());
         Label locationLabel = new Label("Место: " + lesson.getLocation());
         Label instructorLabel = new Label(
             "Преподаватель: " + lesson.getInstructor()
         );
         topicLabel.getStyleClass().add("lesson-meta");
         lessonNameLabel.getStyleClass().add("lesson-meta");
+        classNameLabel.getStyleClass().add("lesson-meta");
         locationLabel.getStyleClass().add("lesson-meta");
         instructorLabel.getStyleClass().add("lesson-meta");
 
@@ -306,6 +308,7 @@ public class CalendarController {
                 timeLabel,
                 topicLabel,
                 lessonNameLabel,
+                classNameLabel,
                 locationLabel,
                 instructorLabel
             );

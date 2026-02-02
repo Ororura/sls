@@ -55,6 +55,9 @@ public class LessonsListController {
     private TableColumn<Lesson, String> lessonNameColumn;
 
     @FXML
+    private TableColumn<Lesson, String> classNameColumn;
+
+    @FXML
     private TableColumn<Lesson, String> locationColumn;
 
     @FXML
@@ -75,6 +78,7 @@ public class LessonsListController {
         "Время",
         "Предмет",
         "Тема",
+        "Занятие",
         "Место",
         "Преподаватель",
     };
@@ -88,6 +92,9 @@ public class LessonsListController {
         topicColumn.setCellValueFactory(new PropertyValueFactory<>("topic"));
         lessonNameColumn.setCellValueFactory(
             new PropertyValueFactory<>("lessonName")
+        );
+        classNameColumn.setCellValueFactory(
+            new PropertyValueFactory<>("className")
         );
         locationColumn.setCellValueFactory(
             new PropertyValueFactory<>("location")
@@ -183,6 +190,50 @@ public class LessonsListController {
     }
 
     @FXML
+    private void onDeleteOneAuto() {
+        Lesson selected = lessonTable.getSelectionModel().getSelectedItem();
+        if (selected == null) {
+            Alert alert = new Alert(Alert.AlertType.INFORMATION);
+            alert.setTitle("Автораспределение");
+            alert.setHeaderText(null);
+            alert.setContentText("Выберите занятие для удаления.");
+            alert.showAndWait();
+            return;
+        }
+
+        try {
+            lessonUseCase.deleteAutoScheduledLesson(selected.getId());
+            reload();
+        } catch (Exception ex) {
+            Alert alert = new Alert(Alert.AlertType.ERROR);
+            alert.setTitle("Автораспределение");
+            alert.setHeaderText(null);
+            alert.setContentText(ex.getMessage());
+            alert.showAndWait();
+        }
+    }
+
+    @FXML
+    private void onDeleteAllAuto() {
+        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+        confirm.setTitle("Автораспределение");
+        confirm.setHeaderText("Удалить все занятия автораспределения?");
+        confirm.setContentText("Будут удалены только авто-созданные занятия.");
+        if (confirm.showAndWait().orElse(ButtonType.CANCEL) != ButtonType.OK) {
+            return;
+        }
+
+        int deleted = lessonUseCase.deleteAllAutoScheduledLessons();
+        reload();
+
+        Alert info = new Alert(Alert.AlertType.INFORMATION);
+        info.setTitle("Автораспределение");
+        info.setHeaderText(null);
+        info.setContentText("Удалено авто-занятий: " + deleted);
+        info.showAndWait();
+    }
+
+    @FXML
     private void onDeleteAll() {
         if (data.isEmpty()) {
             Alert alert = new Alert(Alert.AlertType.INFORMATION);
@@ -261,7 +312,7 @@ public class LessonsListController {
         textArea.setPrefRowCount(18);
 
         Label hint = new Label(
-            "Ожидаемые колонки: Дата (необязательно), Время, Предмет, Тема, Место, Преподаватель."
+            "Ожидаемые колонки: Дата (необязательно), Время, Предмет, Тема, Занятие, Место, Преподаватель."
         );
         Label hint2 = new Label(
             "Поддерживаются табуляции (TSV) и CSV с ';' или ','. Заголовок необязателен."
@@ -384,9 +435,12 @@ public class LessonsListController {
                 row
                     .createCell(3)
                     .setCellValue(safeValue(lesson.getLessonName()));
-                row.createCell(4).setCellValue(safeValue(lesson.getLocation()));
+                row.createCell(4).setCellValue(safeValue(lesson.getClassName()));
                 row
                     .createCell(5)
+                    .setCellValue(safeValue(lesson.getLocation()));
+                row
+                    .createCell(6)
                     .setCellValue(safeValue(lesson.getInstructor()));
             }
 
@@ -604,8 +658,12 @@ public class LessonsListController {
                 String timeRaw = mapping.get(row, "time");
                 String topic = mapping.get(row, "topic");
                 String lessonName = mapping.get(row, "lesson");
+                String className = mapping.get(row, "class");
                 String location = mapping.get(row, "location");
                 String instructor = mapping.get(row, "instructor");
+                if (isBlank(className)) {
+                    className = lessonName;
+                }
 
                 if (
                     isBlank(timeRaw) ||
@@ -636,6 +694,7 @@ public class LessonsListController {
                 Lesson lesson = new Lesson(
                     topic,
                     lessonName,
+                    className,
                     time,
                     location,
                     instructor,
@@ -893,6 +952,7 @@ public class LessonsListController {
                             formatTime(lesson.getTime(), timeFormatter),
                             safe(lesson.getTopic()),
                             safe(lesson.getLessonName()),
+                            safe(lesson.getClassName()),
                             safe(lesson.getLocation()),
                             safe(lesson.getInstructor())
                         )
@@ -1000,9 +1060,11 @@ public class LessonsListController {
             aliases.put("subject", "topic");
             aliases.put("topic", "topic");
             aliases.put("тема", "lesson");
-            aliases.put("занятие", "lesson");
             aliases.put("lesson", "lesson");
             aliases.put("lessonname", "lesson");
+            aliases.put("class", "class");
+            aliases.put("classname", "class");
+            aliases.put("занятие", "class");
             aliases.put("место", "location");
             aliases.put("location", "location");
             aliases.put("преподаватель", "instructor");
@@ -1023,6 +1085,9 @@ public class LessonsListController {
             );
             if (!headerMap.isEmpty()) {
                 if (headerMap.keySet().containsAll(required)) {
+                    if (!headerMap.containsKey("class")) {
+                        headerMap.put("class", -1);
+                    }
                     if (!headerMap.containsKey("date")) {
                         headerMap.put("date", -1);
                     }
@@ -1046,21 +1111,52 @@ public class LessonsListController {
         ) {
             Map<String, Integer> defaultMap = new HashMap<>();
             int size = row.size();
-            if (size >= 6) {
+            if (size >= 7) {
                 defaultMap.put("date", 0);
                 defaultMap.put("time", 1);
                 defaultMap.put("topic", 2);
                 defaultMap.put("lesson", 3);
-                defaultMap.put("location", 4);
-                defaultMap.put("instructor", 5);
+                defaultMap.put("class", 4);
+                defaultMap.put("location", 5);
+                defaultMap.put("instructor", 6);
+                return defaultMap;
+            }
+            if (size >= 6) {
+                boolean firstLooksLikeTime = row
+                    .get(0)
+                    .contains(":");
+                if (firstLooksLikeTime) {
+                    defaultMap.put("date", -1);
+                    defaultMap.put("time", 0);
+                    defaultMap.put("topic", 1);
+                    defaultMap.put("lesson", 2);
+                    defaultMap.put("class", 3);
+                    defaultMap.put("location", 4);
+                    defaultMap.put("instructor", 5);
+                } else {
+                    defaultMap.put("date", 0);
+                    defaultMap.put("time", 1);
+                    defaultMap.put("topic", 2);
+                    defaultMap.put("lesson", 3);
+                    defaultMap.put("class", -1);
+                    defaultMap.put("location", 4);
+                    defaultMap.put("instructor", 5);
+                }
                 return defaultMap;
             }
             defaultMap.put("date", -1);
             defaultMap.put("time", 0);
             defaultMap.put("topic", 1);
             defaultMap.put("lesson", 2);
-            defaultMap.put("location", 3);
-            defaultMap.put("instructor", 4);
+            if (size >= 6) {
+                defaultMap.put("class", 3);
+                defaultMap.put("location", 4);
+                defaultMap.put("instructor", 5);
+            } else {
+                defaultMap.put("class", -1);
+                defaultMap.put("location", 3);
+                defaultMap.put("instructor", 4);
+            }
             return defaultMap;
         }
 

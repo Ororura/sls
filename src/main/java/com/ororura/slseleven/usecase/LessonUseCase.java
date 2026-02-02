@@ -69,6 +69,39 @@ public class LessonUseCase {
         lessonRepository.deleteAll();
     }
 
+    public void deleteAutoScheduledLesson(String lessonId) {
+        if (lessonId == null || lessonId.trim().isEmpty()) {
+            throw new IllegalArgumentException(
+                "ID занятия не может быть пустым"
+            );
+        }
+        Lesson lesson = lessonRepository
+            .findById(lessonId)
+            .orElseThrow(() ->
+                new IllegalArgumentException(
+                    "Занятие с ID " + lessonId + " не найдено"
+                )
+            );
+        if (!lesson.isAutoScheduled()) {
+            throw new IllegalArgumentException(
+                "Выбранное занятие не создано автораспределением"
+            );
+        }
+        lessonRepository.deleteById(lessonId);
+    }
+
+    public int deleteAllAutoScheduledLessons() {
+        List<Lesson> allLessons = lessonRepository.findAll();
+        int deleted = 0;
+        for (Lesson lesson : allLessons) {
+            if (lesson.isAutoScheduled()) {
+                lessonRepository.deleteById(lesson.getId());
+                deleted++;
+            }
+        }
+        return deleted;
+    }
+
     /**
      * Получить занятие по ID
      */

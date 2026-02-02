@@ -42,11 +42,18 @@ public class AutoScheduleResult {
     public static final class RemainingScheduleItem {
         private final String topic;
         private final String lessonName;
+        private final String className;
         private final int hours;
 
-        public RemainingScheduleItem(String topic, String lessonName, int hours) {
+        public RemainingScheduleItem(
+            String topic,
+            String lessonName,
+            String className,
+            int hours
+        ) {
             this.topic = topic;
             this.lessonName = lessonName;
+            this.className = className;
             this.hours = hours;
         }
 
@@ -56,6 +63,10 @@ public class AutoScheduleResult {
 
         public String getLessonName() {
             return lessonName;
+        }
+
+        public String getClassName() {
+            return className;
         }
 
         public int getHours() {

@@ -10,6 +10,7 @@ public class ScheduleItem {
     private String id;
     private String topic;
     private String lessonName;
+    private String className;
     private String location;
     private String instructor;
     private int hours;
@@ -20,13 +21,31 @@ public class ScheduleItem {
         this.createdAt = LocalDateTime.now();
     }
 
-    public ScheduleItem(String topic, String lessonName, String location, String instructor, int hours) {
+    public ScheduleItem(
+        String topic,
+        String lessonName,
+        String className,
+        String location,
+        String instructor,
+        int hours
+    ) {
         this();
         this.topic = topic;
         this.lessonName = lessonName;
+        this.className = className;
         this.location = location;
         this.instructor = instructor;
         this.hours = hours;
+    }
+
+    public ScheduleItem(
+        String topic,
+        String lessonName,
+        String location,
+        String instructor,
+        int hours
+    ) {
+        this(topic, lessonName, lessonName, location, instructor, hours);
     }
 
     public String getId() {
@@ -51,6 +70,14 @@ public class ScheduleItem {
 
     public void setLessonName(String lessonName) {
         this.lessonName = lessonName;
+    }
+
+    public String getClassName() {
+        return className;
+    }
+
+    public void setClassName(String className) {
+        this.className = className;
     }
 
     public String getLocation() {

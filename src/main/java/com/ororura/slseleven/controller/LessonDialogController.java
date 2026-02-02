@@ -21,6 +21,9 @@ public class LessonDialogController {
     private TextField lessonNameField;
 
     @FXML
+    private TextField classNameField;
+
+    @FXML
     private TextField timeField;
 
     @FXML
@@ -55,6 +58,7 @@ public class LessonDialogController {
             // Редактирование существующего занятия
             topicField.setText(lesson.getTopic());
             lessonNameField.setText(lesson.getLessonName());
+            classNameField.setText(lesson.getClassName());
             timeField.setText(
                 lesson.getTime().format(UiFormatters.TIME_FORMATTER)
             );
@@ -89,6 +93,10 @@ public class LessonDialogController {
             }
             if (lessonNameField.getText().trim().isEmpty()) {
                 showError("Тема не может быть пустой");
+                return false;
+            }
+            if (classNameField.getText().trim().isEmpty()) {
+                showError("Занятие не может быть пустым");
                 return false;
             }
             if (timeField.getText().trim().isEmpty()) {
@@ -129,6 +137,7 @@ public class LessonDialogController {
 
             lesson.setTopic(topicField.getText().trim());
             lesson.setLessonName(lessonNameField.getText().trim());
+            lesson.setClassName(classNameField.getText().trim());
             lesson.setTime(time);
             lesson.setLocation(locationField.getText().trim());
             lesson.setInstructor(instructorField.getText().trim());

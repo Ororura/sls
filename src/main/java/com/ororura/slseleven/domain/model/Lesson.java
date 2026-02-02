@@ -11,6 +11,8 @@ public class Lesson {
     private String id;
     private String topic; // Предмет
     private String lessonName; // Тема
+    private String className; // Занятие
+    private boolean autoScheduled; // Создано автораспределением
     private LocalTime time; // Время
     private String location; // Расположение проведения занятия
     private String instructor; // Кто проводит
@@ -20,15 +22,49 @@ public class Lesson {
         this.id = java.util.UUID.randomUUID().toString();
     }
 
-    public Lesson(String topic, String lessonName, LocalTime time, String location, 
-                  String instructor, LocalDate date) {
+    public Lesson(
+        String topic,
+        String lessonName,
+        String className,
+        LocalTime time,
+        String location,
+        String instructor,
+        LocalDate date
+    ) {
         this();
         this.topic = topic;
         this.lessonName = lessonName;
+        this.className = className;
+        this.autoScheduled = false;
         this.time = time;
         this.location = location;
         this.instructor = instructor;
         this.date = date;
+    }
+
+    public Lesson(
+        String topic,
+        String lessonName,
+        String className,
+        boolean autoScheduled,
+        LocalTime time,
+        String location,
+        String instructor,
+        LocalDate date
+    ) {
+        this(topic, lessonName, className, time, location, instructor, date);
+        this.autoScheduled = autoScheduled;
+    }
+
+    public Lesson(
+        String topic,
+        String lessonName,
+        LocalTime time,
+        String location,
+        String instructor,
+        LocalDate date
+    ) {
+        this(topic, lessonName, lessonName, time, location, instructor, date);
     }
 
     // Getters and Setters
@@ -54,6 +90,22 @@ public class Lesson {
 
     public void setLessonName(String lessonName) {
         this.lessonName = lessonName;
+    }
+
+    public String getClassName() {
+        return className;
+    }
+
+    public void setClassName(String className) {
+        this.className = className;
+    }
+
+    public boolean isAutoScheduled() {
+        return autoScheduled;
+    }
+
+    public void setAutoScheduled(boolean autoScheduled) {
+        this.autoScheduled = autoScheduled;
     }
 
     public LocalTime getTime() {

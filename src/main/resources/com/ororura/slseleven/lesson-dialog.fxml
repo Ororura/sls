@@ -18,16 +18,19 @@
     <Label text="Тема:" GridPane.columnIndex="0" GridPane.rowIndex="1" styleClass="form-label"/>
     <TextField fx:id="lessonNameField" GridPane.columnIndex="1" GridPane.rowIndex="1" styleClass="form-field"/>
 
-    <Label text="Время (HH:mm):" GridPane.columnIndex="0" GridPane.rowIndex="2" styleClass="form-label"/>
-    <TextField fx:id="timeField" GridPane.columnIndex="1" GridPane.rowIndex="2"
+    <Label text="Занятие:" GridPane.columnIndex="0" GridPane.rowIndex="2" styleClass="form-label"/>
+    <TextField fx:id="classNameField" GridPane.columnIndex="1" GridPane.rowIndex="2" styleClass="form-field"/>
+
+    <Label text="Время (HH:mm):" GridPane.columnIndex="0" GridPane.rowIndex="3" styleClass="form-label"/>
+    <TextField fx:id="timeField" GridPane.columnIndex="1" GridPane.rowIndex="3"
                promptText="14:30" styleClass="form-field"/>
 
-    <Label text="Расположение:" GridPane.columnIndex="0" GridPane.rowIndex="3" styleClass="form-label"/>
-    <TextField fx:id="locationField" GridPane.columnIndex="1" GridPane.rowIndex="3" styleClass="form-field"/>
+    <Label text="Расположение:" GridPane.columnIndex="0" GridPane.rowIndex="4" styleClass="form-label"/>
+    <TextField fx:id="locationField" GridPane.columnIndex="1" GridPane.rowIndex="4" styleClass="form-field"/>
 
-    <Label text="Преподаватель:" GridPane.columnIndex="0" GridPane.rowIndex="4" styleClass="form-label"/>
-    <TextField fx:id="instructorField" GridPane.columnIndex="1" GridPane.rowIndex="4" styleClass="form-field"/>
+    <Label text="Преподаватель:" GridPane.columnIndex="0" GridPane.rowIndex="5" styleClass="form-label"/>
+    <TextField fx:id="instructorField" GridPane.columnIndex="1" GridPane.rowIndex="5" styleClass="form-field"/>
 
-    <Label text="Дата:" GridPane.columnIndex="0" GridPane.rowIndex="5" styleClass="form-label"/>
-    <DatePicker fx:id="datePicker" GridPane.columnIndex="1" GridPane.rowIndex="5" styleClass="form-field"/>
+    <Label text="Дата:" GridPane.columnIndex="0" GridPane.rowIndex="6" styleClass="form-label"/>
+    <DatePicker fx:id="datePicker" GridPane.columnIndex="1" GridPane.rowIndex="6" styleClass="form-field"/>
 </GridPane>
