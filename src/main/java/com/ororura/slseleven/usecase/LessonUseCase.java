@@ -102,6 +102,25 @@ public class LessonUseCase {
         return deleted;
     }
 
+    public int archivePastLessons(LocalDate today) {
+        if (today == null) {
+            throw new IllegalArgumentException("Дата не может быть null");
+        }
+        List<Lesson> allLessons = lessonRepository.findAll();
+        int archived = 0;
+        for (Lesson lesson : allLessons) {
+            if (lesson.isArchived()) {
+                continue;
+            }
+            if (lesson.getDate() != null && lesson.getDate().isBefore(today)) {
+                lesson.setArchived(true);
+                lessonRepository.save(lesson);
+                archived++;
+            }
+        }
+        return archived;
+    }
+
     /**
      * Получить занятие по ID
      */
@@ -118,7 +137,25 @@ public class LessonUseCase {
      * Получить все занятия
      */
     public List<Lesson> getAllLessons() {
-        return lessonRepository.findAll();
+        List<Lesson> allLessons = lessonRepository.findAll();
+        List<Lesson> activeLessons = new java.util.ArrayList<>();
+        for (Lesson lesson : allLessons) {
+            if (!lesson.isArchived()) {
+                activeLessons.add(lesson);
+            }
+        }
+        return activeLessons;
+    }
+
+    public List<Lesson> getArchivedLessons() {
+        List<Lesson> allLessons = lessonRepository.findAll();
+        List<Lesson> archivedLessons = new java.util.ArrayList<>();
+        for (Lesson lesson : allLessons) {
+            if (lesson.isArchived()) {
+                archivedLessons.add(lesson);
+            }
+        }
+        return archivedLessons;
     }
 
     /**
@@ -128,7 +165,14 @@ public class LessonUseCase {
         if (date == null) {
             throw new IllegalArgumentException("Дата не может быть null");
         }
-        return lessonRepository.findByDate(date);
+        List<Lesson> lessons = lessonRepository.findByDate(date);
+        List<Lesson> activeLessons = new java.util.ArrayList<>();
+        for (Lesson lesson : lessons) {
+            if (!lesson.isArchived()) {
+                activeLessons.add(lesson);
+            }
+        }
+        return activeLessons;
     }
 
     /**
@@ -146,6 +190,16 @@ public class LessonUseCase {
                 "Начальная дата не может быть позже конечной"
             );
         }
-        return lessonRepository.findByDateRange(startDate, endDate);
+        List<Lesson> lessons = lessonRepository.findByDateRange(
+            startDate,
+            endDate
+        );
+        List<Lesson> activeLessons = new java.util.ArrayList<>();
+        for (Lesson lesson : lessons) {
+            if (!lesson.isArchived()) {
+                activeLessons.add(lesson);
+            }
+        }
+        return activeLessons;
     }
 }

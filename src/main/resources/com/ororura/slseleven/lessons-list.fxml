@@ -47,6 +47,11 @@
                 onAction="#onRefresh"
                 styleClass="button-ghost"
             />
+            <Button
+                text="Архив"
+                onAction="#onShowArchive"
+                styleClass="button-secondary"
+            />
         </ToolBar>
     </top>
 
@@ -72,16 +77,6 @@
         <HBox spacing="10" styleClass="footer-bar">
             <Label fx:id="countLabel" text="Всего занятий: 0" />
             <Pane HBox.hgrow="ALWAYS" />
-            <Button
-                text="Удалить 1 авто"
-                onAction="#onDeleteOneAuto"
-                styleClass="button-secondary"
-            />
-            <Button
-                text="Удалить все авто"
-                onAction="#onDeleteAllAuto"
-                styleClass="button-secondary"
-            />
             <Button
                 text="Удалить все"
                 onAction="#onDeleteAll"

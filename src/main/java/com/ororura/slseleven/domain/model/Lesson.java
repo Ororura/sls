@@ -13,6 +13,7 @@ public class Lesson {
     private String lessonName; // Тема
     private String className; // Занятие
     private boolean autoScheduled; // Создано автораспределением
+    private boolean archived; // Архивное занятие
     private LocalTime time; // Время
     private String location; // Расположение проведения занятия
     private String instructor; // Кто проводит
@@ -36,6 +37,7 @@ public class Lesson {
         this.lessonName = lessonName;
         this.className = className;
         this.autoScheduled = false;
+        this.archived = false;
         this.time = time;
         this.location = location;
         this.instructor = instructor;
@@ -106,6 +108,14 @@ public class Lesson {
 
     public void setAutoScheduled(boolean autoScheduled) {
         this.autoScheduled = autoScheduled;
+    }
+
+    public boolean isArchived() {
+        return archived;
+    }
+
+    public void setArchived(boolean archived) {
+        this.archived = archived;
     }
 
     public LocalTime getTime() {

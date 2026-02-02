@@ -25,8 +25,8 @@ public class LessonRepositorySQLite implements LessonRepository {
     @Override
     public void save(Lesson lesson) {
         String sql =
-            "INSERT OR REPLACE INTO lessons (id, topic, lesson_name, class_name, auto_scheduled, time, location, instructor, date) " +
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            "INSERT OR REPLACE INTO lessons (id, topic, lesson_name, class_name, auto_scheduled, archived, time, location, instructor, date) " +
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
         try (
             Connection conn = provider.getConnection();
@@ -37,10 +37,11 @@ public class LessonRepositorySQLite implements LessonRepository {
             ps.setString(3, lesson.getLessonName());
             ps.setString(4, lesson.getClassName());
             ps.setInt(5, lesson.isAutoScheduled() ? 1 : 0);
-            ps.setString(6, lesson.getTime().toString());
-            ps.setString(7, lesson.getLocation());
-            ps.setString(8, lesson.getInstructor());
-            ps.setString(9, lesson.getDate().toString());
+            ps.setInt(6, lesson.isArchived() ? 1 : 0);
+            ps.setString(7, lesson.getTime().toString());
+            ps.setString(8, lesson.getLocation());
+            ps.setString(9, lesson.getInstructor());
+            ps.setString(10, lesson.getDate().toString());
 
             ps.executeUpdate();
         } catch (Exception e) {
@@ -51,7 +52,7 @@ public class LessonRepositorySQLite implements LessonRepository {
     @Override
     public Optional<Lesson> findById(String id) {
         String sql =
-            "SELECT id, topic, lesson_name, class_name, auto_scheduled, time, location, instructor, date " +
+            "SELECT id, topic, lesson_name, class_name, auto_scheduled, archived, time, location, instructor, date " +
             "FROM lessons WHERE id = ?";
 
         try (
@@ -74,7 +75,7 @@ public class LessonRepositorySQLite implements LessonRepository {
     @Override
     public List<Lesson> findAll() {
         String sql =
-            "SELECT id, topic, lesson_name, class_name, auto_scheduled, time, location, instructor, date " +
+            "SELECT id, topic, lesson_name, class_name, auto_scheduled, archived, time, location, instructor, date " +
             "FROM lessons ORDER BY date, time";
 
         List<Lesson> lessons = new ArrayList<>();
@@ -95,7 +96,7 @@ public class LessonRepositorySQLite implements LessonRepository {
     @Override
     public List<Lesson> findByDate(LocalDate date) {
         String sql =
-            "SELECT id, topic, lesson_name, class_name, auto_scheduled, time, location, instructor, date " +
+            "SELECT id, topic, lesson_name, class_name, auto_scheduled, archived, time, location, instructor, date " +
             "FROM lessons WHERE date = ? ORDER BY time";
 
         List<Lesson> lessons = new ArrayList<>();
@@ -121,7 +122,7 @@ public class LessonRepositorySQLite implements LessonRepository {
         LocalDate endDate
     ) {
         String sql =
-            "SELECT id, topic, lesson_name, class_name, auto_scheduled, time, location, instructor, date " +
+            "SELECT id, topic, lesson_name, class_name, auto_scheduled, archived, time, location, instructor, date " +
             "FROM lessons WHERE date >= ? AND date <= ? ORDER BY date, time";
 
         List<Lesson> lessons = new ArrayList<>();
@@ -200,6 +201,7 @@ public class LessonRepositorySQLite implements LessonRepository {
         lesson.setLessonName(rs.getString("lesson_name"));
         lesson.setClassName(rs.getString("class_name"));
         lesson.setAutoScheduled(rs.getInt("auto_scheduled") == 1);
+        lesson.setArchived(rs.getInt("archived") == 1);
         lesson.setTime(LocalTime.parse(rs.getString("time")));
         lesson.setLocation(rs.getString("location"));
         lesson.setInstructor(rs.getString("instructor"));

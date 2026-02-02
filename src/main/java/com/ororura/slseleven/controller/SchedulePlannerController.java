@@ -471,6 +471,32 @@ public class SchedulePlannerController {
     }
 
     @FXML
+    private void onLoadArchiveToPool() {
+        if (scheduleUseCase == null) {
+            showError("Ошибка: Use case не инициализирован");
+            return;
+        }
+
+        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+        confirm.setTitle("Архив");
+        confirm.setHeaderText("Загрузить архивные занятия в пул?");
+        confirm.setContentText(
+            "Архивные занятия будут перенесены в авторасписание для нового периода."
+        );
+        if (confirm.showAndWait().orElse(ButtonType.CANCEL) != ButtonType.OK) {
+            return;
+        }
+
+        int moved = scheduleUseCase.moveArchivedLessonsToPool();
+        reload();
+        if (moved <= 0) {
+            showInfo("Архив пуст.");
+            return;
+        }
+        showInfo("Перенесено из архива: " + moved + " занятий.");
+    }
+
+    @FXML
     private void onAutoSchedule() {
         if (scheduleUseCase == null) {
             showError("Ошибка: Use case не инициализирован");
@@ -591,7 +617,7 @@ public class SchedulePlannerController {
 
     private void setupSpinner(Spinner<Integer> spinner) {
         SpinnerValueFactory<Integer> factory =
-            new SpinnerValueFactory.IntegerSpinnerValueFactory(0, 24, 0);
+            new SpinnerValueFactory.IntegerSpinnerValueFactory(0, 8, 0);
         spinner.setValueFactory(factory);
         spinner.setEditable(true);
     }

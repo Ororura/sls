@@ -22,11 +22,6 @@
                 styleClass="button-secondary"
             />
             <Button
-                text="Быстрый импорт"
-                onAction="#onQuickImport"
-                styleClass="button-secondary"
-            />
-            <Button
                 text="Импорт"
                 onAction="#onImport"
                 styleClass="button-secondary"
@@ -34,11 +29,6 @@
             <Button
                 text="Импорт XLSX"
                 onAction="#onImportXlsx"
-                styleClass="button-secondary"
-            />
-            <Button
-                text="Импорт + распределить"
-                onAction="#onImportAndSchedule"
                 styleClass="button-secondary"
             />
             <Button
@@ -163,6 +153,11 @@
                 <Button
                     text="Сохранить настройки"
                     onAction="#onSaveSettings"
+                    styleClass="button-secondary"
+                />
+                <Button
+                    text="Архив в пул"
+                    onAction="#onLoadArchiveToPool"
                     styleClass="button-secondary"
                 />
                 <Button

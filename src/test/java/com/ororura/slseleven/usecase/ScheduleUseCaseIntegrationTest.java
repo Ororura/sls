@@ -70,7 +70,7 @@ class ScheduleUseCaseIntegrationTest {
         List<Lesson> mondayLessons = lessonRepository.findByDate(monday);
         assertEquals(2, mondayLessons.size());
         assertEquals(LocalTime.of(9, 0), mondayLessons.get(0).getTime());
-        assertEquals(LocalTime.of(10, 0), mondayLessons.get(1).getTime());
+        assertEquals(LocalTime.of(9, 50), mondayLessons.get(1).getTime());
 
         List<ScheduleItem> remainingQueue = scheduleItemRepository.findAll();
         assertEquals(1, remainingQueue.size());
@@ -165,6 +165,42 @@ class ScheduleUseCaseIntegrationTest {
         assertEquals(1, result.getRemainingHours());
         assertTrue(lessonRepository.findByDate(tuesday).isEmpty());
         assertEquals(1, scheduleItemRepository.findAll().size());
+    }
+
+    @Test
+    void moveArchivedLessonsToPool_shouldMoveAndAggregate() {
+        LocalDate day = LocalDate.of(2026, 2, 2);
+        Lesson archivedFirst = new Lesson(
+            "Math",
+            "Topic",
+            "Class",
+            LocalTime.of(9, 0),
+            "A1",
+            "Ivanov",
+            day
+        );
+        archivedFirst.setArchived(true);
+        lessonRepository.save(archivedFirst);
+
+        Lesson archivedSecond = new Lesson(
+            "Math",
+            "Topic",
+            "Class",
+            LocalTime.of(9, 50),
+            "A1",
+            "Ivanov",
+            day
+        );
+        archivedSecond.setArchived(true);
+        lessonRepository.save(archivedSecond);
+
+        int moved = scheduleUseCase.moveArchivedLessonsToPool();
+
+        assertEquals(2, moved);
+        assertTrue(lessonRepository.findAll().isEmpty());
+        List<ScheduleItem> items = scheduleItemRepository.findAll();
+        assertEquals(1, items.size());
+        assertEquals(2, items.get(0).getHours());
     }
 
     private Map<DayOfWeek, Integer> onlyDayCapacity(DayOfWeek day, int capacity) {

@@ -19,8 +19,16 @@ import java.util.Set;
 
 public class ScheduleUseCase {
 
-    private static final LocalTime DEFAULT_START_TIME = LocalTime.of(9, 0);
-    private static final int MAX_DAILY_SLOTS = 24;
+    private static final List<LocalTime> LESSON_SLOT_START_TIMES = List.of(
+        LocalTime.of(9, 0),
+        LocalTime.of(9, 50),
+        LocalTime.of(10, 50),
+        LocalTime.of(11, 40),
+        LocalTime.of(12, 40),
+        LocalTime.of(13, 30),
+        LocalTime.of(16, 0),
+        LocalTime.of(16, 50)
+    );
 
     private final LessonRepository lessonRepository;
     private final ScheduleItemRepository scheduleItemRepository;
@@ -84,6 +92,71 @@ public class ScheduleUseCase {
     public int countLessonsInRange(LocalDate startDate, LocalDate endDate) {
         validateDateRange(startDate, endDate);
         return findLessonsInRange(startDate, endDate).size();
+    }
+
+    public int moveArchivedLessonsToPool() {
+        List<Lesson> allLessons = lessonRepository.findAll();
+        Map<ScheduleKey, Integer> aggregatedHours = new LinkedHashMap<>();
+        List<String> archivedLessonIds = new ArrayList<>();
+
+        for (Lesson lesson : allLessons) {
+            if (!lesson.isArchived()) {
+                continue;
+            }
+            ScheduleKey key = new ScheduleKey(
+                lesson.getTopic(),
+                lesson.getLessonName(),
+                lesson.getClassName(),
+                lesson.getLocation(),
+                lesson.getInstructor()
+            );
+            aggregatedHours.merge(key, 1, Integer::sum);
+            archivedLessonIds.add(lesson.getId());
+        }
+
+        if (aggregatedHours.isEmpty()) {
+            return 0;
+        }
+
+        Map<ScheduleKey, ScheduleItem> existingItemsByKey = new HashMap<>();
+        for (ScheduleItem item : scheduleItemRepository.findAll()) {
+            existingItemsByKey.put(
+                new ScheduleKey(
+                    item.getTopic(),
+                    item.getLessonName(),
+                    item.getClassName(),
+                    item.getLocation(),
+                    item.getInstructor()
+                ),
+                item
+            );
+        }
+
+        for (Map.Entry<ScheduleKey, Integer> entry : aggregatedHours.entrySet()) {
+            ScheduleKey key = entry.getKey();
+            int hoursToAdd = entry.getValue();
+            ScheduleItem existing = existingItemsByKey.get(key);
+            if (existing != null) {
+                existing.setHours(existing.getHours() + hoursToAdd);
+                scheduleItemRepository.save(existing);
+                continue;
+            }
+            scheduleItemRepository.save(
+                new ScheduleItem(
+                    key.topic,
+                    key.lessonName,
+                    key.className,
+                    key.location,
+                    key.instructor,
+                    hoursToAdd
+                )
+            );
+        }
+
+        for (String lessonId : archivedLessonIds) {
+            lessonRepository.deleteById(lessonId);
+        }
+        return archivedLessonIds.size();
     }
 
     public int countAutoScheduledLessonsInRange(
@@ -217,6 +290,7 @@ public class ScheduleUseCase {
             List<Lesson> existingLessons = lessonRepository.findByDate(
                 currentDate
             );
+            existingLessons.removeIf(Lesson::isArchived);
             int existingCount = existingLessons.size();
             int availableSlots = maxHours - existingCount;
             if (availableSlots <= 0) {
@@ -230,15 +304,14 @@ public class ScheduleUseCase {
             }
 
             int slotOffset = 0;
-            while (availableSlots > 0 && totalHours > 0) {
-                if (slotOffset >= MAX_DAILY_SLOTS) {
-                    break;
-                }
-
-                LocalTime candidateTime = DEFAULT_START_TIME.plusHours(
-                    slotOffset
+            while (
+                availableSlots > 0 &&
+                totalHours > 0 &&
+                slotOffset < LESSON_SLOT_START_TIMES.size()
+            ) {
+                LocalTime candidateTime = LESSON_SLOT_START_TIMES.get(
+                    slotOffset++
                 );
-                slotOffset++;
 
                 if (occupiedTimes.contains(candidateTime)) {
                     continue;
@@ -345,7 +418,7 @@ public class ScheduleUseCase {
         List<Lesson> lessons = findLessonsInRange(startDate, endDate);
         List<Lesson> autoLessons = new ArrayList<>();
         for (Lesson lesson : lessons) {
-            if (lesson.isAutoScheduled()) {
+            if (lesson.isAutoScheduled() && !lesson.isArchived()) {
                 autoLessons.add(lesson);
             }
         }
@@ -368,6 +441,7 @@ public class ScheduleUseCase {
         for (Lesson lesson : allLessons) {
             if (
                 lesson.isAutoScheduled() &&
+                !lesson.isArchived() &&
                 lesson.getDate().isAfter(endDate)
             ) {
                 autoLessons.add(lesson);

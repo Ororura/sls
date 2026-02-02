@@ -142,6 +142,7 @@ public class LessonsListController {
     }
 
     private void reload() {
+        lessonUseCase.archivePastLessons(LocalDate.now());
         List<Lesson> lessons = lessonUseCase.getAllLessons();
         data.setAll(lessons);
         countLabel.setText("Всего занятий: " + data.size());
@@ -150,6 +151,59 @@ public class LessonsListController {
     @FXML
     private void onRefresh() {
         reload();
+    }
+
+    @FXML
+    private void onShowArchive() {
+        if (lessonUseCase == null) {
+            Alert alert = new Alert(Alert.AlertType.ERROR);
+            alert.setTitle("Архив");
+            alert.setHeaderText(null);
+            alert.setContentText("Ошибка: Use case не инициализирован");
+            alert.showAndWait();
+            return;
+        }
+
+        List<Lesson> archived = lessonUseCase.getArchivedLessons();
+        if (archived.isEmpty()) {
+            Alert alert = new Alert(Alert.AlertType.INFORMATION);
+            alert.setTitle("Архив");
+            alert.setHeaderText(null);
+            alert.setContentText("Архив пуст.");
+            alert.showAndWait();
+            return;
+        }
+
+        StringJoiner joiner = new StringJoiner(System.lineSeparator());
+        for (Lesson lesson : archived) {
+            joiner.add(
+                formatDateValue(lesson.getDate()) +
+                " " +
+                formatTimeValue(lesson.getTime()) +
+                " | " +
+                safeValue(lesson.getTopic()) +
+                " | " +
+                safeValue(lesson.getLessonName()) +
+                " | " +
+                safeValue(lesson.getClassName()) +
+                " | " +
+                safeValue(lesson.getLocation()) +
+                " | " +
+                safeValue(lesson.getInstructor())
+            );
+        }
+
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("Архив занятий");
+        dialog.setHeaderText("Архивных занятий: " + archived.size());
+        TextArea archiveArea = new TextArea(joiner.toString());
+        archiveArea.setEditable(false);
+        archiveArea.setWrapText(false);
+        archiveArea.setPrefRowCount(20);
+        dialog.getDialogPane().setContent(archiveArea);
+        dialog.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);
+        UiStyles.apply(dialog.getDialogPane());
+        dialog.showAndWait();
     }
 
     @FXML

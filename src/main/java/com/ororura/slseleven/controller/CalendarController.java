@@ -66,6 +66,9 @@ public class CalendarController {
      */
     public void setLessonUseCase(LessonUseCase lessonUseCase) {
         this.lessonUseCase = lessonUseCase;
+        if (this.lessonUseCase != null) {
+            this.lessonUseCase.archivePastLessons(LocalDate.now());
+        }
     }
 
     public void setScheduleUseCase(ScheduleUseCase scheduleUseCase) {
@@ -138,6 +141,9 @@ public class CalendarController {
     }
 
     private void buildCalendar() {
+        if (lessonUseCase != null) {
+            lessonUseCase.archivePastLessons(LocalDate.now());
+        }
         monthYearLabel.setText(currentYearMonth.format(monthYearFormatter));
         calendarGrid.getChildren().clear();
         preloadMonthLessons();

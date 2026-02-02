@@ -14,6 +14,7 @@ public class SchemaInitializer {
             "    lesson_name TEXT NOT NULL,\n" +
             "    class_name TEXT NOT NULL DEFAULT '',\n" +
             "    auto_scheduled INTEGER NOT NULL DEFAULT 0,\n" +
+            "    archived INTEGER NOT NULL DEFAULT 0,\n" +
             "    time TEXT NOT NULL,\n" +
             "    location TEXT NOT NULL,\n" +
             "    instructor TEXT NOT NULL,\n" +
@@ -52,6 +53,10 @@ public class SchemaInitializer {
             ensureColumnExists(
                 s,
                 "ALTER TABLE lessons ADD COLUMN auto_scheduled INTEGER NOT NULL DEFAULT 0"
+            );
+            ensureColumnExists(
+                s,
+                "ALTER TABLE lessons ADD COLUMN archived INTEGER NOT NULL DEFAULT 0"
             );
             ensureColumnExists(
                 s,
