@@ -365,9 +365,10 @@ public class ScheduleUseCase {
             if (this == obj) {
                 return true;
             }
-            if (!(obj instanceof ScheduleKey other)) {
+            if (!(obj instanceof ScheduleKey)) {
                 return false;
             }
+            ScheduleKey other = (ScheduleKey) obj;
             return topic.equals(other.topic) &&
             lessonName.equals(other.lessonName) &&
             location.equals(other.location) &&
