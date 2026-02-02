@@ -582,6 +582,10 @@
                                         <argument>--vendor</argument>
                                         <argument>${app.vendor}</argument>
 
+                                        <argument>--icon</argument>
+                                        <argument
+                                        >${project.basedir}/src/main/resources/win.ico</argument>
+
                                         <argument>--java-options</argument>
                                         <argument>-Xmx512m</argument>
                                         <argument>--java-options</argument>

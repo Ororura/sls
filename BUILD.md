@@ -50,7 +50,11 @@ target/installer/
 
 ### Иконка
 
-Для Windows нужен `.ico`. Пока не задан.
+Используется:
+
+```
+src/main/resources/win.ico
+```
 
 ## Почему не используется jlink
 
