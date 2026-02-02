@@ -83,6 +83,8 @@
                 <Pane HBox.hgrow="ALWAYS" />
                 <Label text="Дата начала:" />
                 <DatePicker fx:id="startDatePicker" />
+                <Label text="Дата окончания:" />
+                <DatePicker fx:id="endDatePicker" promptText="Не ограничивать" />
             </HBox>
 
             <GridPane hgap="12" vgap="8">

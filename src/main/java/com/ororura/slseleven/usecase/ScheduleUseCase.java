@@ -10,7 +10,9 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -79,16 +81,76 @@ public class ScheduleUseCase {
         scheduleSettingsRepository.saveAll(maxHoursByDay);
     }
 
-    public AutoScheduleResult autoSchedule(LocalDate startDate) {
-        if (startDate == null) {
-            throw new IllegalArgumentException(
-                "Дата начала не может быть пустой"
+    public int countLessonsInRange(LocalDate startDate, LocalDate endDate) {
+        validateDateRange(startDate, endDate);
+        return findLessonsInRange(startDate, endDate).size();
+    }
+
+    public AutoScheduleResult reschedule(LocalDate startDate, LocalDate endDate) {
+        validateDateRange(startDate, endDate);
+
+        List<Lesson> lessonsToReschedule = findLessonsInRange(startDate, endDate);
+        if (lessonsToReschedule.isEmpty()) {
+            throw new IllegalStateException("В выбранном диапазоне нет занятий для переформирования");
+        }
+
+        List<ScheduleItem> queuedItems = scheduleItemRepository.findAll();
+        Map<ScheduleKey, Integer> aggregatedHours = new LinkedHashMap<>();
+
+        for (ScheduleItem item : queuedItems) {
+            ScheduleKey key = new ScheduleKey(
+                item.getTopic(),
+                item.getLessonName(),
+                item.getLocation(),
+                item.getInstructor()
+            );
+            aggregatedHours.merge(key, item.getHours(), Integer::sum);
+        }
+
+        for (Lesson lesson : lessonsToReschedule) {
+            ScheduleKey key = new ScheduleKey(
+                lesson.getTopic(),
+                lesson.getLessonName(),
+                lesson.getLocation(),
+                lesson.getInstructor()
+            );
+            aggregatedHours.merge(key, 1, Integer::sum);
+        }
+
+        scheduleItemRepository.deleteAll();
+        for (Map.Entry<ScheduleKey, Integer> entry : aggregatedHours.entrySet()) {
+            ScheduleKey key = entry.getKey();
+            scheduleItemRepository.save(
+                new ScheduleItem(
+                    key.topic,
+                    key.lessonName,
+                    key.location,
+                    key.instructor,
+                    entry.getValue()
+                )
             );
         }
 
+        for (Lesson lesson : lessonsToReschedule) {
+            lessonRepository.deleteById(lesson.getId());
+        }
+
+        return autoSchedule(startDate, endDate);
+    }
+
+    public AutoScheduleResult autoSchedule(LocalDate startDate) {
+        return autoSchedule(startDate, null);
+    }
+
+    public AutoScheduleResult autoSchedule(
+        LocalDate startDate,
+        LocalDate endDate
+    ) {
+        validateDateRange(startDate, endDate);
+
         List<ScheduleItem> items = scheduleItemRepository.findAll();
         if (items.isEmpty()) {
-            return new AutoScheduleResult(0, null, 0);
+            return new AutoScheduleResult(0, null, 0, List.of());
         }
 
         Map<DayOfWeek, Integer> maxHoursByDay = new EnumMap<>(
@@ -108,12 +170,19 @@ public class ScheduleUseCase {
         int createdLessons = 0;
         LocalDate currentDate = startDate;
         LocalDate lastDate = null;
+        Map<String, Integer> remainingHoursByItemId = new HashMap<>();
+        for (ScheduleItem item : items) {
+            remainingHoursByItemId.put(item.getId(), item.getHours());
+        }
 
         int itemIndex = 0;
         int remainingInItem = items.get(0).getHours();
-        List<String> completedItemIds = new ArrayList<>();
+        Set<String> completedItemIds = new HashSet<>();
 
-        while (totalHours > 0) {
+        while (
+            totalHours > 0 &&
+            (endDate == null || !currentDate.isAfter(endDate))
+        ) {
             DayOfWeek dayOfWeek = currentDate.getDayOfWeek();
             int maxHours = maxHoursByDay.getOrDefault(dayOfWeek, 0);
             if (maxHours <= 0) {
@@ -167,6 +236,7 @@ public class ScheduleUseCase {
                 availableSlots--;
                 occupiedTimes.add(candidateTime);
                 lastDate = currentDate;
+                remainingHoursByItemId.merge(currentItem.getId(), -1, Integer::sum);
 
                 remainingInItem--;
                 if (remainingInItem <= 0) {
@@ -182,8 +252,63 @@ public class ScheduleUseCase {
             currentDate = currentDate.plusDays(1);
         }
 
-        scheduleItemRepository.deleteAllByIds(completedItemIds);
-        return new AutoScheduleResult(createdLessons, lastDate, totalHours);
+        if (!completedItemIds.isEmpty()) {
+            scheduleItemRepository.deleteAllByIds(new ArrayList<>(completedItemIds));
+        }
+
+        List<AutoScheduleResult.RemainingScheduleItem> remainingItems =
+            new ArrayList<>();
+        for (ScheduleItem item : items) {
+            int remaining = remainingHoursByItemId.getOrDefault(item.getId(), 0);
+            if (remaining <= 0) {
+                continue;
+            }
+            if (!completedItemIds.contains(item.getId()) && remaining != item.getHours()) {
+                item.setHours(remaining);
+                scheduleItemRepository.save(item);
+            }
+            remainingItems.add(
+                new AutoScheduleResult.RemainingScheduleItem(
+                    item.getTopic(),
+                    item.getLessonName(),
+                    remaining
+                )
+            );
+        }
+
+        return new AutoScheduleResult(
+            createdLessons,
+            lastDate,
+            totalHours,
+            remainingItems
+        );
+    }
+
+    private void validateDateRange(LocalDate startDate, LocalDate endDate) {
+        if (startDate == null) {
+            throw new IllegalArgumentException(
+                "Дата начала не может быть пустой"
+            );
+        }
+        if (endDate != null && endDate.isBefore(startDate)) {
+            throw new IllegalArgumentException(
+                "Дата окончания не может быть раньше даты начала"
+            );
+        }
+    }
+
+    private List<Lesson> findLessonsInRange(LocalDate startDate, LocalDate endDate) {
+        if (endDate != null) {
+            return lessonRepository.findByDateRange(startDate, endDate);
+        }
+        List<Lesson> lessons = lessonRepository.findAll();
+        List<Lesson> filtered = new ArrayList<>();
+        for (Lesson lesson : lessons) {
+            if (!lesson.getDate().isBefore(startDate)) {
+                filtered.add(lesson);
+            }
+        }
+        return filtered;
     }
 
     private void validateItem(ScheduleItem item) {
@@ -214,6 +339,48 @@ public class ScheduleUseCase {
         }
         if (item.getHours() <= 0) {
             throw new IllegalArgumentException("Часы должны быть больше 0");
+        }
+    }
+
+    private static final class ScheduleKey {
+        private final String topic;
+        private final String lessonName;
+        private final String location;
+        private final String instructor;
+
+        private ScheduleKey(
+            String topic,
+            String lessonName,
+            String location,
+            String instructor
+        ) {
+            this.topic = topic;
+            this.lessonName = lessonName;
+            this.location = location;
+            this.instructor = instructor;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (!(obj instanceof ScheduleKey other)) {
+                return false;
+            }
+            return topic.equals(other.topic) &&
+            lessonName.equals(other.lessonName) &&
+            location.equals(other.location) &&
+            instructor.equals(other.instructor);
+        }
+
+        @Override
+        public int hashCode() {
+            int result = topic.hashCode();
+            result = 31 * result + lessonName.hashCode();
+            result = 31 * result + location.hashCode();
+            result = 31 * result + instructor.hashCode();
+            return result;
         }
     }
 }

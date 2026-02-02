@@ -17,8 +17,8 @@
         <maven.compiler.target>11</maven.compiler.target>
         <javafx.version>17.0.14</javafx.version>
         <main.class
-        >com.ororura.slseleven/com.ororura.slseleven.HelloApplication</main.class>
-        <app.name>Календарь занятий</app.name>
+        >com.ororura.slseleven/com.ororura.slseleven.Launcher</main.class>
+        <app.name>ClassCalendar</app.name>
         <app.version>1.0.0</app.version>
         <app.vendor>SLSEleven</app.vendor>
         <app.identifier>com.ororura.slseleven</app.identifier>
@@ -213,89 +213,107 @@
                 </executions>
             </plugin>
 
-            <!-- Plugin for creating DMG with embedded JRE using jpackage -->
-            <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>exec-maven-plugin</artifactId>
-                <version>3.1.0</version>
-                <executions>
-                    <execution>
-                        <id>create-dmg</id>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>exec</goal>
-                        </goals>
-                        <configuration>
-                            <executable>jpackage</executable>
-                            <arguments>
-                                <!-- Тип пакета -->
-                                <argument>--type</argument>
-                                <argument>dmg</argument>
-
-                                <!-- Classpath input -->
-                                <argument>--input</argument>
-                                <argument
-                                >${project.build.directory}/app-libs</argument>
-
-                                <argument>--main-jar</argument>
-                                <argument
-                                >${project.build.finalName}.jar</argument>
-
-                                <argument>--main-class</argument>
-                                <argument
-                                >com.ororura.slseleven.HelloApplication</argument>
-
-                                <!-- Имя приложения -->
-                                <argument>--name</argument>
-                                <argument>${app.name}</argument>
-
-                                <!-- Версия приложения -->
-                                <argument>--app-version</argument>
-                                <argument>${app.version}</argument>
-
-                                <!-- Производитель -->
-                                <argument>--vendor</argument>
-                                <argument>${app.vendor}</argument>
-
-                                <!-- macOS специфичные настройки -->
-                                <argument>--mac-package-identifier</argument>
-                                <argument>${app.identifier}</argument>
-                                <argument>--mac-package-name</argument>
-                                <argument>${app.name}</argument>
-                                <argument>--icon</argument>
-                                <argument
-                                >${project.basedir}/src/main/resources/macos.icns</argument>
-
-                                <!-- Опции JVM -->
-                                <argument>--java-options</argument>
-                                <argument>-Xmx512m</argument>
-                                <argument>--java-options</argument>
-                                <argument
-                                >--module-path=$APPDIR/../app</argument>
-                                <argument>--java-options</argument>
-                                <argument
-                                >--add-modules=javafx.controls,javafx.fxml</argument>
-                                <argument>--java-options</argument>
-                                <argument>-Dfile.encoding=UTF-8</argument>
-
-                                <!-- Директория для выходного файла -->
-                                <argument>--dest</argument>
-                                <argument
-                                >${project.build.directory}/installer</argument>
-
-                                <!-- Описание приложения -->
-                                <argument>--description</argument>
-                                <argument
-                                >Календарь занятий с возможностью добавления, редактирования и удаления занятий</argument>
-                            </arguments>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
         </plugins>
     </build>
 
     <profiles>
+        <profile>
+            <id>mac-x64</id>
+            <activation>
+                <os>
+                    <family>Mac</family>
+                    <arch>x86_64</arch>
+                </os>
+            </activation>
+            <properties>
+                <javafx.platform>mac</javafx.platform>
+            </properties>
+            <build>
+                <plugins>
+                    <!-- Plugin for creating DMG with embedded JRE using jpackage -->
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>exec-maven-plugin</artifactId>
+                        <version>3.1.0</version>
+                        <executions>
+                            <execution>
+                                <id>create-dmg</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <executable>jpackage</executable>
+                                    <arguments>
+                                        <!-- Тип пакета -->
+                                        <argument>--type</argument>
+                                        <argument>dmg</argument>
+
+                                        <!-- Classpath input -->
+                                        <argument>--input</argument>
+                                        <argument
+                                        >${project.build.directory}/app-libs</argument>
+
+                                        <argument>--main-jar</argument>
+                                        <argument
+                                        >${project.build.finalName}.jar</argument>
+
+                                        <argument>--main-class</argument>
+                                        <argument
+                                        >com.ororura.slseleven.Launcher</argument>
+
+                                        <!-- Имя приложения -->
+                                        <argument>--name</argument>
+                                        <argument>${app.name}</argument>
+
+                                        <!-- Версия приложения -->
+                                        <argument>--app-version</argument>
+                                        <argument>${app.version}</argument>
+
+                                        <!-- Производитель -->
+                                        <argument>--vendor</argument>
+                                        <argument>${app.vendor}</argument>
+
+                                        <!-- macOS специфичные настройки -->
+                                        <argument
+                                        >--mac-package-identifier</argument>
+                                        <argument>${app.identifier}</argument>
+                                        <argument>--mac-package-name</argument>
+                                        <argument>${app.name}</argument>
+                                        <argument>--icon</argument>
+                                        <argument
+                                        >${project.basedir}/src/main/resources/macos.icns</argument>
+
+                                        <!-- Опции JVM -->
+                                        <argument>--java-options</argument>
+                                        <argument>-Xmx512m</argument>
+                                        <argument>--java-options</argument>
+                                        <argument
+                                        >--module-path=$APPDIR</argument>
+                                        <argument>--java-options</argument>
+                                        <argument
+                                        >--add-modules=javafx.controls,javafx.fxml</argument>
+                                        <argument>--java-options</argument>
+                                        <argument
+                                        >-Dfile.encoding=UTF-8</argument>
+
+                                        <!-- Директория для выходного файла -->
+                                        <argument>--dest</argument>
+                                        <argument
+                                        >${project.build.directory}/installer</argument>
+
+                                        <!-- Описание приложения -->
+                                        <argument>--description</argument>
+                                        <argument
+                                        >Календарь занятий с возможностью добавления, редактирования и удаления занятий</argument>
+                                    </arguments>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
         <profile>
             <id>mac-arm</id>
             <activation>
@@ -410,7 +428,7 @@
 
                                         <argument>--main-class</argument>
                                         <argument
-                                        >com.ororura.slseleven.HelloApplication</argument>
+                                        >com.ororura.slseleven.Launcher</argument>
 
                                         <argument>--name</argument>
                                         <argument>${app.name}</argument>
@@ -434,7 +452,7 @@
                                         <argument>-Xmx512m</argument>
                                         <argument>--java-options</argument>
                                         <argument
-                                        >--module-path=$APPDIR/../app</argument>
+                                        >--module-path=$APPDIR</argument>
                                         <argument>--java-options</argument>
                                         <argument
                                         >--add-modules=javafx.controls,javafx.fxml</argument>
@@ -571,7 +589,7 @@
 
                                         <argument>--main-class</argument>
                                         <argument
-                                        >com.ororura.slseleven.HelloApplication</argument>
+                                        >com.ororura.slseleven.Launcher</argument>
 
                                         <argument>--name</argument>
                                         <argument>${app.name}</argument>
@@ -590,13 +608,17 @@
                                         <argument>-Xmx512m</argument>
                                         <argument>--java-options</argument>
                                         <argument
-                                        >--module-path=$APPDIR\\app</argument>
+                                        >--module-path=$APPDIR</argument>
                                         <argument>--java-options</argument>
                                         <argument
                                         >--add-modules=javafx.controls,javafx.fxml</argument>
                                         <argument>--java-options</argument>
                                         <argument
                                         >-Dfile.encoding=UTF-8</argument>
+                                        <argument>--java-options</argument>
+                                        <argument>-Duser.language=en</argument>
+                                        <argument>--java-options</argument>
+                                        <argument>-Duser.country=US</argument>
 
                                         <argument>--win-menu</argument>
                                         <argument>--win-shortcut</argument>
@@ -608,8 +630,12 @@
 
                                         <argument>--description</argument>
                                         <argument
-                                        >Календарь занятий с возможностью добавления, редактирования и удаления занятий</argument>
+                                        >Class Calendar Application</argument>
                                     </arguments>
+                                    <environmentVariables>
+                                        <JAVA_TOOL_OPTIONS
+                                        >-Dfile.encoding=UTF-8 -Duser.language=en -Duser.country=US</JAVA_TOOL_OPTIONS>
+                                    </environmentVariables>
                                 </configuration>
                             </execution>
                         </executions>

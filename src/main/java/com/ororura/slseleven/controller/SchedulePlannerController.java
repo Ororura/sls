@@ -64,6 +64,9 @@ public class SchedulePlannerController {
     private DatePicker startDatePicker;
 
     @FXML
+    private DatePicker endDatePicker;
+
+    @FXML
     private Spinner<Integer> mondayHours;
 
     @FXML
@@ -116,6 +119,7 @@ public class SchedulePlannerController {
         setupSpinner(sundayHours);
 
         startDatePicker.setValue(LocalDate.now());
+        endDatePicker.setValue(null);
     }
 
     public void setScheduleUseCase(ScheduleUseCase scheduleUseCase) {
@@ -341,6 +345,9 @@ public class SchedulePlannerController {
             showError("Укажите дату начала");
             return;
         }
+        if (!validateDateRange()) {
+            return;
+        }
 
         Dialog<ButtonType> dialog = new Dialog<>();
         dialog.setTitle("Импорт и распределение");
@@ -404,7 +411,10 @@ public class SchedulePlannerController {
 
             try {
                 AutoScheduleResult scheduleResult =
-                    scheduleUseCase.autoSchedule(startDatePicker.getValue());
+                    scheduleUseCase.autoSchedule(
+                        startDatePicker.getValue(),
+                        endDatePicker.getValue()
+                    );
                 reload();
                 showImportAndScheduleResult(importResult, scheduleResult);
             } catch (Exception ex) {
@@ -462,13 +472,30 @@ public class SchedulePlannerController {
             showError("Укажите дату начала");
             return;
         }
+        if (!validateDateRange()) {
+            return;
+        }
 
         saveSettings();
 
         try {
-            AutoScheduleResult result = scheduleUseCase.autoSchedule(
-                startDatePicker.getValue()
+            LocalDate startDate = startDatePicker.getValue();
+            LocalDate endDate = endDatePicker.getValue();
+            AutoScheduleResult result;
+
+            int lessonsInRange = scheduleUseCase.countLessonsInRange(
+                startDate,
+                endDate
             );
+            boolean canReschedule = data.isEmpty() && lessonsInRange > 0;
+            if (canReschedule && confirmReschedule(lessonsInRange)) {
+                result = scheduleUseCase.reschedule(startDate, endDate);
+            } else if (canReschedule) {
+                return;
+            } else {
+                result = scheduleUseCase.autoSchedule(startDate, endDate);
+            }
+
             reload();
 
             if (result.getCreatedLessons() == 0) {
@@ -485,6 +512,12 @@ public class SchedulePlannerController {
                     .append("\nПоследняя дата: ")
                     .append(result.getLastScheduledDate());
             }
+            if (endDatePicker.getValue() != null) {
+                message
+                    .append("\nОграничение по дате: до ")
+                    .append(endDatePicker.getValue());
+            }
+            appendRemainingHours(message, result);
 
             showInfo(message.toString());
         } catch (Exception e) {
@@ -708,6 +741,10 @@ public class SchedulePlannerController {
                 "Последняя дата: " + scheduleResult.getLastScheduledDate()
             );
         }
+        if (endDatePicker.getValue() != null) {
+            joiner.add("Ограничение по дате: до " + endDatePicker.getValue());
+        }
+        appendRemainingHours(joiner, scheduleResult);
         if (!importResult.errors.isEmpty()) {
             int limit = Math.min(4, importResult.errors.size());
             for (int i = 0; i < limit; i++) {
@@ -847,6 +884,100 @@ public class SchedulePlannerController {
         second.setHeaderText("Подтвердите ещё раз");
         second.setContentText("Удалить данные без возможности восстановления?");
         return second.showAndWait().orElse(ButtonType.CANCEL) == ButtonType.OK;
+    }
+
+    private boolean confirmReschedule(int lessonsInRange) {
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+        alert.setTitle("Переформировать расписание");
+        alert.setHeaderText("Занятия уже распределены");
+        alert.setContentText(
+            "В выбранном диапазоне уже есть занятий: " +
+            lessonsInRange +
+            ".\nПереформировать расписание?\n" +
+            "Текущие занятия в диапазоне будут удалены и распределены заново."
+        );
+
+        ButtonType reformButton = new ButtonType(
+            "Переформировать",
+            ButtonBar.ButtonData.OK_DONE
+        );
+        ButtonType cancelButton = new ButtonType(
+            "Отмена",
+            ButtonBar.ButtonData.CANCEL_CLOSE
+        );
+        alert.getButtonTypes().setAll(reformButton, cancelButton);
+        return alert.showAndWait().orElse(cancelButton) == reformButton;
+    }
+
+    private boolean validateDateRange() {
+        LocalDate startDate = startDatePicker.getValue();
+        LocalDate endDate = endDatePicker.getValue();
+        if (startDate != null && endDate != null && endDate.isBefore(startDate)) {
+            showError("Дата окончания не может быть раньше даты начала.");
+            return false;
+        }
+        return true;
+    }
+
+    private void appendRemainingHours(
+        StringBuilder builder,
+        AutoScheduleResult result
+    ) {
+        if (result.getRemainingHours() <= 0) {
+            return;
+        }
+
+        builder
+            .append("\nНераспределённые часы: ")
+            .append(result.getRemainingHours());
+        int limit = Math.min(5, result.getRemainingItems().size());
+        for (int i = 0; i < limit; i++) {
+            AutoScheduleResult.RemainingScheduleItem item = result
+                .getRemainingItems()
+                .get(i);
+            builder
+                .append("\n• ")
+                .append(item.getTopic())
+                .append(" / ")
+                .append(item.getLessonName())
+                .append(": ")
+                .append(item.getHours());
+        }
+        if (result.getRemainingItems().size() > limit) {
+            builder
+                .append("\nЕщё позиций: ")
+                .append(result.getRemainingItems().size() - limit);
+        }
+    }
+
+    private void appendRemainingHours(
+        StringJoiner joiner,
+        AutoScheduleResult result
+    ) {
+        if (result.getRemainingHours() <= 0) {
+            return;
+        }
+
+        joiner.add("Нераспределённые часы: " + result.getRemainingHours());
+        int limit = Math.min(5, result.getRemainingItems().size());
+        for (int i = 0; i < limit; i++) {
+            AutoScheduleResult.RemainingScheduleItem item = result
+                .getRemainingItems()
+                .get(i);
+            joiner.add(
+                "• " +
+                item.getTopic() +
+                " / " +
+                item.getLessonName() +
+                ": " +
+                item.getHours()
+            );
+        }
+        if (result.getRemainingItems().size() > limit) {
+            joiner.add(
+                "Ещё позиций: " + (result.getRemainingItems().size() - limit)
+            );
+        }
     }
 
     private static final class ImportResult {

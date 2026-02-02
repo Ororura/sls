@@ -1,16 +1,26 @@
 package com.ororura.slseleven.usecase;
 
 import java.time.LocalDate;
+import java.util.List;
 
 public class AutoScheduleResult {
     private final int createdLessons;
     private final LocalDate lastScheduledDate;
     private final int remainingHours;
+    private final List<RemainingScheduleItem> remainingItems;
 
-    public AutoScheduleResult(int createdLessons, LocalDate lastScheduledDate, int remainingHours) {
+    public AutoScheduleResult(
+        int createdLessons,
+        LocalDate lastScheduledDate,
+        int remainingHours,
+        List<RemainingScheduleItem> remainingItems
+    ) {
         this.createdLessons = createdLessons;
         this.lastScheduledDate = lastScheduledDate;
         this.remainingHours = remainingHours;
+        this.remainingItems = remainingItems == null
+            ? List.of()
+            : List.copyOf(remainingItems);
     }
 
     public int getCreatedLessons() {
@@ -23,5 +33,33 @@ public class AutoScheduleResult {
 
     public int getRemainingHours() {
         return remainingHours;
+    }
+
+    public List<RemainingScheduleItem> getRemainingItems() {
+        return remainingItems;
+    }
+
+    public static final class RemainingScheduleItem {
+        private final String topic;
+        private final String lessonName;
+        private final int hours;
+
+        public RemainingScheduleItem(String topic, String lessonName, int hours) {
+            this.topic = topic;
+            this.lessonName = lessonName;
+            this.hours = hours;
+        }
+
+        public String getTopic() {
+            return topic;
+        }
+
+        public String getLessonName() {
+            return lessonName;
+        }
+
+        public int getHours() {
+            return hours;
+        }
     }
 }
