@@ -51,16 +51,7 @@
                 onAction="#onExportXlsx"
                 styleClass="button-secondary"
             />
-            <Button
-                text="Удалить"
-                onAction="#onDeleteItem"
-                styleClass="button-danger"
-            />
-            <Button
-                text="Удалить все"
-                onAction="#onDeleteAll"
-                styleClass="button-danger"
-            />
+           
         </ToolBar>
     </top>
 
@@ -178,6 +169,16 @@
                     text="Сформировать расписание"
                     onAction="#onAutoSchedule"
                     styleClass="button-primary"
+                />
+                <Button
+                    text="Удалить"
+                    onAction="#onDeleteItem"
+                    styleClass="button-danger"
+                />
+                <Button
+                    text="Удалить все"
+                    onAction="#onDeleteAll"
+                    styleClass="button-danger"
                 />
             </HBox>
         </VBox>
