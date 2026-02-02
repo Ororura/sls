@@ -12,10 +12,15 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.YearMonth;
+import java.time.temporal.TemporalAdjusters;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.StringJoiner;
 import javafx.collections.FXCollections;
@@ -31,9 +36,12 @@ import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 import javafx.stage.Window;
 import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellStyle;
 import org.apache.poi.ss.usermodel.DataFormatter;
+import org.apache.poi.ss.usermodel.HorizontalAlignment;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.VerticalAlignment;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
@@ -570,6 +578,109 @@ public class LessonsListController {
         showExportDialog(format, exportText);
     }
 
+    @FXML
+    private void onWeeklyReport() {
+        if (lessonUseCase == null) {
+            Alert alert = new Alert(Alert.AlertType.ERROR);
+            alert.setTitle("Отчет");
+            alert.setHeaderText(null);
+            alert.setContentText("Ошибка: Use case не инициализирован");
+            alert.showAndWait();
+            return;
+        }
+
+        List<Lesson> lessons = lessonUseCase.getAllLessons();
+        if (lessons.isEmpty()) {
+            Alert alert = new Alert(Alert.AlertType.INFORMATION);
+            alert.setTitle("Отчет");
+            alert.setHeaderText(null);
+            alert.setContentText("Нет данных для отчета.");
+            alert.showAndWait();
+            return;
+        }
+
+        WeeklyReportData reportData = buildWeeklyReportData(lessons);
+
+        FileChooser chooser = new FileChooser();
+        chooser.setTitle("Сохранить отчет по неделям");
+        chooser
+            .getExtensionFilters()
+            .add(new FileChooser.ExtensionFilter("Excel (*.xlsx)", "*.xlsx"));
+        chooser.setInitialFileName(
+            "weekly_report_" + LocalDate.now() + ".xlsx"
+        );
+        java.io.File file = chooser.showSaveDialog(
+            lessonTable.getScene().getWindow()
+        );
+        if (file == null) {
+            return;
+        }
+
+        try (Workbook workbook = new XSSFWorkbook()) {
+            Sheet sheet = workbook.createSheet("Отчет по неделям");
+
+            CellStyle headerStyle = workbook.createCellStyle();
+            headerStyle.setWrapText(true);
+            headerStyle.setAlignment(HorizontalAlignment.CENTER);
+            headerStyle.setVerticalAlignment(VerticalAlignment.CENTER);
+
+            CellStyle contentStyle = workbook.createCellStyle();
+            contentStyle.setWrapText(true);
+            contentStyle.setVerticalAlignment(VerticalAlignment.TOP);
+
+            Row headerRow = sheet.createRow(0);
+            for (int i = 0; i < reportData.headers.size(); i++) {
+                Cell cell = headerRow.createCell(i);
+                cell.setCellValue(reportData.headers.get(i));
+                cell.setCellStyle(headerStyle);
+            }
+            headerRow.setHeightInPoints(42);
+
+            for (int r = 0; r < reportData.rows.size(); r++) {
+                Row row = sheet.createRow(r + 1);
+                List<String> values = reportData.rows.get(r);
+                int maxLines = 1;
+                for (int c = 0; c < values.size(); c++) {
+                    String value = values.get(c);
+                    Cell cell = row.createCell(c);
+                    cell.setCellValue(value);
+                    cell.setCellStyle(contentStyle);
+                    int lines = value == null || value.isBlank()
+                        ? 1
+                        : value.split("\\R").length;
+                    if (lines > maxLines) {
+                        maxLines = lines;
+                    }
+                }
+                row.setHeightInPoints(Math.max(20, maxLines * 14));
+            }
+
+            for (int i = 0; i < reportData.headers.size(); i++) {
+                sheet.autoSizeColumn(i);
+                int width = sheet.getColumnWidth(i);
+                sheet.setColumnWidth(i, Math.min(width + 800, 18000));
+            }
+
+            try (FileOutputStream out = new FileOutputStream(file)) {
+                workbook.write(out);
+            }
+
+            Alert alert = new Alert(Alert.AlertType.INFORMATION);
+            alert.setTitle("Отчет");
+            alert.setHeaderText(null);
+            alert.setContentText("Файл сохранён: " + file.getName());
+            alert.showAndWait();
+        } catch (Exception ex) {
+            Alert alert = new Alert(Alert.AlertType.ERROR);
+            alert.setTitle("Ошибка");
+            alert.setHeaderText(null);
+            alert.setContentText(
+                "Не удалось сохранить отчет: " + ex.getMessage()
+            );
+            alert.showAndWait();
+        }
+    }
+
     private ExportFormat chooseExportFormat() {
         ChoiceDialog<ExportFormat> dialog = new ChoiceDialog<>(
             ExportFormat.TSV,
@@ -1065,6 +1176,128 @@ public class LessonsListController {
                 value.indexOf('\r') >= 0;
             String escaped = value.replace("\"", "\"\"");
             return needsQuotes ? "\"" + escaped + "\"" : escaped;
+        }
+    }
+
+    private WeeklyReportData buildWeeklyReportData(List<Lesson> sourceLessons) {
+        List<Lesson> lessons = new ArrayList<>(sourceLessons);
+        lessons.sort(
+            Comparator.comparing(Lesson::getDate).thenComparing(Lesson::getTime)
+        );
+
+        LocalDate minDate = lessons.get(0).getDate();
+        LocalDate maxDate = lessons.get(lessons.size() - 1).getDate();
+        LocalDate weekStart = minDate.with(TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY));
+        LocalDate finalWeekStart = maxDate.with(TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY));
+
+        List<WeekRange> weeks = new ArrayList<>();
+        LocalDate cursor = weekStart;
+        while (!cursor.isAfter(finalWeekStart)) {
+            weeks.add(new WeekRange(cursor, cursor.plusDays(4)));
+            cursor = cursor.plusWeeks(1);
+        }
+
+        Map<String, List<Lesson>> bySubject = new LinkedHashMap<>();
+        for (Lesson lesson : lessons) {
+            bySubject
+                .computeIfAbsent(lesson.getTopic(), key -> new ArrayList<>())
+                .add(lesson);
+        }
+
+        List<String> headers = new ArrayList<>();
+        headers.add("№ п/п");
+        headers.add("Предмет обучения");
+        headers.add("Количество часов");
+        for (WeekRange week : weeks) {
+            headers.add(week.title());
+        }
+        List<List<String>> rows = new ArrayList<>();
+
+        int index = 1;
+        for (Map.Entry<String, List<Lesson>> entry : bySubject.entrySet()) {
+            String subject = entry.getKey();
+            List<Lesson> subjectLessons = entry.getValue();
+            List<String> row = new ArrayList<>();
+            row.add(String.valueOf(index++));
+            row.add(safeValue(subject));
+            row.add(String.valueOf(subjectLessons.size()));
+
+            for (WeekRange week : weeks) {
+                Map<String, Integer> grouped = new LinkedHashMap<>();
+                for (Lesson lesson : subjectLessons) {
+                    if (week.contains(lesson.getDate())) {
+                        String key =
+                            safeValue(lesson.getLessonName()) +
+                            "/" +
+                            safeValue(lesson.getClassName());
+                        grouped.merge(key, 1, Integer::sum);
+                    }
+                }
+
+                if (grouped.isEmpty()) {
+                    row.add("");
+                    continue;
+                }
+
+                StringJoiner cell = new StringJoiner(System.lineSeparator());
+                for (Map.Entry<String, Integer> group : grouped.entrySet()) {
+                    cell.add(group.getKey());
+                    cell.add(String.valueOf(group.getValue()));
+                }
+                row.add(cell.toString());
+            }
+
+            rows.add(row);
+        }
+
+        return new WeeklyReportData(headers, rows);
+    }
+
+    private static final class WeekRange {
+        private final LocalDate start;
+        private final LocalDate end;
+
+        private WeekRange(LocalDate start, LocalDate end) {
+            this.start = start;
+            this.end = end;
+        }
+
+        private boolean contains(LocalDate date) {
+            return !date.isBefore(start) && !date.isAfter(end);
+        }
+
+        private String title() {
+            YearMonth ym = YearMonth.from(start);
+            int weekInMonth = ((start.getDayOfMonth() - 1) / 7) + 1;
+            String monthName = start
+                .format(DateTimeFormatter.ofPattern("LLLL", new Locale("ru")))
+                .substring(0, 1)
+                .toUpperCase(new Locale("ru")) +
+                start
+                    .format(DateTimeFormatter.ofPattern("LLLL", new Locale("ru")))
+                    .substring(1);
+            return (
+                monthName +
+                " " +
+                ym.getYear() +
+                " (" +
+                weekInMonth +
+                " нед: " +
+                start.format(DateTimeFormatter.ofPattern("dd.MM")) +
+                "-" +
+                end.format(DateTimeFormatter.ofPattern("dd.MM")) +
+                ")"
+            );
+        }
+    }
+
+    private static final class WeeklyReportData {
+        private final List<String> headers;
+        private final List<List<String>> rows;
+
+        private WeeklyReportData(List<String> headers, List<List<String>> rows) {
+            this.headers = headers;
+            this.rows = rows;
         }
     }
 

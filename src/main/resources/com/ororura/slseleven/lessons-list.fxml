@@ -43,6 +43,11 @@
                 styleClass="button-secondary"
             />
             <Button
+                text="Отчет по неделям"
+                onAction="#onWeeklyReport"
+                styleClass="button-secondary"
+            />
+            <Button
                 text="Обновить"
                 onAction="#onRefresh"
                 styleClass="button-ghost"
