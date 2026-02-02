@@ -46,9 +46,19 @@
                 <GridPane fx:id="calendarGrid" styleClass="calendar-grid" />
             </VBox>
 
-            <VBox fx:id="lessonsList" spacing="10" styleClass="sidebar">
-                <Label text="Занятия" styleClass="section-title" />
-            </VBox>
+            <ScrollPane
+                fitToWidth="true"
+                hbarPolicy="NEVER"
+                vbarPolicy="AS_NEEDED"
+                styleClass="sidebar"
+                HBox.hgrow="ALWAYS"
+            >
+                <content>
+                    <VBox fx:id="lessonsList" spacing="10" styleClass="sidebar">
+                        <Label text="Занятия" styleClass="section-title" />
+                    </VBox>
+                </content>
+            </ScrollPane>
         </HBox>
     </center>
 </BorderPane>

@@ -83,8 +83,12 @@ class ScheduleUseCaseIntegrationTest {
         LocalDate tuesday = monday.plusDays(1);
         scheduleUseCase.saveMaxHoursByDay(onlyDayCapacity(DayOfWeek.MONDAY, 4));
 
-        lessonRepository.save(new Lesson("Math", "L1", LocalTime.of(9, 0), "A1", "Ivanov", monday));
-        lessonRepository.save(new Lesson("Math", "L1", LocalTime.of(10, 0), "A1", "Ivanov", monday));
+        Lesson firstAuto = new Lesson("Math", "L1", LocalTime.of(9, 0), "A1", "Ivanov", monday);
+        firstAuto.setAutoScheduled(true);
+        lessonRepository.save(firstAuto);
+        Lesson secondAuto = new Lesson("Math", "L1", LocalTime.of(10, 0), "A1", "Ivanov", monday);
+        secondAuto.setAutoScheduled(true);
+        lessonRepository.save(secondAuto);
         lessonRepository.save(new Lesson("Physics", "Lab", LocalTime.of(9, 0), "B1", "Petrov", tuesday));
         scheduleItemRepository.save(new ScheduleItem("Math", "L1", "A1", "Ivanov", 1));
 
@@ -123,6 +127,44 @@ class ScheduleUseCaseIntegrationTest {
         );
 
         assertTrue(ex.getMessage().contains("Дата окончания"));
+    }
+
+    @Test
+    void reschedule_shouldReturnRemainingAutoLessonsToPool() {
+        LocalDate monday = LocalDate.of(2026, 2, 2);
+        LocalDate tuesday = monday.plusDays(1);
+        scheduleUseCase.saveMaxHoursByDay(onlyDayCapacity(DayOfWeek.MONDAY, 1));
+
+        Lesson inRange = new Lesson(
+            "Math",
+            "T1",
+            "Class A",
+            LocalTime.of(9, 0),
+            "A1",
+            "Ivanov",
+            monday
+        );
+        inRange.setAutoScheduled(true);
+        lessonRepository.save(inRange);
+
+        Lesson afterRange = new Lesson(
+            "Math",
+            "T2",
+            "Class B",
+            LocalTime.of(10, 0),
+            "A1",
+            "Ivanov",
+            tuesday
+        );
+        afterRange.setAutoScheduled(true);
+        lessonRepository.save(afterRange);
+
+        AutoScheduleResult result = scheduleUseCase.reschedule(monday, monday);
+
+        assertEquals(1, result.getCreatedLessons());
+        assertEquals(1, result.getRemainingHours());
+        assertTrue(lessonRepository.findByDate(tuesday).isEmpty());
+        assertEquals(1, scheduleItemRepository.findAll().size());
     }
 
     private Map<DayOfWeek, Integer> onlyDayCapacity(DayOfWeek day, int capacity) {

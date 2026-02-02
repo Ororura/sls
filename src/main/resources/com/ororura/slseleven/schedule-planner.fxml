@@ -171,6 +171,11 @@
                     styleClass="button-primary"
                 />
                 <Button
+                    text="Перераспределить"
+                    onAction="#onReschedule"
+                    styleClass="button-secondary"
+                />
+                <Button
                     text="Удалить"
                     onAction="#onDeleteItem"
                     styleClass="button-danger"

@@ -491,12 +491,12 @@ public class SchedulePlannerController {
             LocalDate endDate = endDatePicker.getValue();
             AutoScheduleResult result;
 
-            int lessonsInRange = scheduleUseCase.countLessonsInRange(
+            int autoLessonsInRange = scheduleUseCase.countAutoScheduledLessonsForReschedule(
                 startDate,
                 endDate
             );
-            boolean canReschedule = data.isEmpty() && lessonsInRange > 0;
-            if (canReschedule && confirmReschedule(lessonsInRange)) {
+            boolean canReschedule = autoLessonsInRange > 0;
+            if (canReschedule && confirmReschedule(autoLessonsInRange)) {
                 result = scheduleUseCase.reschedule(startDate, endDate);
             } else if (canReschedule) {
                 return;
@@ -530,6 +530,62 @@ public class SchedulePlannerController {
             showInfo(message.toString());
         } catch (Exception e) {
             showError("Ошибка при распределении: " + e.getMessage());
+        }
+    }
+
+    @FXML
+    private void onReschedule() {
+        if (scheduleUseCase == null) {
+            showError("Ошибка: Use case не инициализирован");
+            return;
+        }
+        if (startDatePicker.getValue() == null) {
+            showError("Укажите дату начала");
+            return;
+        }
+        if (!validateDateRange()) {
+            return;
+        }
+
+        saveSettings();
+
+        try {
+            LocalDate startDate = startDatePicker.getValue();
+            LocalDate endDate = endDatePicker.getValue();
+            int autoLessonsInRange =
+                scheduleUseCase.countAutoScheduledLessonsForReschedule(
+                    startDate,
+                    endDate
+                );
+            if (autoLessonsInRange <= 0) {
+                showInfo(
+                    "В выбранном диапазоне нет авто-распределённых занятий для переформирования."
+                );
+                return;
+            }
+            if (!confirmReschedule(autoLessonsInRange)) {
+                return;
+            }
+
+            AutoScheduleResult result = scheduleUseCase.reschedule(
+                startDate,
+                endDate
+            );
+            reload();
+
+            StringBuilder message = new StringBuilder();
+            message
+                .append("Перераспределено занятий: ")
+                .append(result.getCreatedLessons());
+            if (result.getLastScheduledDate() != null) {
+                message
+                    .append("\nПоследняя дата: ")
+                    .append(result.getLastScheduledDate());
+            }
+            appendRemainingHours(message, result);
+            showInfo(message.toString());
+        } catch (Exception e) {
+            showError("Ошибка при перераспределении: " + e.getMessage());
         }
     }
 
@@ -904,12 +960,12 @@ public class SchedulePlannerController {
     private boolean confirmReschedule(int lessonsInRange) {
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
         alert.setTitle("Переформировать расписание");
-        alert.setHeaderText("Занятия уже распределены");
+        alert.setHeaderText("Авторасписание уже распределено");
         alert.setContentText(
-            "В выбранном диапазоне уже есть занятий: " +
+            "В выбранном диапазоне авто-занятий: " +
             lessonsInRange +
             ".\nПереформировать расписание?\n" +
-            "Текущие занятия в диапазоне будут удалены и распределены заново."
+            "Авто-занятия будут возвращены в пул и распределены заново."
         );
 
         ButtonType reformButton = new ButtonType(

@@ -86,12 +86,33 @@ public class ScheduleUseCase {
         return findLessonsInRange(startDate, endDate).size();
     }
 
+    public int countAutoScheduledLessonsInRange(
+        LocalDate startDate,
+        LocalDate endDate
+    ) {
+        validateDateRange(startDate, endDate);
+        return findAutoScheduledLessonsInRange(startDate, endDate).size();
+    }
+
+    public int countAutoScheduledLessonsForReschedule(
+        LocalDate startDate,
+        LocalDate endDate
+    ) {
+        validateDateRange(startDate, endDate);
+        return findAutoScheduledLessonsForReschedule(startDate, endDate).size();
+    }
+
     public AutoScheduleResult reschedule(LocalDate startDate, LocalDate endDate) {
         validateDateRange(startDate, endDate);
 
-        List<Lesson> lessonsToReschedule = findLessonsInRange(startDate, endDate);
+        List<Lesson> lessonsToReschedule = findAutoScheduledLessonsForReschedule(
+            startDate,
+            endDate
+        );
         if (lessonsToReschedule.isEmpty()) {
-            throw new IllegalStateException("В выбранном диапазоне нет занятий для переформирования");
+            throw new IllegalStateException(
+                "В выбранном диапазоне нет авто-распределённых занятий для переформирования"
+            );
         }
 
         List<ScheduleItem> queuedItems = scheduleItemRepository.findAll();
@@ -315,6 +336,44 @@ public class ScheduleUseCase {
             }
         }
         return filtered;
+    }
+
+    private List<Lesson> findAutoScheduledLessonsInRange(
+        LocalDate startDate,
+        LocalDate endDate
+    ) {
+        List<Lesson> lessons = findLessonsInRange(startDate, endDate);
+        List<Lesson> autoLessons = new ArrayList<>();
+        for (Lesson lesson : lessons) {
+            if (lesson.isAutoScheduled()) {
+                autoLessons.add(lesson);
+            }
+        }
+        return autoLessons;
+    }
+
+    private List<Lesson> findAutoScheduledLessonsForReschedule(
+        LocalDate startDate,
+        LocalDate endDate
+    ) {
+        List<Lesson> autoLessons = findAutoScheduledLessonsInRange(
+            startDate,
+            endDate
+        );
+        if (endDate == null) {
+            return autoLessons;
+        }
+
+        List<Lesson> allLessons = lessonRepository.findAll();
+        for (Lesson lesson : allLessons) {
+            if (
+                lesson.isAutoScheduled() &&
+                lesson.getDate().isAfter(endDate)
+            ) {
+                autoLessons.add(lesson);
+            }
+        }
+        return autoLessons;
     }
 
     private void validateItem(ScheduleItem item) {
