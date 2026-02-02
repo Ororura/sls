@@ -7,11 +7,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.ororura.slseleven.domain.model.Lesson;
 import com.ororura.slseleven.domain.model.ScheduleItem;
 import com.ororura.slseleven.domain.repository.LessonRepository;
+import com.ororura.slseleven.domain.repository.ScheduleHistoryRepository;
 import com.ororura.slseleven.domain.repository.ScheduleItemRepository;
 import com.ororura.slseleven.domain.repository.ScheduleSettingsRepository;
 import com.ororura.slseleven.infrastructure.persistence.migrations.SchemaInitializer;
 import com.ororura.slseleven.infrastructure.persistence.sqlite.LessonRepositorySQLite;
 import com.ororura.slseleven.infrastructure.persistence.sqlite.SQLiteConnectionProvider;
+import com.ororura.slseleven.infrastructure.persistence.sqlite.ScheduleHistoryRepositorySQLite;
 import com.ororura.slseleven.infrastructure.persistence.sqlite.ScheduleItemRepositorySQLite;
 import com.ororura.slseleven.infrastructure.persistence.sqlite.ScheduleSettingsRepositorySQLite;
 import java.nio.file.Path;
@@ -44,11 +46,14 @@ class ScheduleUseCaseIntegrationTest {
         scheduleItemRepository = new ScheduleItemRepositorySQLite(provider);
         ScheduleSettingsRepository scheduleSettingsRepository =
             new ScheduleSettingsRepositorySQLite(provider);
+        ScheduleHistoryRepository scheduleHistoryRepository =
+            new ScheduleHistoryRepositorySQLite(provider);
 
         scheduleUseCase = new ScheduleUseCase(
             lessonRepository,
             scheduleItemRepository,
-            scheduleSettingsRepository
+            scheduleSettingsRepository,
+            scheduleHistoryRepository
         );
     }
 

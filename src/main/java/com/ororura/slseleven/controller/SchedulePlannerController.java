@@ -418,6 +418,7 @@ public class SchedulePlannerController {
             saveSettings();
 
             try {
+                saveHistorySnapshot("Перед импортом и распределением");
                 AutoScheduleResult scheduleResult =
                     scheduleUseCase.autoSchedule(
                         startDatePicker.getValue(),
@@ -471,6 +472,54 @@ public class SchedulePlannerController {
     }
 
     @FXML
+    private void onHistory() {
+        if (scheduleUseCase == null) {
+            showError("Ошибка: Use case не инициализирован");
+            return;
+        }
+        List<ScheduleUseCase.HistoryEntry> entries =
+            scheduleUseCase.getHistoryEntries();
+        if (entries.isEmpty()) {
+            showInfo("История распределений пуста.");
+            return;
+        }
+
+        ChoiceDialog<ScheduleUseCase.HistoryEntry> dialog = new ChoiceDialog<>(
+            entries.get(0),
+            entries
+        );
+        dialog.setTitle("История распределений");
+        dialog.setHeaderText("Выберите снимок для восстановления");
+        dialog.setContentText("Снимок:");
+        UiStyles.apply(dialog.getDialogPane());
+
+        ScheduleUseCase.HistoryEntry selected = dialog
+            .showAndWait()
+            .orElse(null);
+        if (selected == null) {
+            return;
+        }
+
+        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+        confirm.setTitle("Подтверждение");
+        confirm.setHeaderText("Восстановить выбранный снимок?");
+        confirm.setContentText(
+            "Текущие занятия и пул нераспределённых будут заменены."
+        );
+        if (confirm.showAndWait().orElse(ButtonType.CANCEL) != ButtonType.OK) {
+            return;
+        }
+
+        boolean restored = scheduleUseCase.restoreFromHistory(selected.getId());
+        if (!restored) {
+            showError("Не удалось восстановить выбранный снимок.");
+            return;
+        }
+        reload();
+        showInfo("Снимок успешно восстановлен.");
+    }
+
+    @FXML
     private void onLoadArchiveToPool() {
         if (scheduleUseCase == null) {
             showError("Ошибка: Use case не инициализирован");
@@ -516,6 +565,7 @@ public class SchedulePlannerController {
             LocalDate startDate = startDatePicker.getValue();
             LocalDate endDate = endDatePicker.getValue();
             AutoScheduleResult result;
+            saveHistorySnapshot("Перед распределением");
 
             int autoLessonsInRange = scheduleUseCase.countAutoScheduledLessonsForReschedule(
                 startDate,
@@ -578,6 +628,7 @@ public class SchedulePlannerController {
         try {
             LocalDate startDate = startDatePicker.getValue();
             LocalDate endDate = endDatePicker.getValue();
+            saveHistorySnapshot("Перед перераспределением");
             int autoLessonsInRange =
                 scheduleUseCase.countAutoScheduledLessonsForReschedule(
                     startDate,
@@ -620,6 +671,12 @@ public class SchedulePlannerController {
             new SpinnerValueFactory.IntegerSpinnerValueFactory(0, 8, 0);
         spinner.setValueFactory(factory);
         spinner.setEditable(true);
+    }
+
+    private void saveHistorySnapshot(String label) {
+        if (scheduleUseCase != null) {
+            scheduleUseCase.createHistorySnapshot(label);
+        }
     }
 
     private void reload() {

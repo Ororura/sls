@@ -39,6 +39,15 @@ public class SchemaInitializer {
             "    max_hours INTEGER NOT NULL\n" +
             ");";
 
+        String scheduleHistorySql =
+            "CREATE TABLE IF NOT EXISTS schedule_history (\n" +
+            "    id TEXT PRIMARY KEY,\n" +
+            "    created_at TEXT NOT NULL,\n" +
+            "    label TEXT NOT NULL,\n" +
+            "    lessons_blob TEXT NOT NULL,\n" +
+            "    schedule_items_blob TEXT NOT NULL\n" +
+            ");";
+
         try (
             Connection c = provider.getConnection();
             Statement s = c.createStatement()
@@ -46,6 +55,7 @@ public class SchemaInitializer {
             s.execute(lessonsSql);
             s.execute(scheduleItemsSql);
             s.execute(scheduleSettingsSql);
+            s.execute(scheduleHistorySql);
             ensureColumnExists(
                 s,
                 "ALTER TABLE lessons ADD COLUMN class_name TEXT NOT NULL DEFAULT ''"

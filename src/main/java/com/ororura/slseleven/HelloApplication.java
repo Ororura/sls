@@ -2,11 +2,13 @@ package com.ororura.slseleven;
 
 import com.ororura.slseleven.controller.CalendarController;
 import com.ororura.slseleven.domain.repository.LessonRepository;
+import com.ororura.slseleven.domain.repository.ScheduleHistoryRepository;
 import com.ororura.slseleven.domain.repository.ScheduleItemRepository;
 import com.ororura.slseleven.domain.repository.ScheduleSettingsRepository;
 import com.ororura.slseleven.infrastructure.persistence.migrations.SchemaInitializer;
 import com.ororura.slseleven.infrastructure.persistence.sqlite.LessonRepositorySQLite;
 import com.ororura.slseleven.infrastructure.persistence.sqlite.SQLiteConnectionProvider;
+import com.ororura.slseleven.infrastructure.persistence.sqlite.ScheduleHistoryRepositorySQLite;
 import com.ororura.slseleven.infrastructure.persistence.sqlite.ScheduleItemRepositorySQLite;
 import com.ororura.slseleven.infrastructure.persistence.sqlite.ScheduleSettingsRepositorySQLite;
 import com.ororura.slseleven.ui.UiStyles;
@@ -47,10 +49,13 @@ public class HelloApplication extends Application {
             new ScheduleItemRepositorySQLite(provider);
         ScheduleSettingsRepository scheduleSettingsRepository =
             new ScheduleSettingsRepositorySQLite(provider);
+        ScheduleHistoryRepository scheduleHistoryRepository =
+            new ScheduleHistoryRepositorySQLite(provider);
         ScheduleUseCase scheduleUseCase = new ScheduleUseCase(
             lessonRepository,
             scheduleItemRepository,
-            scheduleSettingsRepository
+            scheduleSettingsRepository,
+            scheduleHistoryRepository
         );
 
         // Загрузка FXML и установка контроллера

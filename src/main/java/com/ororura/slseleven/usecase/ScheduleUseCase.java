@@ -1,14 +1,19 @@
 package com.ororura.slseleven.usecase;
 
 import com.ororura.slseleven.domain.model.Lesson;
+import com.ororura.slseleven.domain.model.ScheduleHistorySnapshot;
 import com.ororura.slseleven.domain.model.ScheduleItem;
+import com.ororura.slseleven.domain.repository.ScheduleHistoryRepository;
 import com.ororura.slseleven.domain.repository.LessonRepository;
 import com.ororura.slseleven.domain.repository.ScheduleItemRepository;
 import com.ororura.slseleven.domain.repository.ScheduleSettingsRepository;
+import java.nio.charset.StandardCharsets;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -33,15 +38,18 @@ public class ScheduleUseCase {
     private final LessonRepository lessonRepository;
     private final ScheduleItemRepository scheduleItemRepository;
     private final ScheduleSettingsRepository scheduleSettingsRepository;
+    private final ScheduleHistoryRepository scheduleHistoryRepository;
 
     public ScheduleUseCase(
         LessonRepository lessonRepository,
         ScheduleItemRepository scheduleItemRepository,
-        ScheduleSettingsRepository scheduleSettingsRepository
+        ScheduleSettingsRepository scheduleSettingsRepository,
+        ScheduleHistoryRepository scheduleHistoryRepository
     ) {
         this.lessonRepository = lessonRepository;
         this.scheduleItemRepository = scheduleItemRepository;
         this.scheduleSettingsRepository = scheduleSettingsRepository;
+        this.scheduleHistoryRepository = scheduleHistoryRepository;
     }
 
     public List<ScheduleItem> getAllItems() {
@@ -83,6 +91,68 @@ public class ScheduleUseCase {
 
     public Map<DayOfWeek, Integer> getMaxHoursByDay() {
         return scheduleSettingsRepository.getMaxHoursByDay();
+    }
+
+    public List<HistoryEntry> getHistoryEntries() {
+        List<ScheduleHistorySnapshot> snapshots = scheduleHistoryRepository.findAll();
+        List<HistoryEntry> entries = new ArrayList<>();
+        for (ScheduleHistorySnapshot snapshot : snapshots) {
+            entries.add(
+                new HistoryEntry(
+                    snapshot.getId(),
+                    snapshot.getCreatedAt(),
+                    snapshot.getLabel()
+                )
+            );
+        }
+        return entries;
+    }
+
+    public boolean createHistorySnapshot(String label) {
+        List<Lesson> lessons = lessonRepository.findAll();
+        List<ScheduleItem> items = scheduleItemRepository.findAll();
+        if (lessons.isEmpty() && items.isEmpty()) {
+            return false;
+        }
+
+        String snapshotId = java.util.UUID.randomUUID().toString();
+        ScheduleHistorySnapshot snapshot = new ScheduleHistorySnapshot(
+            snapshotId,
+            LocalDateTime.now(),
+            label == null || label.isBlank() ? "Ручной снимок" : label,
+            serializeLessons(lessons),
+            serializeScheduleItems(items)
+        );
+        scheduleHistoryRepository.save(snapshot);
+        return true;
+    }
+
+    public boolean restoreFromHistory(String historyId) {
+        if (historyId == null || historyId.isBlank()) {
+            throw new IllegalArgumentException("ID снимка не может быть пустым");
+        }
+        ScheduleHistorySnapshot snapshot = scheduleHistoryRepository
+            .findById(historyId)
+            .orElse(null);
+        if (snapshot == null) {
+            return false;
+        }
+
+        List<Lesson> lessons = deserializeLessons(snapshot.getLessonsBlob());
+        List<ScheduleItem> items = deserializeScheduleItems(
+            snapshot.getScheduleItemsBlob()
+        );
+
+        lessonRepository.deleteAll();
+        scheduleItemRepository.deleteAll();
+
+        for (Lesson lesson : lessons) {
+            lessonRepository.save(lesson);
+        }
+        for (ScheduleItem item : items) {
+            scheduleItemRepository.save(item);
+        }
+        return true;
     }
 
     public void saveMaxHoursByDay(Map<DayOfWeek, Integer> maxHoursByDay) {
@@ -533,5 +603,161 @@ public class ScheduleUseCase {
             result = 31 * result + instructor.hashCode();
             return result;
         }
+    }
+
+    public static final class HistoryEntry {
+        private final String id;
+        private final LocalDateTime createdAt;
+        private final String label;
+
+        public HistoryEntry(String id, LocalDateTime createdAt, String label) {
+            this.id = id;
+            this.createdAt = createdAt;
+            this.label = label;
+        }
+
+        public String getId() {
+            return id;
+        }
+
+        public LocalDateTime getCreatedAt() {
+            return createdAt;
+        }
+
+        public String getLabel() {
+            return label;
+        }
+
+        @Override
+        public String toString() {
+            return createdAt + " — " + label;
+        }
+    }
+
+    private String serializeLessons(List<Lesson> lessons) {
+        StringBuilder sb = new StringBuilder();
+        for (Lesson lesson : lessons) {
+            sb
+                .append(encode(lesson.getId()))
+                .append('\t')
+                .append(encode(lesson.getTopic()))
+                .append('\t')
+                .append(encode(lesson.getLessonName()))
+                .append('\t')
+                .append(encode(lesson.getClassName()))
+                .append('\t')
+                .append(lesson.isAutoScheduled() ? "1" : "0")
+                .append('\t')
+                .append(lesson.isArchived() ? "1" : "0")
+                .append('\t')
+                .append(lesson.getTime())
+                .append('\t')
+                .append(encode(lesson.getLocation()))
+                .append('\t')
+                .append(encode(lesson.getInstructor()))
+                .append('\t')
+                .append(lesson.getDate())
+                .append('\n');
+        }
+        return sb.toString();
+    }
+
+    private String serializeScheduleItems(List<ScheduleItem> items) {
+        StringBuilder sb = new StringBuilder();
+        for (ScheduleItem item : items) {
+            sb
+                .append(encode(item.getId()))
+                .append('\t')
+                .append(encode(item.getTopic()))
+                .append('\t')
+                .append(encode(item.getLessonName()))
+                .append('\t')
+                .append(encode(item.getClassName()))
+                .append('\t')
+                .append(encode(item.getLocation()))
+                .append('\t')
+                .append(encode(item.getInstructor()))
+                .append('\t')
+                .append(item.getHours())
+                .append('\t')
+                .append(item.getCreatedAt())
+                .append('\n');
+        }
+        return sb.toString();
+    }
+
+    private List<Lesson> deserializeLessons(String blob) {
+        List<Lesson> lessons = new ArrayList<>();
+        if (blob == null || blob.isBlank()) {
+            return lessons;
+        }
+        String[] lines = blob.split("\\R");
+        for (String line : lines) {
+            if (line.isBlank()) {
+                continue;
+            }
+            String[] parts = line.split("\t", -1);
+            if (parts.length < 10) {
+                continue;
+            }
+            Lesson lesson = new Lesson();
+            lesson.setId(decode(parts[0]));
+            lesson.setTopic(decode(parts[1]));
+            lesson.setLessonName(decode(parts[2]));
+            lesson.setClassName(decode(parts[3]));
+            lesson.setAutoScheduled("1".equals(parts[4]));
+            lesson.setArchived("1".equals(parts[5]));
+            lesson.setTime(LocalTime.parse(parts[6]));
+            lesson.setLocation(decode(parts[7]));
+            lesson.setInstructor(decode(parts[8]));
+            lesson.setDate(LocalDate.parse(parts[9]));
+            lessons.add(lesson);
+        }
+        return lessons;
+    }
+
+    private List<ScheduleItem> deserializeScheduleItems(String blob) {
+        List<ScheduleItem> items = new ArrayList<>();
+        if (blob == null || blob.isBlank()) {
+            return items;
+        }
+        String[] lines = blob.split("\\R");
+        for (String line : lines) {
+            if (line.isBlank()) {
+                continue;
+            }
+            String[] parts = line.split("\t", -1);
+            if (parts.length < 8) {
+                continue;
+            }
+            ScheduleItem item = new ScheduleItem();
+            item.setId(decode(parts[0]));
+            item.setTopic(decode(parts[1]));
+            item.setLessonName(decode(parts[2]));
+            item.setClassName(decode(parts[3]));
+            item.setLocation(decode(parts[4]));
+            item.setInstructor(decode(parts[5]));
+            item.setHours(Integer.parseInt(parts[6]));
+            item.setCreatedAt(LocalDateTime.parse(parts[7]));
+            items.add(item);
+        }
+        return items;
+    }
+
+    private String encode(String value) {
+        String safe = value == null ? "" : value;
+        return Base64
+            .getEncoder()
+            .encodeToString(safe.getBytes(StandardCharsets.UTF_8));
+    }
+
+    private String decode(String value) {
+        if (value == null || value.isBlank()) {
+            return "";
+        }
+        return new String(
+            Base64.getDecoder().decode(value),
+            StandardCharsets.UTF_8
+        );
     }
 }

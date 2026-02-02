@@ -171,6 +171,11 @@
                     styleClass="button-secondary"
                 />
                 <Button
+                    text="История"
+                    onAction="#onHistory"
+                    styleClass="button-secondary"
+                />
+                <Button
                     text="Удалить"
                     onAction="#onDeleteItem"
                     styleClass="button-danger"
