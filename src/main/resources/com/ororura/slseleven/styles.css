@@ -123,10 +123,44 @@
     -fx-effect: dropshadow(gaussian, rgba(16, 24, 40, 0.12), 12, 0.2, 0, 2);
 }
 
+.lesson-card-current {
+    -fx-border-color: #2e7d32;
+    -fx-border-width: 2;
+    -fx-background-color: #f2fbf4;
+}
+
+.lesson-card-past {
+    -fx-background-color: #f2f4f7;
+    -fx-border-color: #d0d5dd;
+    -fx-effect: none;
+}
+
 .lesson-time {
     -fx-font-size: 14px;
     -fx-font-weight: 700;
     -fx-text-fill: #1f6feb;
+}
+
+.lesson-time-current {
+    -fx-text-fill: #2e7d32;
+}
+
+.lesson-status-current {
+    -fx-text-fill: #157f3b;
+    -fx-font-size: 11px;
+    -fx-font-weight: 700;
+    -fx-background-color: #d4f5dd;
+    -fx-background-radius: 8;
+    -fx-padding: 2 8;
+}
+
+.lesson-status-past {
+    -fx-text-fill: #667085;
+    -fx-font-size: 11px;
+    -fx-font-weight: 600;
+    -fx-background-color: #eaecf0;
+    -fx-background-radius: 8;
+    -fx-padding: 2 8;
 }
 
 .lesson-meta {

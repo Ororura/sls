@@ -7,6 +7,7 @@ import com.ororura.slseleven.usecase.LessonUseCase;
 import com.ororura.slseleven.usecase.ScheduleUseCase;
 import java.io.IOException;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -56,6 +57,25 @@ public class CalendarController {
     );
     private static final PseudoClass PSEUDO_SELECTED =
         PseudoClass.getPseudoClass("selected");
+    private static final Map<LocalTime, LocalTime> LESSON_END_BY_START =
+        Map.of(
+            LocalTime.of(9, 0),
+            LocalTime.of(9, 50),
+            LocalTime.of(9, 50),
+            LocalTime.of(10, 40),
+            LocalTime.of(10, 50),
+            LocalTime.of(11, 40),
+            LocalTime.of(11, 40),
+            LocalTime.of(12, 30),
+            LocalTime.of(12, 40),
+            LocalTime.of(13, 30),
+            LocalTime.of(13, 30),
+            LocalTime.of(14, 20),
+            LocalTime.of(16, 0),
+            LocalTime.of(16, 50),
+            LocalTime.of(16, 50),
+            LocalTime.of(17, 40)
+        );
 
     public CalendarController() {
         this.currentYearMonth = YearMonth.now();
@@ -318,6 +338,7 @@ public class CalendarController {
                 locationLabel,
                 instructorLabel
             );
+        applyLessonStateStyles(lesson, card, timeLabel);
 
         // Кнопки действий
         HBox actionsBox = new HBox(5);
@@ -356,6 +377,49 @@ public class CalendarController {
         card.getChildren().add(actionsBox);
 
         return card;
+    }
+
+    private void applyLessonStateStyles(
+        Lesson lesson,
+        VBox card,
+        Label timeLabel
+    ) {
+        LocalDate today = LocalDate.now();
+        LocalDate lessonDate = lesson.getDate();
+        if (lessonDate == null || lesson.getTime() == null) {
+            return;
+        }
+
+        if (lessonDate.isBefore(today)) {
+            card.getStyleClass().add("lesson-card-past");
+            Label status = new Label("Уже прошло");
+            status.getStyleClass().add("lesson-status-past");
+            card.getChildren().add(1, status);
+            return;
+        }
+        if (!lessonDate.equals(today)) {
+            return;
+        }
+
+        LocalTime now = LocalTime.now();
+        LocalTime start = lesson.getTime();
+        LocalTime end = LESSON_END_BY_START.getOrDefault(
+            start,
+            start.plusMinutes(50)
+        );
+
+        if (!now.isBefore(start) && now.isBefore(end)) {
+            card.getStyleClass().add("lesson-card-current");
+            timeLabel.getStyleClass().add("lesson-time-current");
+            Label status = new Label("Идет сейчас");
+            status.getStyleClass().add("lesson-status-current");
+            card.getChildren().add(1, status);
+        } else if (now.isAfter(end) || now.equals(end)) {
+            card.getStyleClass().add("lesson-card-past");
+            Label status = new Label("Уже прошло");
+            status.getStyleClass().add("lesson-status-past");
+            card.getChildren().add(1, status);
+        }
     }
 
     private void showAddLessonDialog(LocalDate date) {
