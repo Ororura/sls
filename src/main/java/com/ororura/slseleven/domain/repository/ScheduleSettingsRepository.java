@@ -1,6 +1,8 @@
 package com.ororura.slseleven.domain.repository;
 
+import com.ororura.slseleven.domain.model.SubjectScheduleRule;
 import java.time.DayOfWeek;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -12,4 +14,8 @@ public interface ScheduleSettingsRepository {
     void saveMaxHours(DayOfWeek dayOfWeek, int maxHours);
 
     void saveAll(Map<DayOfWeek, Integer> maxHoursByDay);
+
+    List<SubjectScheduleRule> getSubjectRules();
+
+    void saveSubjectRules(List<SubjectScheduleRule> rules);
 }

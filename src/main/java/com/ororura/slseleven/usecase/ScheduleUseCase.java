@@ -3,6 +3,7 @@ package com.ororura.slseleven.usecase;
 import com.ororura.slseleven.domain.model.Lesson;
 import com.ororura.slseleven.domain.model.ScheduleHistorySnapshot;
 import com.ororura.slseleven.domain.model.ScheduleItem;
+import com.ororura.slseleven.domain.model.SubjectScheduleRule;
 import com.ororura.slseleven.domain.repository.ScheduleHistoryRepository;
 import com.ororura.slseleven.domain.repository.LessonRepository;
 import com.ororura.slseleven.domain.repository.ScheduleItemRepository;
@@ -91,6 +92,14 @@ public class ScheduleUseCase {
 
     public Map<DayOfWeek, Integer> getMaxHoursByDay() {
         return scheduleSettingsRepository.getMaxHoursByDay();
+    }
+
+    public List<SubjectScheduleRule> getSubjectRules() {
+        return scheduleSettingsRepository.getSubjectRules();
+    }
+
+    public void saveSubjectRules(List<SubjectScheduleRule> rules) {
+        scheduleSettingsRepository.saveSubjectRules(rules);
     }
 
     public List<HistoryEntry> getHistoryEntries() {
@@ -323,6 +332,9 @@ public class ScheduleUseCase {
         Map<DayOfWeek, Integer> maxHoursByDay = new EnumMap<>(
             scheduleSettingsRepository.getMaxHoursByDay()
         );
+        Map<String, SubjectScheduleRule> rulesBySubject = toRuleMap(
+            scheduleSettingsRepository.getSubjectRules()
+        );
         boolean hasCapacity = maxHoursByDay
             .values()
             .stream()
@@ -342,9 +354,12 @@ public class ScheduleUseCase {
             remainingHoursByItemId.put(item.getId(), item.getHours());
         }
 
-        int itemIndex = 0;
-        int remainingInItem = items.get(0).getHours();
+        int[] remainingByItem = new int[items.size()];
+        for (int i = 0; i < items.size(); i++) {
+            remainingByItem[i] = items.get(i).getHours();
+        }
         Set<String> completedItemIds = new HashSet<>();
+        int daysWithoutProgress = 0;
 
         while (
             totalHours > 0 &&
@@ -361,9 +376,14 @@ public class ScheduleUseCase {
                 currentDate
             );
             existingLessons.removeIf(Lesson::isArchived);
+            Set<String> dayExclusiveSubjects = getExclusiveSubjectsForDay(
+                dayOfWeek,
+                rulesBySubject
+            );
             int existingCount = existingLessons.size();
             int availableSlots = maxHours - existingCount;
             if (availableSlots <= 0) {
+                daysWithoutProgress++;
                 currentDate = currentDate.plusDays(1);
                 continue;
             }
@@ -374,6 +394,7 @@ public class ScheduleUseCase {
             }
 
             int slotOffset = 0;
+            int createdToday = 0;
             while (
                 availableSlots > 0 &&
                 totalHours > 0 &&
@@ -387,6 +408,16 @@ public class ScheduleUseCase {
                     continue;
                 }
 
+                int itemIndex = findNextSchedulableItemIndex(
+                    items,
+                    remainingByItem,
+                    dayOfWeek,
+                    dayExclusiveSubjects,
+                    rulesBySubject
+                );
+                if (itemIndex < 0) {
+                    break;
+                }
                 ScheduleItem currentItem = items.get(itemIndex);
                 Lesson lesson = new Lesson(
                     currentItem.getTopic(),
@@ -406,18 +437,22 @@ public class ScheduleUseCase {
                 occupiedTimes.add(candidateTime);
                 lastDate = currentDate;
                 remainingHoursByItemId.merge(currentItem.getId(), -1, Integer::sum);
+                createdToday++;
 
-                remainingInItem--;
-                if (remainingInItem <= 0) {
+                remainingByItem[itemIndex]--;
+                if (remainingByItem[itemIndex] <= 0) {
                     completedItemIds.add(currentItem.getId());
-                    itemIndex++;
-                    if (itemIndex >= items.size()) {
-                        break;
-                    }
-                    remainingInItem = items.get(itemIndex).getHours();
                 }
             }
 
+            if (createdToday == 0) {
+                daysWithoutProgress++;
+                if (daysWithoutProgress > 60) {
+                    break;
+                }
+            } else {
+                daysWithoutProgress = 0;
+            }
             currentDate = currentDate.plusDays(1);
         }
 
@@ -452,6 +487,67 @@ public class ScheduleUseCase {
             totalHours,
             remainingItems
         );
+    }
+
+    private Map<String, SubjectScheduleRule> toRuleMap(
+        List<SubjectScheduleRule> rules
+    ) {
+        Map<String, SubjectScheduleRule> map = new HashMap<>();
+        if (rules == null) {
+            return map;
+        }
+        for (SubjectScheduleRule rule : rules) {
+            if (rule == null || rule.getSubject().isBlank()) {
+                continue;
+            }
+            map.put(normalizeSubject(rule.getSubject()), rule);
+        }
+        return map;
+    }
+
+    private String normalizeSubject(String value) {
+        return value == null ? "" : value.trim().toLowerCase();
+    }
+
+    private int findNextSchedulableItemIndex(
+        List<ScheduleItem> items,
+        int[] remainingByItem,
+        DayOfWeek day,
+        Set<String> dayExclusiveSubjects,
+        Map<String, SubjectScheduleRule> rulesBySubject
+    ) {
+        for (int i = 0; i < items.size(); i++) {
+            if (remainingByItem[i] <= 0) {
+                continue;
+            }
+            ScheduleItem item = items.get(i);
+            String normalizedSubject = normalizeSubject(item.getTopic());
+            if (
+                !dayExclusiveSubjects.isEmpty() &&
+                !dayExclusiveSubjects.contains(normalizedSubject)
+            ) {
+                continue;
+            }
+            SubjectScheduleRule rule = rulesBySubject.get(normalizedSubject);
+            if (rule != null && !rule.isAllowedOn(day)) {
+                continue;
+            }
+            return i;
+        }
+        return -1;
+    }
+
+    private Set<String> getExclusiveSubjectsForDay(
+        DayOfWeek day,
+        Map<String, SubjectScheduleRule> rulesBySubject
+    ) {
+        Set<String> subjects = new HashSet<>();
+        for (Map.Entry<String, SubjectScheduleRule> entry : rulesBySubject.entrySet()) {
+            if (entry.getValue().isExclusiveOn(day)) {
+                subjects.add(entry.getKey());
+            }
+        }
+        return subjects;
     }
 
     private void validateDateRange(LocalDate startDate, LocalDate endDate) {

@@ -161,6 +161,11 @@
                     styleClass="button-secondary"
                 />
                 <Button
+                    text="Правила предметов"
+                    onAction="#onSubjectRules"
+                    styleClass="button-secondary"
+                />
+                <Button
                     text="Сформировать расписание"
                     onAction="#onAutoSchedule"
                     styleClass="button-primary"

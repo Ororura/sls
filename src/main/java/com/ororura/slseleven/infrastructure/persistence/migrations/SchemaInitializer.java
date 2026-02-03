@@ -39,6 +39,13 @@ public class SchemaInitializer {
             "    max_hours INTEGER NOT NULL\n" +
             ");";
 
+        String scheduleSubjectRulesSql =
+            "CREATE TABLE IF NOT EXISTS schedule_subject_rules (\n" +
+            "    subject TEXT PRIMARY KEY,\n" +
+            "    allowed_days INTEGER NOT NULL,\n" +
+            "    exclusive_days INTEGER NOT NULL\n" +
+            ");";
+
         String scheduleHistorySql =
             "CREATE TABLE IF NOT EXISTS schedule_history (\n" +
             "    id TEXT PRIMARY KEY,\n" +
@@ -55,6 +62,7 @@ public class SchemaInitializer {
             s.execute(lessonsSql);
             s.execute(scheduleItemsSql);
             s.execute(scheduleSettingsSql);
+            s.execute(scheduleSubjectRulesSql);
             s.execute(scheduleHistorySql);
             ensureColumnExists(
                 s,

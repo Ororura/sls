@@ -1,6 +1,7 @@
 package com.ororura.slseleven.controller;
 
 import com.ororura.slseleven.domain.model.ScheduleItem;
+import com.ororura.slseleven.domain.model.SubjectScheduleRule;
 import com.ororura.slseleven.ui.UiStyles;
 import com.ororura.slseleven.usecase.AutoScheduleResult;
 import com.ororura.slseleven.usecase.ScheduleUseCase;
@@ -15,8 +16,10 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.StringJoiner;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -472,6 +475,55 @@ public class SchedulePlannerController {
     }
 
     @FXML
+    private void onSubjectRules() {
+        if (scheduleUseCase == null) {
+            showError("Ошибка: Use case не инициализирован");
+            return;
+        }
+        List<SubjectScheduleRule> currentRules = scheduleUseCase.getSubjectRules();
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("Правила предметов");
+        dialog.setHeaderText("Формат: Предмет | Дни | Эксклюзивные дни");
+
+        TextArea textArea = new TextArea(subjectRulesToText(currentRules));
+        textArea.setWrapText(false);
+        textArea.setPrefRowCount(14);
+
+        Label hint = new Label(
+            "Примеры:\n" +
+            "Физическая подготовка | СБ | -\n" +
+            "Физическая подготовка | СБ | СБ\n" +
+            "Физика | !СР | -\n" +
+            "Дни: ПН,ВТ,СР,ЧТ,ПТ,СБ,ВС; '*' = все дни; '!СР' = все кроме среды."
+        );
+
+        VBox box = new VBox(8, hint, textArea);
+        dialog.getDialogPane().setContent(box);
+        dialog
+            .getDialogPane()
+            .getButtonTypes()
+            .addAll(ButtonType.OK, ButtonType.CANCEL);
+        UiStyles.apply(dialog.getDialogPane());
+
+        dialog
+            .showAndWait()
+            .ifPresent(button -> {
+                if (button != ButtonType.OK) {
+                    return;
+                }
+                try {
+                    List<SubjectScheduleRule> parsed = parseSubjectRules(
+                        textArea.getText()
+                    );
+                    scheduleUseCase.saveSubjectRules(parsed);
+                    showInfo("Правила предметов сохранены.");
+                } catch (IllegalArgumentException ex) {
+                    showError(ex.getMessage());
+                }
+            });
+    }
+
+    @FXML
     private void onHistory() {
         if (scheduleUseCase == null) {
             showError("Ошибка: Use case не инициализирован");
@@ -676,6 +728,153 @@ public class SchedulePlannerController {
     private void saveHistorySnapshot(String label) {
         if (scheduleUseCase != null) {
             scheduleUseCase.createHistorySnapshot(label);
+        }
+    }
+
+    private String subjectRulesToText(List<SubjectScheduleRule> rules) {
+        StringJoiner joiner = new StringJoiner(System.lineSeparator());
+        for (SubjectScheduleRule rule : rules) {
+            joiner.add(
+                rule.getSubject() +
+                " | " +
+                daySetToExpression(rule.getAllowedDays()) +
+                " | " +
+                daySetToExpression(rule.getExclusiveDays())
+            );
+        }
+        return joiner.toString();
+    }
+
+    private List<SubjectScheduleRule> parseSubjectRules(String text) {
+        List<SubjectScheduleRule> rules = new ArrayList<>();
+        if (text == null || text.isBlank()) {
+            return rules;
+        }
+        String[] lines = text.split("\\R");
+        for (int i = 0; i < lines.length; i++) {
+            String line = lines[i].trim();
+            if (line.isEmpty() || line.startsWith("#")) {
+                continue;
+            }
+            String[] parts = line.split("\\|");
+            if (parts.length < 2) {
+                throw new IllegalArgumentException(
+                    "Строка " +
+                    (i + 1) +
+                    ": ожидается формат 'Предмет | Дни | Эксклюзивные дни'"
+                );
+            }
+            String subject = parts[0].trim();
+            if (subject.isEmpty()) {
+                throw new IllegalArgumentException(
+                    "Строка " + (i + 1) + ": предмет не может быть пустым"
+                );
+            }
+            Set<DayOfWeek> allowedDays = parseDaysExpression(parts[1].trim());
+            Set<DayOfWeek> exclusiveDays = parts.length >= 3
+                ? parseDaysExpression(parts[2].trim())
+                : Set.of();
+            if (!allowedDays.containsAll(exclusiveDays)) {
+                throw new IllegalArgumentException(
+                    "Строка " +
+                    (i + 1) +
+                    ": эксклюзивные дни должны входить в список разрешенных"
+                );
+            }
+            rules.add(new SubjectScheduleRule(subject, allowedDays, exclusiveDays));
+        }
+        return rules;
+    }
+
+    private Set<DayOfWeek> parseDaysExpression(String expr) {
+        if (expr == null || expr.isBlank() || "-".equals(expr.trim())) {
+            return Set.of();
+        }
+        String normalized = expr.trim().toUpperCase();
+        if ("*".equals(normalized)) {
+            return new HashSet<>(List.of(DayOfWeek.values()));
+        }
+
+        boolean except = normalized.startsWith("!");
+        String value = except ? normalized.substring(1).trim() : normalized;
+        Set<DayOfWeek> parsed = new HashSet<>();
+        for (String token : value.split(",")) {
+            DayOfWeek day = parseDayToken(token.trim());
+            if (day != null) {
+                parsed.add(day);
+            }
+        }
+        if (except) {
+            Set<DayOfWeek> all = new HashSet<>(List.of(DayOfWeek.values()));
+            all.removeAll(parsed);
+            return all;
+        }
+        return parsed;
+    }
+
+    private DayOfWeek parseDayToken(String token) {
+        switch (token) {
+            case "ПН":
+            case "MON":
+                return DayOfWeek.MONDAY;
+            case "ВТ":
+            case "TUE":
+                return DayOfWeek.TUESDAY;
+            case "СР":
+            case "WED":
+                return DayOfWeek.WEDNESDAY;
+            case "ЧТ":
+            case "THU":
+                return DayOfWeek.THURSDAY;
+            case "ПТ":
+            case "FRI":
+                return DayOfWeek.FRIDAY;
+            case "СБ":
+            case "SAT":
+                return DayOfWeek.SATURDAY;
+            case "ВС":
+            case "SUN":
+                return DayOfWeek.SUNDAY;
+            default:
+                throw new IllegalArgumentException("Неизвестный день недели: " + token);
+        }
+    }
+
+    private String daySetToExpression(Set<DayOfWeek> days) {
+        if (days == null || days.isEmpty()) {
+            return "-";
+        }
+        if (days.size() == 7) {
+            return "*";
+        }
+        StringJoiner joiner = new StringJoiner(",");
+        DayOfWeek[] order = DayOfWeek.values();
+        for (DayOfWeek day : order) {
+            if (days.contains(day)) {
+                joiner.add(dayToShort(day));
+            }
+        }
+        return joiner.toString();
+    }
+
+    private String dayToShort(DayOfWeek day) {
+        switch (day) {
+            case MONDAY:
+                return "ПН";
+            case TUESDAY:
+                return "ВТ";
+            case WEDNESDAY:
+                return "СР";
+            case THURSDAY:
+                return "ЧТ";
+            case FRIDAY:
+                return "ПТ";
+            case SATURDAY:
+                return "СБ";
+            case SUNDAY:
+                return "ВС";
+            default:
+                return day.toString();
         }
     }
 
