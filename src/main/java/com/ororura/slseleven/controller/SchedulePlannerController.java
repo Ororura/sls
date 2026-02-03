@@ -14,13 +14,16 @@ import java.nio.file.Files;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.EnumMap;
+import java.util.EnumSet;
 import java.util.HashMap;
-import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.StringJoiner;
+import java.util.stream.Collectors;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
@@ -29,7 +32,9 @@ import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
+import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.GridPane;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 import javafx.stage.Window;
@@ -480,30 +485,183 @@ public class SchedulePlannerController {
             showError("Ошибка: Use case не инициализирован");
             return;
         }
-        List<SubjectScheduleRule> currentRules = scheduleUseCase.getSubjectRules();
+
+        List<String> poolSubjects = data
+            .stream()
+            .map(ScheduleItem::getTopic)
+            .filter(value -> value != null && !value.trim().isEmpty())
+            .map(String::trim)
+            .distinct()
+            .sorted(String.CASE_INSENSITIVE_ORDER)
+            .collect(Collectors.toList());
+        if (poolSubjects.isEmpty()) {
+            showInfo("Сначала добавьте предметы в пул автораспределения.");
+            return;
+        }
+
+        Map<String, SubjectScheduleRule> existingBySubject =
+            new LinkedHashMap<>();
+        for (SubjectScheduleRule rule : scheduleUseCase.getSubjectRules()) {
+            existingBySubject.put(normalizeSubjectKey(rule.getSubject()), rule);
+        }
+
+        List<SubjectRuleEditModel> models = new ArrayList<>();
+        for (String subject : poolSubjects) {
+            SubjectScheduleRule current = existingBySubject.get(
+                normalizeSubjectKey(subject)
+            );
+            Set<DayOfWeek> allowed = current == null
+                ? EnumSet.allOf(DayOfWeek.class)
+                : current.getAllowedDays();
+            Set<DayOfWeek> exclusive = current == null
+                ? EnumSet.noneOf(DayOfWeek.class)
+                : current.getExclusiveDays();
+            models.add(new SubjectRuleEditModel(subject, allowed, exclusive));
+        }
+
         Dialog<ButtonType> dialog = new Dialog<>();
         dialog.setTitle("Правила предметов");
-        dialog.setHeaderText("Формат: Предмет | Дни | Эксклюзивные дни");
+        dialog.setHeaderText("Настройка правил для предметов из текущего пула");
 
-        TextArea textArea = new TextArea(subjectRulesToText(currentRules));
-        textArea.setWrapText(false);
-        textArea.setPrefRowCount(14);
+        ListView<SubjectRuleEditModel> subjectList = new ListView<>(
+            FXCollections.observableArrayList(models)
+        );
+        subjectList.setPrefWidth(280);
+        subjectList.setCellFactory(list -> new ListCell<>() {
+            @Override
+            protected void updateItem(SubjectRuleEditModel item, boolean empty) {
+                super.updateItem(item, empty);
+                setText(empty || item == null ? null : item.subject);
+            }
+        });
+
+        Label selectedSubjectLabel = new Label("Выберите предмет");
+        selectedSubjectLabel.getStyleClass().add("section-title");
+
+        FlowPane allowedPane = new FlowPane(8, 8);
+        FlowPane exclusivePane = new FlowPane(8, 8);
+        Map<DayOfWeek, CheckBox> allowedBoxes = new EnumMap<>(DayOfWeek.class);
+        Map<DayOfWeek, CheckBox> exclusiveBoxes = new EnumMap<>(DayOfWeek.class);
+        for (DayOfWeek day : DayOfWeek.values()) {
+            CheckBox allow = new CheckBox(dayToShort(day));
+            CheckBox exclusive = new CheckBox(dayToShort(day));
+            allowedBoxes.put(day, allow);
+            exclusiveBoxes.put(day, exclusive);
+            allowedPane.getChildren().add(allow);
+            exclusivePane.getChildren().add(exclusive);
+        }
 
         Label hint = new Label(
-            "Примеры:\n" +
-            "Физическая подготовка | СБ | -\n" +
-            "Физическая подготовка | СБ | СБ\n" +
-            "Физика | !СР | -\n" +
-            "Дни: ПН,ВТ,СР,ЧТ,ПТ,СБ,ВС; '*' = все дни; '!СР' = все кроме среды."
+            "Разрешенные дни: когда предмет можно ставить.\n" +
+            "Эксклюзивные дни: в эти дни можно ставить только этот предмет."
+        );
+        Button allDaysButton = new Button("Разрешить все");
+        Button clearExclusiveButton = new Button("Снять эксклюзив");
+
+        VBox editor = new VBox(
+            10,
+            selectedSubjectLabel,
+            new Label("Разрешенные дни:"),
+            allowedPane,
+            new Label("Эксклюзивные дни:"),
+            exclusivePane,
+            new HBox(8, allDaysButton, clearExclusiveButton),
+            hint
         );
 
-        VBox box = new VBox(8, hint, textArea);
-        dialog.getDialogPane().setContent(box);
+        HBox layout = new HBox(14, subjectList, editor);
+        dialog.getDialogPane().setContent(layout);
         dialog
             .getDialogPane()
             .getButtonTypes()
             .addAll(ButtonType.OK, ButtonType.CANCEL);
         UiStyles.apply(dialog.getDialogPane());
+
+        final SubjectRuleEditModel[] currentModel = new SubjectRuleEditModel[] {
+            null,
+        };
+
+        Runnable refreshEditor = () -> {
+            SubjectRuleEditModel model = currentModel[0];
+            boolean hasSubject = model != null;
+            selectedSubjectLabel.setText(
+                hasSubject ? model.subject : "Выберите предмет"
+            );
+            for (DayOfWeek day : DayOfWeek.values()) {
+                CheckBox allow = allowedBoxes.get(day);
+                CheckBox exclusive = exclusiveBoxes.get(day);
+                allow.setDisable(!hasSubject);
+                exclusive.setDisable(!hasSubject);
+                allow.setSelected(hasSubject && model.allowedDays.contains(day));
+                exclusive.setSelected(
+                    hasSubject && model.exclusiveDays.contains(day)
+                );
+            }
+            allDaysButton.setDisable(!hasSubject);
+            clearExclusiveButton.setDisable(!hasSubject);
+        };
+
+        for (DayOfWeek day : DayOfWeek.values()) {
+            CheckBox allow = allowedBoxes.get(day);
+            CheckBox exclusive = exclusiveBoxes.get(day);
+            allow.selectedProperty().addListener((obs, oldV, newV) -> {
+                SubjectRuleEditModel model = currentModel[0];
+                if (model == null) {
+                    return;
+                }
+                if (newV) {
+                    model.allowedDays.add(day);
+                } else {
+                    model.allowedDays.remove(day);
+                    model.exclusiveDays.remove(day);
+                    exclusive.setSelected(false);
+                }
+            });
+            exclusive.selectedProperty().addListener((obs, oldV, newV) -> {
+                SubjectRuleEditModel model = currentModel[0];
+                if (model == null) {
+                    return;
+                }
+                if (newV) {
+                    model.exclusiveDays.add(day);
+                    model.allowedDays.add(day);
+                    allow.setSelected(true);
+                } else {
+                    model.exclusiveDays.remove(day);
+                }
+            });
+        }
+
+        allDaysButton.setOnAction(event -> {
+            SubjectRuleEditModel model = currentModel[0];
+            if (model == null) {
+                return;
+            }
+            model.allowedDays.clear();
+            model.allowedDays.addAll(EnumSet.allOf(DayOfWeek.class));
+            refreshEditor.run();
+        });
+        clearExclusiveButton.setOnAction(event -> {
+            SubjectRuleEditModel model = currentModel[0];
+            if (model == null) {
+                return;
+            }
+            model.exclusiveDays.clear();
+            refreshEditor.run();
+        });
+
+        subjectList
+            .getSelectionModel()
+            .selectedItemProperty()
+            .addListener((obs, oldV, newV) -> {
+                currentModel[0] = newV;
+                refreshEditor.run();
+            });
+        if (!models.isEmpty()) {
+            subjectList.getSelectionModel().select(0);
+        } else {
+            refreshEditor.run();
+        }
 
         dialog
             .showAndWait()
@@ -511,15 +669,31 @@ public class SchedulePlannerController {
                 if (button != ButtonType.OK) {
                     return;
                 }
-                try {
-                    List<SubjectScheduleRule> parsed = parseSubjectRules(
-                        textArea.getText()
-                    );
-                    scheduleUseCase.saveSubjectRules(parsed);
-                    showInfo("Правила предметов сохранены.");
-                } catch (IllegalArgumentException ex) {
-                    showError(ex.getMessage());
+
+                Map<String, SubjectScheduleRule> merged = new LinkedHashMap<>();
+                for (SubjectScheduleRule rule : scheduleUseCase.getSubjectRules()) {
+                    merged.put(normalizeSubjectKey(rule.getSubject()), rule);
                 }
+                for (SubjectRuleEditModel model : models) {
+                    if (model.isDefaultRule()) {
+                        merged.remove(normalizeSubjectKey(model.subject));
+                    } else {
+                        merged.put(
+                            normalizeSubjectKey(model.subject),
+                            new SubjectScheduleRule(
+                                model.subject,
+                                model.allowedDays,
+                                model.exclusiveDays
+                            )
+                        );
+                    }
+                }
+                List<SubjectScheduleRule> toSave = new ArrayList<>(
+                    merged.values()
+                );
+                toSave.sort(Comparator.comparing(SubjectScheduleRule::getSubject, String.CASE_INSENSITIVE_ORDER));
+                scheduleUseCase.saveSubjectRules(toSave);
+                showInfo("Правила предметов сохранены.");
             });
     }
 
@@ -731,130 +905,8 @@ public class SchedulePlannerController {
         }
     }
 
-    private String subjectRulesToText(List<SubjectScheduleRule> rules) {
-        StringJoiner joiner = new StringJoiner(System.lineSeparator());
-        for (SubjectScheduleRule rule : rules) {
-            joiner.add(
-                rule.getSubject() +
-                " | " +
-                daySetToExpression(rule.getAllowedDays()) +
-                " | " +
-                daySetToExpression(rule.getExclusiveDays())
-            );
-        }
-        return joiner.toString();
-    }
-
-    private List<SubjectScheduleRule> parseSubjectRules(String text) {
-        List<SubjectScheduleRule> rules = new ArrayList<>();
-        if (text == null || text.isBlank()) {
-            return rules;
-        }
-        String[] lines = text.split("\\R");
-        for (int i = 0; i < lines.length; i++) {
-            String line = lines[i].trim();
-            if (line.isEmpty() || line.startsWith("#")) {
-                continue;
-            }
-            String[] parts = line.split("\\|");
-            if (parts.length < 2) {
-                throw new IllegalArgumentException(
-                    "Строка " +
-                    (i + 1) +
-                    ": ожидается формат 'Предмет | Дни | Эксклюзивные дни'"
-                );
-            }
-            String subject = parts[0].trim();
-            if (subject.isEmpty()) {
-                throw new IllegalArgumentException(
-                    "Строка " + (i + 1) + ": предмет не может быть пустым"
-                );
-            }
-            Set<DayOfWeek> allowedDays = parseDaysExpression(parts[1].trim());
-            Set<DayOfWeek> exclusiveDays = parts.length >= 3
-                ? parseDaysExpression(parts[2].trim())
-                : Set.of();
-            if (!allowedDays.containsAll(exclusiveDays)) {
-                throw new IllegalArgumentException(
-                    "Строка " +
-                    (i + 1) +
-                    ": эксклюзивные дни должны входить в список разрешенных"
-                );
-            }
-            rules.add(new SubjectScheduleRule(subject, allowedDays, exclusiveDays));
-        }
-        return rules;
-    }
-
-    private Set<DayOfWeek> parseDaysExpression(String expr) {
-        if (expr == null || expr.isBlank() || "-".equals(expr.trim())) {
-            return Set.of();
-        }
-        String normalized = expr.trim().toUpperCase();
-        if ("*".equals(normalized)) {
-            return new HashSet<>(List.of(DayOfWeek.values()));
-        }
-
-        boolean except = normalized.startsWith("!");
-        String value = except ? normalized.substring(1).trim() : normalized;
-        Set<DayOfWeek> parsed = new HashSet<>();
-        for (String token : value.split(",")) {
-            DayOfWeek day = parseDayToken(token.trim());
-            if (day != null) {
-                parsed.add(day);
-            }
-        }
-        if (except) {
-            Set<DayOfWeek> all = new HashSet<>(List.of(DayOfWeek.values()));
-            all.removeAll(parsed);
-            return all;
-        }
-        return parsed;
-    }
-
-    private DayOfWeek parseDayToken(String token) {
-        switch (token) {
-            case "ПН":
-            case "MON":
-                return DayOfWeek.MONDAY;
-            case "ВТ":
-            case "TUE":
-                return DayOfWeek.TUESDAY;
-            case "СР":
-            case "WED":
-                return DayOfWeek.WEDNESDAY;
-            case "ЧТ":
-            case "THU":
-                return DayOfWeek.THURSDAY;
-            case "ПТ":
-            case "FRI":
-                return DayOfWeek.FRIDAY;
-            case "СБ":
-            case "SAT":
-                return DayOfWeek.SATURDAY;
-            case "ВС":
-            case "SUN":
-                return DayOfWeek.SUNDAY;
-            default:
-                throw new IllegalArgumentException("Неизвестный день недели: " + token);
-        }
-    }
-
-    private String daySetToExpression(Set<DayOfWeek> days) {
-        if (days == null || days.isEmpty()) {
-            return "-";
-        }
-        if (days.size() == 7) {
-            return "*";
-        }
-        StringJoiner joiner = new StringJoiner(",");
-        DayOfWeek[] order = DayOfWeek.values();
-        for (DayOfWeek day : order) {
-            if (days.contains(day)) {
-                joiner.add(dayToShort(day));
-            }
-        }
-        return joiner.toString();
+    private String normalizeSubjectKey(String value) {
+        return value == null ? "" : value.trim().toLowerCase();
     }
 
     private String dayToShort(DayOfWeek day) {
@@ -875,6 +927,33 @@ public class SchedulePlannerController {
                 return "ВС";
             default:
                 return day.toString();
+        }
+    }
+
+    private static final class SubjectRuleEditModel {
+        private final String subject;
+        private final EnumSet<DayOfWeek> allowedDays;
+        private final EnumSet<DayOfWeek> exclusiveDays;
+
+        private SubjectRuleEditModel(
+            String subject,
+            Set<DayOfWeek> allowedDays,
+            Set<DayOfWeek> exclusiveDays
+        ) {
+            this.subject = subject;
+            this.allowedDays = allowedDays == null || allowedDays.isEmpty()
+                ? EnumSet.noneOf(DayOfWeek.class)
+                : EnumSet.copyOf(allowedDays);
+            this.exclusiveDays = exclusiveDays == null || exclusiveDays.isEmpty()
+                ? EnumSet.noneOf(DayOfWeek.class)
+                : EnumSet.copyOf(exclusiveDays);
+        }
+
+        private boolean isDefaultRule() {
+            return (
+                allowedDays.size() == DayOfWeek.values().length &&
+                exclusiveDays.isEmpty()
+            );
         }
     }
 
