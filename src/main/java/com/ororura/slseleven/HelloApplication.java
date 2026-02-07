@@ -57,6 +57,7 @@ public class HelloApplication extends Application {
             scheduleSettingsRepository,
             scheduleHistoryRepository
         );
+        lessonUseCase.setCurrentCalendarId(scheduleUseCase.getCurrentCalendarId());
 
         // Загрузка FXML и установка контроллера
         FXMLLoader fxmlLoader = new FXMLLoader(

@@ -7,7 +7,10 @@ import java.util.Objects;
  * Элемент списка расписаний (кол-во часов для распределения).
  */
 public class ScheduleItem {
+    public static final String DEFAULT_CALENDAR_ID = "default";
+
     private String id;
+    private String calendarId;
     private String topic;
     private String lessonName;
     private String className;
@@ -18,6 +21,7 @@ public class ScheduleItem {
 
     public ScheduleItem() {
         this.id = java.util.UUID.randomUUID().toString();
+        this.calendarId = DEFAULT_CALENDAR_ID;
         this.createdAt = LocalDateTime.now();
     }
 
@@ -54,6 +58,14 @@ public class ScheduleItem {
 
     public void setId(String id) {
         this.id = id;
+    }
+
+    public String getCalendarId() {
+        return calendarId;
+    }
+
+    public void setCalendarId(String calendarId) {
+        this.calendarId = calendarId;
     }
 
     public String getTopic() {

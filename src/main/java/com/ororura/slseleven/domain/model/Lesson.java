@@ -8,7 +8,10 @@ import java.util.Objects;
  * Доменная модель занятия
  */
 public class Lesson {
+    public static final String DEFAULT_CALENDAR_ID = "default";
+
     private String id;
+    private String calendarId;
     private String topic; // Предмет
     private String lessonName; // Тема
     private String className; // Занятие
@@ -21,6 +24,7 @@ public class Lesson {
 
     public Lesson() {
         this.id = java.util.UUID.randomUUID().toString();
+        this.calendarId = DEFAULT_CALENDAR_ID;
     }
 
     public Lesson(
@@ -76,6 +80,14 @@ public class Lesson {
 
     public void setId(String id) {
         this.id = id;
+    }
+
+    public String getCalendarId() {
+        return calendarId;
+    }
+
+    public void setCalendarId(String calendarId) {
+        this.calendarId = calendarId;
     }
 
     public String getTopic() {

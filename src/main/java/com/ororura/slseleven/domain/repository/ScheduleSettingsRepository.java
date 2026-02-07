@@ -1,5 +1,6 @@
 package com.ororura.slseleven.domain.repository;
 
+import com.ororura.slseleven.domain.model.AppCalendar;
 import com.ororura.slseleven.domain.model.SubjectScheduleRule;
 import java.time.DayOfWeek;
 import java.util.List;
@@ -18,4 +19,16 @@ public interface ScheduleSettingsRepository {
     List<SubjectScheduleRule> getSubjectRules();
 
     void saveSubjectRules(List<SubjectScheduleRule> rules);
+
+    List<AppCalendar> findAllCalendars();
+
+    AppCalendar createCalendar(String name);
+
+    void renameCalendar(String calendarId, String newName);
+
+    void deleteCalendar(String calendarId);
+
+    String getActiveCalendarId();
+
+    void setActiveCalendarId(String calendarId);
 }

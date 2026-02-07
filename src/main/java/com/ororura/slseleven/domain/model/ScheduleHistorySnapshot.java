@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 
 public class ScheduleHistorySnapshot {
     private String id;
+    private String calendarId;
     private LocalDateTime createdAt;
     private String label;
     private String lessonsBlob;
@@ -13,12 +14,14 @@ public class ScheduleHistorySnapshot {
 
     public ScheduleHistorySnapshot(
         String id,
+        String calendarId,
         LocalDateTime createdAt,
         String label,
         String lessonsBlob,
         String scheduleItemsBlob
     ) {
         this.id = id;
+        this.calendarId = calendarId;
         this.createdAt = createdAt;
         this.label = label;
         this.lessonsBlob = lessonsBlob;
@@ -31,6 +34,14 @@ public class ScheduleHistorySnapshot {
 
     public void setId(String id) {
         this.id = id;
+    }
+
+    public String getCalendarId() {
+        return calendarId;
+    }
+
+    public void setCalendarId(String calendarId) {
+        this.calendarId = calendarId;
     }
 
     public LocalDateTime getCreatedAt() {

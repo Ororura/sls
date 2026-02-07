@@ -22,21 +22,27 @@ public class ScheduleItemRepositorySQLite implements ScheduleItemRepository {
     public void save(ScheduleItem item) {
         String sql =
             "INSERT OR REPLACE INTO schedule_items " +
-            "(id, topic, lesson_name, class_name, location, instructor, hours, created_at) " +
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+            "(id, calendar_id, topic, lesson_name, class_name, location, instructor, hours, created_at) " +
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
         try (
             Connection conn = provider.getConnection();
             PreparedStatement ps = conn.prepareStatement(sql)
         ) {
             ps.setString(1, item.getId());
-            ps.setString(2, item.getTopic());
-            ps.setString(3, item.getLessonName());
-            ps.setString(4, item.getClassName());
-            ps.setString(5, item.getLocation());
-            ps.setString(6, item.getInstructor());
-            ps.setInt(7, item.getHours());
-            ps.setString(8, item.getCreatedAt().toString());
+            ps.setString(
+                2,
+                item.getCalendarId() == null || item.getCalendarId().isBlank()
+                    ? ScheduleItem.DEFAULT_CALENDAR_ID
+                    : item.getCalendarId()
+            );
+            ps.setString(3, item.getTopic());
+            ps.setString(4, item.getLessonName());
+            ps.setString(5, item.getClassName());
+            ps.setString(6, item.getLocation());
+            ps.setString(7, item.getInstructor());
+            ps.setInt(8, item.getHours());
+            ps.setString(9, item.getCreatedAt().toString());
             ps.executeUpdate();
         } catch (Exception e) {
             throw new RuntimeException(
@@ -49,7 +55,7 @@ public class ScheduleItemRepositorySQLite implements ScheduleItemRepository {
     @Override
     public Optional<ScheduleItem> findById(String id) {
         String sql =
-            "SELECT id, topic, lesson_name, class_name, location, instructor, hours, created_at " +
+            "SELECT id, calendar_id, topic, lesson_name, class_name, location, instructor, hours, created_at " +
             "FROM schedule_items WHERE id = ?";
 
         try (
@@ -68,17 +74,18 @@ public class ScheduleItemRepositorySQLite implements ScheduleItemRepository {
     }
 
     @Override
-    public List<ScheduleItem> findAll() {
+    public List<ScheduleItem> findAll(String calendarId) {
         String sql =
-            "SELECT id, topic, lesson_name, class_name, location, instructor, hours, created_at " +
-            "FROM schedule_items ORDER BY created_at";
+            "SELECT id, calendar_id, topic, lesson_name, class_name, location, instructor, hours, created_at " +
+            "FROM schedule_items WHERE calendar_id = ? ORDER BY created_at";
 
         List<ScheduleItem> items = new ArrayList<>();
         try (
             Connection conn = provider.getConnection();
-            PreparedStatement ps = conn.prepareStatement(sql);
-            ResultSet rs = ps.executeQuery()
+            PreparedStatement ps = conn.prepareStatement(sql)
         ) {
+            ps.setString(1, calendarId);
+            ResultSet rs = ps.executeQuery();
             while (rs.next()) {
                 items.add(mapResultSet(rs));
             }
@@ -140,13 +147,14 @@ public class ScheduleItemRepositorySQLite implements ScheduleItemRepository {
     }
 
     @Override
-    public void deleteAll() {
-        String sql = "DELETE FROM schedule_items";
+    public void deleteAll(String calendarId) {
+        String sql = "DELETE FROM schedule_items WHERE calendar_id = ?";
 
         try (
             Connection conn = provider.getConnection();
             PreparedStatement ps = conn.prepareStatement(sql)
         ) {
+            ps.setString(1, calendarId);
             ps.executeUpdate();
         } catch (Exception e) {
             throw new RuntimeException(
@@ -178,6 +186,7 @@ public class ScheduleItemRepositorySQLite implements ScheduleItemRepository {
     private ScheduleItem mapResultSet(ResultSet rs) throws Exception {
         ScheduleItem item = new ScheduleItem();
         item.setId(rs.getString("id"));
+        item.setCalendarId(rs.getString("calendar_id"));
         item.setTopic(rs.getString("topic"));
         item.setLessonName(rs.getString("lesson_name"));
         item.setClassName(rs.getString("class_name"));

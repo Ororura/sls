@@ -1,5 +1,6 @@
 package com.ororura.slseleven.controller;
 
+import com.ororura.slseleven.domain.model.AppCalendar;
 import com.ororura.slseleven.domain.model.Lesson;
 import com.ororura.slseleven.ui.UiFormatters;
 import com.ororura.slseleven.ui.UiStyles;
@@ -14,6 +15,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 import javafx.css.PseudoClass;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -29,6 +32,11 @@ import javafx.stage.Stage;
  * Контроллер календаря
  */
 public class CalendarController {
+    private static final String ALL_CALENDARS_ID = "__all__";
+    private static final AppCalendar ALL_CALENDARS_OPTION = new AppCalendar(
+        ALL_CALENDARS_ID,
+        "Общий (все календари)"
+    );
 
     @FXML
     private Label monthYearLabel;
@@ -45,10 +53,17 @@ public class CalendarController {
     @FXML
     private Button nextMonthButton;
 
+    @FXML
+    private ComboBox<AppCalendar> calendarComboBox;
+
     private YearMonth currentYearMonth;
     private LocalDate selectedDate;
     private LessonUseCase lessonUseCase;
     private ScheduleUseCase scheduleUseCase;
+    private final ObservableList<AppCalendar> calendars =
+        FXCollections.observableArrayList();
+    private boolean updatingCalendarSelection;
+    private boolean allCalendarsMode;
     private final Map<LocalDate, List<Lesson>> monthLessons = new HashMap<>();
     private final DateTimeFormatter monthYearFormatter =
         UiFormatters.MONTH_YEAR_FORMATTER;
@@ -86,17 +101,21 @@ public class CalendarController {
      */
     public void setLessonUseCase(LessonUseCase lessonUseCase) {
         this.lessonUseCase = lessonUseCase;
-        if (this.lessonUseCase != null) {
-            this.lessonUseCase.archivePastLessons(LocalDate.now());
-        }
+        applyCalendarSelection();
     }
 
     public void setScheduleUseCase(ScheduleUseCase scheduleUseCase) {
         this.scheduleUseCase = scheduleUseCase;
+        loadCalendars();
     }
 
     @FXML
     private void onOpenLessonsList() {
+        if (allCalendarsMode) {
+            showInfo("В режиме общего календаря выберите конкретный календарь для списка занятий.");
+            return;
+        }
+        applyCalendarSelection();
         try {
             FXMLLoader loader = new FXMLLoader(
                 getClass().getResource(
@@ -121,6 +140,11 @@ public class CalendarController {
 
     @FXML
     private void onOpenSchedulePlanner() {
+        if (allCalendarsMode) {
+            showInfo("В режиме общего календаря выберите конкретный календарь для авторасписания.");
+            return;
+        }
+        applyCalendarSelection();
         try {
             FXMLLoader loader = new FXMLLoader(
                 getClass().getResource(
@@ -147,7 +171,113 @@ public class CalendarController {
     public void initialize() {
         previousMonthButton.setOnAction(e -> previousMonth());
         nextMonthButton.setOnAction(e -> nextMonth());
+        calendarComboBox.setItems(calendars);
+        calendarComboBox
+            .getSelectionModel()
+            .selectedItemProperty()
+            .addListener((obs, oldValue, newValue) -> {
+                if (updatingCalendarSelection || newValue == null) {
+                    return;
+                }
+                switchCalendar(newValue);
+            });
         buildCalendar();
+    }
+
+    @FXML
+    private void onCreateCalendar() {
+        if (scheduleUseCase == null) {
+            showError("Ошибка: модуль календарей не инициализирован");
+            return;
+        }
+
+        TextInputDialog dialog = new TextInputDialog();
+        dialog.setTitle("Новый календарь");
+        dialog.setHeaderText("Создание календаря");
+        dialog.setContentText("Название:");
+        UiStyles.apply(dialog.getDialogPane());
+
+        dialog
+            .showAndWait()
+            .ifPresent(name -> {
+                try {
+                    AppCalendar created = scheduleUseCase.createCalendar(name);
+                    scheduleUseCase.setCurrentCalendarId(created.getId());
+                    allCalendarsMode = false;
+                    applyCalendarSelection();
+                    loadCalendars();
+                } catch (Exception ex) {
+                    showError("Не удалось создать календарь: " + ex.getMessage());
+                }
+            });
+    }
+
+    @FXML
+    private void onRenameCalendar() {
+        AppCalendar selected = calendarComboBox
+            .getSelectionModel()
+            .getSelectedItem();
+        if (selected == null || scheduleUseCase == null) {
+            showError("Выберите календарь для переименования");
+            return;
+        }
+        if (ALL_CALENDARS_ID.equals(selected.getId())) {
+            showError("Общий календарь переименовать нельзя");
+            return;
+        }
+
+        TextInputDialog dialog = new TextInputDialog(selected.getName());
+        dialog.setTitle("Переименование календаря");
+        dialog.setHeaderText("Изменение названия");
+        dialog.setContentText("Новое название:");
+        UiStyles.apply(dialog.getDialogPane());
+
+        dialog
+            .showAndWait()
+            .ifPresent(name -> {
+                try {
+                    scheduleUseCase.renameCalendar(selected.getId(), name);
+                    loadCalendars();
+                } catch (Exception ex) {
+                    showError(
+                        "Не удалось переименовать календарь: " + ex.getMessage()
+                    );
+                }
+            });
+    }
+
+    @FXML
+    private void onDeleteCalendar() {
+        AppCalendar selected = calendarComboBox
+            .getSelectionModel()
+            .getSelectedItem();
+        if (selected == null || scheduleUseCase == null) {
+            showError("Выберите календарь для удаления");
+            return;
+        }
+        if (ALL_CALENDARS_ID.equals(selected.getId())) {
+            showError("Общий календарь удалить нельзя");
+            return;
+        }
+
+        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+        confirm.setTitle("Удаление календаря");
+        confirm.setHeaderText(
+            "Удалить календарь \"" + selected.getName() + "\"?"
+        );
+        confirm.setContentText("Будут удалены все занятия и часы этого календаря.");
+        UiStyles.apply(confirm.getDialogPane());
+        if (confirm.showAndWait().orElse(ButtonType.CANCEL) != ButtonType.OK) {
+            return;
+        }
+
+        try {
+            scheduleUseCase.deleteCalendar(selected.getId());
+            applyCalendarSelection();
+            loadCalendars();
+        } catch (Exception ex) {
+            showError("Не удалось удалить календарь: " + ex.getMessage());
+        }
     }
 
     private void previousMonth() {
@@ -161,7 +291,7 @@ public class CalendarController {
     }
 
     private void buildCalendar() {
-        if (lessonUseCase != null) {
+        if (lessonUseCase != null && !allCalendarsMode) {
             lessonUseCase.archivePastLessons(LocalDate.now());
         }
         monthYearLabel.setText(currentYearMonth.format(monthYearFormatter));
@@ -213,7 +343,9 @@ public class CalendarController {
 
         LocalDate start = currentYearMonth.atDay(1);
         LocalDate end = currentYearMonth.atEndOfMonth();
-        List<Lesson> lessons = lessonUseCase.getLessonsByDateRange(start, end);
+        List<Lesson> lessons = allCalendarsMode
+            ? lessonUseCase.getLessonsByDateRangeAllCalendars(start, end)
+            : lessonUseCase.getLessonsByDateRange(start, end);
         for (Lesson lesson : lessons) {
             monthLessons
                 .computeIfAbsent(lesson.getDate(), key -> new ArrayList<>())
@@ -288,7 +420,9 @@ public class CalendarController {
         ) {
             lessons = monthLessons.getOrDefault(date, List.of());
         } else if (lessonUseCase != null) {
-            lessons = lessonUseCase.getLessonsByDate(date);
+            lessons = allCalendarsMode
+                ? lessonUseCase.getLessonsByDateAllCalendars(date)
+                : lessonUseCase.getLessonsByDate(date);
         } else {
             lessons = List.of();
         }
@@ -322,11 +456,15 @@ public class CalendarController {
         Label instructorLabel = new Label(
             "Преподаватель: " + lesson.getInstructor()
         );
+        Label calendarLabel = new Label(
+            "Календарь: " + resolveCalendarName(lesson.getCalendarId())
+        );
         topicLabel.getStyleClass().add("lesson-meta");
         lessonNameLabel.getStyleClass().add("lesson-meta");
         classNameLabel.getStyleClass().add("lesson-meta");
         locationLabel.getStyleClass().add("lesson-meta");
         instructorLabel.getStyleClass().add("lesson-meta");
+        calendarLabel.getStyleClass().add("lesson-meta");
 
         card
             .getChildren()
@@ -336,7 +474,8 @@ public class CalendarController {
                 lessonNameLabel,
                 classNameLabel,
                 locationLabel,
-                instructorLabel
+                instructorLabel,
+                calendarLabel
             );
         applyLessonStateStyles(lesson, card, timeLabel);
 
@@ -350,6 +489,10 @@ public class CalendarController {
 
         editButton.setOnAction(event -> showEditLessonDialog(lesson));
         deleteButton.setOnAction(event -> {
+            if (allCalendarsMode) {
+                showInfo("Для редактирования выберите конкретный календарь.");
+                return;
+            }
             Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
             alert.setTitle("Подтверждение");
             alert.setHeaderText("Удалить занятие?");
@@ -423,10 +566,18 @@ public class CalendarController {
     }
 
     private void showAddLessonDialog(LocalDate date) {
+        if (allCalendarsMode) {
+            showInfo("Добавление доступно только в конкретном календаре.");
+            return;
+        }
         showLessonDialog(null, date);
     }
 
     private void showEditLessonDialog(Lesson lesson) {
+        if (allCalendarsMode) {
+            showInfo("Редактирование доступно только в конкретном календаре.");
+            return;
+        }
         showLessonDialog(lesson, lesson.getDate());
     }
 
@@ -477,5 +628,84 @@ public class CalendarController {
         if (selectedDate != null) {
             showLessonsForDate(selectedDate);
         }
+    }
+
+    private void loadCalendars() {
+        if (scheduleUseCase == null) {
+            return;
+        }
+        List<AppCalendar> loaded = new ArrayList<>();
+        loaded.add(ALL_CALENDARS_OPTION);
+        loaded.addAll(scheduleUseCase.getCalendars());
+        calendars.setAll(loaded);
+
+        String activeId = scheduleUseCase.getCurrentCalendarId();
+        AppCalendar selected = allCalendarsMode
+            ? ALL_CALENDARS_OPTION
+            : loaded
+            .stream()
+            .filter(calendar -> calendar.getId().equals(activeId))
+            .findFirst()
+            .orElse(loaded.isEmpty() ? null : loaded.get(0));
+
+        updatingCalendarSelection = true;
+        calendarComboBox.getSelectionModel().select(selected);
+        updatingCalendarSelection = false;
+
+        applyCalendarSelection();
+    }
+
+    private void switchCalendar(AppCalendar calendar) {
+        if (scheduleUseCase == null || calendar == null) {
+            return;
+        }
+        allCalendarsMode = ALL_CALENDARS_ID.equals(calendar.getId());
+        if (!allCalendarsMode) {
+            scheduleUseCase.setCurrentCalendarId(calendar.getId());
+        }
+        applyCalendarSelection();
+        selectedDate = null;
+        lessonsList.getChildren().clear();
+        buildCalendar();
+    }
+
+    private void applyCalendarSelection() {
+        if (allCalendarsMode) {
+            return;
+        }
+        if (scheduleUseCase != null && lessonUseCase != null) {
+            lessonUseCase.setCurrentCalendarId(scheduleUseCase.getCurrentCalendarId());
+            lessonUseCase.archivePastLessons(LocalDate.now());
+        }
+    }
+
+    private String resolveCalendarName(String calendarId) {
+        if (calendarId == null || calendarId.isBlank()) {
+            return "Неизвестно";
+        }
+        for (AppCalendar calendar : calendars) {
+            if (calendarId.equals(calendar.getId())) {
+                return calendar.getName();
+            }
+        }
+        return calendarId;
+    }
+
+    private void showError(String message) {
+        Alert alert = new Alert(Alert.AlertType.ERROR);
+        alert.setTitle("Ошибка");
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        UiStyles.apply(alert.getDialogPane());
+        alert.showAndWait();
+    }
+
+    private void showInfo(String message) {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle("Информация");
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        UiStyles.apply(alert.getDialogPane());
+        alert.showAndWait();
     }
 }

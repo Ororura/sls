@@ -1,6 +1,7 @@
 package com.ororura.slseleven.usecase;
 
 import com.ororura.slseleven.domain.model.Lesson;
+import com.ororura.slseleven.domain.model.AppCalendar;
 import com.ororura.slseleven.domain.model.ScheduleHistorySnapshot;
 import com.ororura.slseleven.domain.model.ScheduleItem;
 import com.ororura.slseleven.domain.model.SubjectScheduleRule;
@@ -40,6 +41,7 @@ public class ScheduleUseCase {
     private final ScheduleItemRepository scheduleItemRepository;
     private final ScheduleSettingsRepository scheduleSettingsRepository;
     private final ScheduleHistoryRepository scheduleHistoryRepository;
+    private String currentCalendarId = Lesson.DEFAULT_CALENDAR_ID;
 
     public ScheduleUseCase(
         LessonRepository lessonRepository,
@@ -51,14 +53,45 @@ public class ScheduleUseCase {
         this.scheduleItemRepository = scheduleItemRepository;
         this.scheduleSettingsRepository = scheduleSettingsRepository;
         this.scheduleHistoryRepository = scheduleHistoryRepository;
+        this.currentCalendarId = scheduleSettingsRepository.getActiveCalendarId();
+    }
+
+    public void setCurrentCalendarId(String calendarId) {
+        if (calendarId == null || calendarId.isBlank()) {
+            throw new IllegalArgumentException("ID календаря не может быть пустым");
+        }
+        scheduleSettingsRepository.setActiveCalendarId(calendarId);
+        this.currentCalendarId = calendarId;
+    }
+
+    public String getCurrentCalendarId() {
+        return currentCalendarId;
+    }
+
+    public List<AppCalendar> getCalendars() {
+        return scheduleSettingsRepository.findAllCalendars();
+    }
+
+    public AppCalendar createCalendar(String name) {
+        return scheduleSettingsRepository.createCalendar(name);
+    }
+
+    public void renameCalendar(String calendarId, String newName) {
+        scheduleSettingsRepository.renameCalendar(calendarId, newName);
+    }
+
+    public void deleteCalendar(String calendarId) {
+        scheduleSettingsRepository.deleteCalendar(calendarId);
+        this.currentCalendarId = scheduleSettingsRepository.getActiveCalendarId();
     }
 
     public List<ScheduleItem> getAllItems() {
-        return scheduleItemRepository.findAll();
+        return scheduleItemRepository.findAll(currentCalendarId);
     }
 
     public void createItem(ScheduleItem item) {
         validateItem(item);
+        item.setCalendarId(currentCalendarId);
         scheduleItemRepository.save(item);
     }
 
@@ -74,6 +107,13 @@ public class ScheduleUseCase {
                 "Элемент списка с ID " + item.getId() + " не найден"
             );
         }
+        ScheduleItem existing = scheduleItemRepository.findById(item.getId()).orElse(null);
+        if (existing == null || !currentCalendarId.equals(existing.getCalendarId())) {
+            throw new IllegalArgumentException(
+                "Элемент списка с ID " + item.getId() + " не найден"
+            );
+        }
+        item.setCalendarId(currentCalendarId);
         scheduleItemRepository.save(item);
     }
 
@@ -83,11 +123,17 @@ public class ScheduleUseCase {
                 "ID элемента списка не может быть пустым"
             );
         }
+        ScheduleItem existing = scheduleItemRepository.findById(id).orElse(null);
+        if (existing == null || !currentCalendarId.equals(existing.getCalendarId())) {
+            throw new IllegalArgumentException(
+                "Элемент списка с ID " + id + " не найден"
+            );
+        }
         scheduleItemRepository.deleteById(id);
     }
 
     public void deleteAllItems() {
-        scheduleItemRepository.deleteAll();
+        scheduleItemRepository.deleteAll(currentCalendarId);
     }
 
     public Map<DayOfWeek, Integer> getMaxHoursByDay() {
@@ -103,7 +149,7 @@ public class ScheduleUseCase {
     }
 
     public List<HistoryEntry> getHistoryEntries() {
-        List<ScheduleHistorySnapshot> snapshots = scheduleHistoryRepository.findAll();
+        List<ScheduleHistorySnapshot> snapshots = scheduleHistoryRepository.findAll(currentCalendarId);
         List<HistoryEntry> entries = new ArrayList<>();
         for (ScheduleHistorySnapshot snapshot : snapshots) {
             entries.add(
@@ -118,8 +164,8 @@ public class ScheduleUseCase {
     }
 
     public boolean createHistorySnapshot(String label) {
-        List<Lesson> lessons = lessonRepository.findAll();
-        List<ScheduleItem> items = scheduleItemRepository.findAll();
+        List<Lesson> lessons = lessonRepository.findAll(currentCalendarId);
+        List<ScheduleItem> items = scheduleItemRepository.findAll(currentCalendarId);
         if (lessons.isEmpty() && items.isEmpty()) {
             return false;
         }
@@ -127,6 +173,7 @@ public class ScheduleUseCase {
         String snapshotId = java.util.UUID.randomUUID().toString();
         ScheduleHistorySnapshot snapshot = new ScheduleHistorySnapshot(
             snapshotId,
+            currentCalendarId,
             LocalDateTime.now(),
             label == null || label.isBlank() ? "Ручной снимок" : label,
             serializeLessons(lessons),
@@ -141,7 +188,7 @@ public class ScheduleUseCase {
             throw new IllegalArgumentException("ID снимка не может быть пустым");
         }
         ScheduleHistorySnapshot snapshot = scheduleHistoryRepository
-            .findById(historyId)
+            .findById(historyId, currentCalendarId)
             .orElse(null);
         if (snapshot == null) {
             return false;
@@ -152,13 +199,15 @@ public class ScheduleUseCase {
             snapshot.getScheduleItemsBlob()
         );
 
-        lessonRepository.deleteAll();
-        scheduleItemRepository.deleteAll();
+        lessonRepository.deleteAll(currentCalendarId);
+        scheduleItemRepository.deleteAll(currentCalendarId);
 
         for (Lesson lesson : lessons) {
+            lesson.setCalendarId(currentCalendarId);
             lessonRepository.save(lesson);
         }
         for (ScheduleItem item : items) {
+            item.setCalendarId(currentCalendarId);
             scheduleItemRepository.save(item);
         }
         return true;
@@ -174,7 +223,7 @@ public class ScheduleUseCase {
     }
 
     public int moveArchivedLessonsToPool() {
-        List<Lesson> allLessons = lessonRepository.findAll();
+        List<Lesson> allLessons = lessonRepository.findAll(currentCalendarId);
         Map<ScheduleKey, Integer> aggregatedHours = new LinkedHashMap<>();
         List<String> archivedLessonIds = new ArrayList<>();
 
@@ -198,7 +247,7 @@ public class ScheduleUseCase {
         }
 
         Map<ScheduleKey, ScheduleItem> existingItemsByKey = new HashMap<>();
-        for (ScheduleItem item : scheduleItemRepository.findAll()) {
+        for (ScheduleItem item : scheduleItemRepository.findAll(currentCalendarId)) {
             existingItemsByKey.put(
                 new ScheduleKey(
                     item.getTopic(),
@@ -220,16 +269,16 @@ public class ScheduleUseCase {
                 scheduleItemRepository.save(existing);
                 continue;
             }
-            scheduleItemRepository.save(
-                new ScheduleItem(
-                    key.topic,
-                    key.lessonName,
-                    key.className,
-                    key.location,
-                    key.instructor,
-                    hoursToAdd
-                )
+            ScheduleItem created = new ScheduleItem(
+                key.topic,
+                key.lessonName,
+                key.className,
+                key.location,
+                key.instructor,
+                hoursToAdd
             );
+            created.setCalendarId(currentCalendarId);
+            scheduleItemRepository.save(created);
         }
 
         for (String lessonId : archivedLessonIds) {
@@ -267,7 +316,7 @@ public class ScheduleUseCase {
             );
         }
 
-        List<ScheduleItem> queuedItems = scheduleItemRepository.findAll();
+        List<ScheduleItem> queuedItems = scheduleItemRepository.findAll(currentCalendarId);
         Map<ScheduleKey, Integer> aggregatedHours = new LinkedHashMap<>();
 
         for (ScheduleItem item : queuedItems) {
@@ -292,19 +341,19 @@ public class ScheduleUseCase {
             aggregatedHours.merge(key, 1, Integer::sum);
         }
 
-        scheduleItemRepository.deleteAll();
+        scheduleItemRepository.deleteAll(currentCalendarId);
         for (Map.Entry<ScheduleKey, Integer> entry : aggregatedHours.entrySet()) {
             ScheduleKey key = entry.getKey();
-            scheduleItemRepository.save(
-                new ScheduleItem(
-                    key.topic,
-                    key.lessonName,
-                    key.className,
-                    key.location,
-                    key.instructor,
-                    entry.getValue()
-                )
+            ScheduleItem created = new ScheduleItem(
+                key.topic,
+                key.lessonName,
+                key.className,
+                key.location,
+                key.instructor,
+                entry.getValue()
             );
+            created.setCalendarId(currentCalendarId);
+            scheduleItemRepository.save(created);
         }
 
         for (Lesson lesson : lessonsToReschedule) {
@@ -324,7 +373,7 @@ public class ScheduleUseCase {
     ) {
         validateDateRange(startDate, endDate);
 
-        List<ScheduleItem> items = scheduleItemRepository.findAll();
+        List<ScheduleItem> items = scheduleItemRepository.findAll(currentCalendarId);
         if (items.isEmpty()) {
             return new AutoScheduleResult(0, null, 0, List.of());
         }
@@ -373,7 +422,8 @@ public class ScheduleUseCase {
             }
 
             List<Lesson> existingLessons = lessonRepository.findByDate(
-                currentDate
+                currentDate,
+                currentCalendarId
             );
             existingLessons.removeIf(Lesson::isArchived);
             Set<String> dayExclusiveSubjects = getExclusiveSubjectsForDay(
@@ -429,6 +479,7 @@ public class ScheduleUseCase {
                     currentItem.getInstructor(),
                     currentDate
                 );
+                lesson.setCalendarId(currentCalendarId);
                 lessonRepository.save(lesson);
 
                 createdLessons++;
@@ -565,9 +616,13 @@ public class ScheduleUseCase {
 
     private List<Lesson> findLessonsInRange(LocalDate startDate, LocalDate endDate) {
         if (endDate != null) {
-            return lessonRepository.findByDateRange(startDate, endDate);
+            return lessonRepository.findByDateRange(
+                startDate,
+                endDate,
+                currentCalendarId
+            );
         }
-        List<Lesson> lessons = lessonRepository.findAll();
+        List<Lesson> lessons = lessonRepository.findAll(currentCalendarId);
         List<Lesson> filtered = new ArrayList<>();
         for (Lesson lesson : lessons) {
             if (!lesson.getDate().isBefore(startDate)) {
@@ -603,7 +658,7 @@ public class ScheduleUseCase {
             return autoLessons;
         }
 
-        List<Lesson> allLessons = lessonRepository.findAll();
+        List<Lesson> allLessons = lessonRepository.findAll(currentCalendarId);
         for (Lesson lesson : allLessons) {
             if (
                 lesson.isAutoScheduled() &&

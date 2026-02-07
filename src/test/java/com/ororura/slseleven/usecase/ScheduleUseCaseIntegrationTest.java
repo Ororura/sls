@@ -28,6 +28,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 class ScheduleUseCaseIntegrationTest {
+    private static final String DEFAULT_CALENDAR_ID = "default";
 
     @TempDir
     Path tempDir;
@@ -72,12 +73,17 @@ class ScheduleUseCaseIntegrationTest {
         assertEquals(1, result.getRemainingItems().size());
         assertEquals(1, result.getRemainingItems().get(0).getHours());
 
-        List<Lesson> mondayLessons = lessonRepository.findByDate(monday);
+        List<Lesson> mondayLessons = lessonRepository.findByDate(
+            monday,
+            DEFAULT_CALENDAR_ID
+        );
         assertEquals(2, mondayLessons.size());
         assertEquals(LocalTime.of(9, 0), mondayLessons.get(0).getTime());
         assertEquals(LocalTime.of(9, 50), mondayLessons.get(1).getTime());
 
-        List<ScheduleItem> remainingQueue = scheduleItemRepository.findAll();
+        List<ScheduleItem> remainingQueue = scheduleItemRepository.findAll(
+            DEFAULT_CALENDAR_ID
+        );
         assertEquals(1, remainingQueue.size());
         assertEquals(1, remainingQueue.get(0).getHours());
     }
@@ -103,10 +109,20 @@ class ScheduleUseCaseIntegrationTest {
         assertEquals(0, result.getRemainingHours());
         assertTrue(result.getRemainingItems().isEmpty());
 
-        List<Lesson> mondayLessons = lessonRepository.findByDate(monday);
+        List<Lesson> mondayLessons = lessonRepository.findByDate(
+            monday,
+            DEFAULT_CALENDAR_ID
+        );
         assertEquals(3, mondayLessons.size());
-        assertEquals(1, lessonRepository.findByDate(tuesday).size(), "outside range lessons must stay untouched");
-        assertTrue(scheduleItemRepository.findAll().isEmpty(), "queue must be consumed after successful reschedule");
+        assertEquals(
+            1,
+            lessonRepository.findByDate(tuesday, DEFAULT_CALENDAR_ID).size(),
+            "outside range lessons must stay untouched"
+        );
+        assertTrue(
+            scheduleItemRepository.findAll(DEFAULT_CALENDAR_ID).isEmpty(),
+            "queue must be consumed after successful reschedule"
+        );
     }
 
     @Test
@@ -168,8 +184,10 @@ class ScheduleUseCaseIntegrationTest {
 
         assertEquals(1, result.getCreatedLessons());
         assertEquals(1, result.getRemainingHours());
-        assertTrue(lessonRepository.findByDate(tuesday).isEmpty());
-        assertEquals(1, scheduleItemRepository.findAll().size());
+        assertTrue(
+            lessonRepository.findByDate(tuesday, DEFAULT_CALENDAR_ID).isEmpty()
+        );
+        assertEquals(1, scheduleItemRepository.findAll(DEFAULT_CALENDAR_ID).size());
     }
 
     @Test
@@ -202,8 +220,10 @@ class ScheduleUseCaseIntegrationTest {
         int moved = scheduleUseCase.moveArchivedLessonsToPool();
 
         assertEquals(2, moved);
-        assertTrue(lessonRepository.findAll().isEmpty());
-        List<ScheduleItem> items = scheduleItemRepository.findAll();
+        assertTrue(lessonRepository.findAll(DEFAULT_CALENDAR_ID).isEmpty());
+        List<ScheduleItem> items = scheduleItemRepository.findAll(
+            DEFAULT_CALENDAR_ID
+        );
         assertEquals(1, items.size());
         assertEquals(2, items.get(0).getHours());
     }

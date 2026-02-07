@@ -21,6 +21,23 @@
                     text="Следующий месяц ▶"
                     styleClass="button-ghost"
                 />
+                <Label text="Календарь:" />
+                <ComboBox fx:id="calendarComboBox" prefWidth="220" />
+                <Button
+                    text="Новый"
+                    onAction="#onCreateCalendar"
+                    styleClass="button-secondary"
+                />
+                <Button
+                    text="Переименовать"
+                    onAction="#onRenameCalendar"
+                    styleClass="button-secondary"
+                />
+                <Button
+                    text="Удалить"
+                    onAction="#onDeleteCalendar"
+                    styleClass="button-danger"
+                />
                 <Pane HBox.hgrow="ALWAYS" />
                 <Button
                     text="Авторасписание"

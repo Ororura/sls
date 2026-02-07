@@ -13,9 +13,17 @@ import java.util.Optional;
 public class LessonUseCase {
 
     private final LessonRepository lessonRepository;
+    private String currentCalendarId = Lesson.DEFAULT_CALENDAR_ID;
 
     public LessonUseCase(LessonRepository lessonRepository) {
         this.lessonRepository = lessonRepository;
+    }
+
+    public void setCurrentCalendarId(String calendarId) {
+        if (calendarId == null || calendarId.isBlank()) {
+            throw new IllegalArgumentException("ID календаря не может быть пустым");
+        }
+        this.currentCalendarId = calendarId;
     }
 
     /**
@@ -25,6 +33,7 @@ public class LessonUseCase {
         if (lesson == null) {
             throw new IllegalArgumentException("Занятие не может быть null");
         }
+        lesson.setCalendarId(currentCalendarId);
         lessonRepository.save(lesson);
     }
 
@@ -42,6 +51,13 @@ public class LessonUseCase {
                 "Занятие с ID " + lesson.getId() + " не найдено"
             );
         }
+        Lesson existing = lessonRepository.findById(lesson.getId()).orElse(null);
+        if (existing == null || !currentCalendarId.equals(existing.getCalendarId())) {
+            throw new IllegalArgumentException(
+                "Занятие с ID " + lesson.getId() + " не найдено"
+            );
+        }
+        lesson.setCalendarId(currentCalendarId);
         lessonRepository.save(lesson);
     }
 
@@ -54,7 +70,8 @@ public class LessonUseCase {
                 "ID занятия не может быть пустым"
             );
         }
-        if (!lessonRepository.existsById(lessonId)) {
+        Lesson lesson = lessonRepository.findById(lessonId).orElse(null);
+        if (lesson == null || !currentCalendarId.equals(lesson.getCalendarId())) {
             throw new IllegalArgumentException(
                 "Занятие с ID " + lessonId + " не найдено"
             );
@@ -66,7 +83,7 @@ public class LessonUseCase {
      * Удалить все занятия
      */
     public void deleteAllLessons() {
-        lessonRepository.deleteAll();
+        lessonRepository.deleteAll(currentCalendarId);
     }
 
     public void deleteAutoScheduledLesson(String lessonId) {
@@ -82,6 +99,11 @@ public class LessonUseCase {
                     "Занятие с ID " + lessonId + " не найдено"
                 )
             );
+        if (!currentCalendarId.equals(lesson.getCalendarId())) {
+            throw new IllegalArgumentException(
+                "Занятие с ID " + lessonId + " не найдено"
+            );
+        }
         if (!lesson.isAutoScheduled()) {
             throw new IllegalArgumentException(
                 "Выбранное занятие не создано автораспределением"
@@ -91,7 +113,7 @@ public class LessonUseCase {
     }
 
     public int deleteAllAutoScheduledLessons() {
-        List<Lesson> allLessons = lessonRepository.findAll();
+        List<Lesson> allLessons = lessonRepository.findAll(currentCalendarId);
         int deleted = 0;
         for (Lesson lesson : allLessons) {
             if (lesson.isAutoScheduled()) {
@@ -106,7 +128,7 @@ public class LessonUseCase {
         if (today == null) {
             throw new IllegalArgumentException("Дата не может быть null");
         }
-        List<Lesson> allLessons = lessonRepository.findAll();
+        List<Lesson> allLessons = lessonRepository.findAll(currentCalendarId);
         int archived = 0;
         for (Lesson lesson : allLessons) {
             if (lesson.isArchived()) {
@@ -130,14 +152,16 @@ public class LessonUseCase {
                 "ID занятия не может быть пустым"
             );
         }
-        return lessonRepository.findById(lessonId);
+        return lessonRepository
+            .findById(lessonId)
+            .filter(lesson -> currentCalendarId.equals(lesson.getCalendarId()));
     }
 
     /**
      * Получить все занятия
      */
     public List<Lesson> getAllLessons() {
-        List<Lesson> allLessons = lessonRepository.findAll();
+        List<Lesson> allLessons = lessonRepository.findAll(currentCalendarId);
         List<Lesson> activeLessons = new java.util.ArrayList<>();
         for (Lesson lesson : allLessons) {
             if (!lesson.isArchived()) {
@@ -148,7 +172,7 @@ public class LessonUseCase {
     }
 
     public List<Lesson> getArchivedLessons() {
-        List<Lesson> allLessons = lessonRepository.findAll();
+        List<Lesson> allLessons = lessonRepository.findAll(currentCalendarId);
         List<Lesson> archivedLessons = new java.util.ArrayList<>();
         for (Lesson lesson : allLessons) {
             if (lesson.isArchived()) {
@@ -165,7 +189,21 @@ public class LessonUseCase {
         if (date == null) {
             throw new IllegalArgumentException("Дата не может быть null");
         }
-        List<Lesson> lessons = lessonRepository.findByDate(date);
+        List<Lesson> lessons = lessonRepository.findByDate(date, currentCalendarId);
+        List<Lesson> activeLessons = new java.util.ArrayList<>();
+        for (Lesson lesson : lessons) {
+            if (!lesson.isArchived()) {
+                activeLessons.add(lesson);
+            }
+        }
+        return activeLessons;
+    }
+
+    public List<Lesson> getLessonsByDateAllCalendars(LocalDate date) {
+        if (date == null) {
+            throw new IllegalArgumentException("Дата не может быть null");
+        }
+        List<Lesson> lessons = lessonRepository.findByDateAcrossCalendars(date);
         List<Lesson> activeLessons = new java.util.ArrayList<>();
         for (Lesson lesson : lessons) {
             if (!lesson.isArchived()) {
@@ -190,7 +228,29 @@ public class LessonUseCase {
                 "Начальная дата не может быть позже конечной"
             );
         }
-        List<Lesson> lessons = lessonRepository.findByDateRange(
+        List<Lesson> lessons = lessonRepository.findByDateRange(startDate, endDate, currentCalendarId);
+        List<Lesson> activeLessons = new java.util.ArrayList<>();
+        for (Lesson lesson : lessons) {
+            if (!lesson.isArchived()) {
+                activeLessons.add(lesson);
+            }
+        }
+        return activeLessons;
+    }
+
+    public List<Lesson> getLessonsByDateRangeAllCalendars(
+        LocalDate startDate,
+        LocalDate endDate
+    ) {
+        if (startDate == null || endDate == null) {
+            throw new IllegalArgumentException("Даты не могут быть null");
+        }
+        if (startDate.isAfter(endDate)) {
+            throw new IllegalArgumentException(
+                "Начальная дата не может быть позже конечной"
+            );
+        }
+        List<Lesson> lessons = lessonRepository.findByDateRangeAcrossCalendars(
             startDate,
             endDate
         );

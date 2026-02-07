@@ -7,9 +7,22 @@ import java.sql.Statement;
 public class SchemaInitializer {
 
     public static void init(SQLiteConnectionProvider provider) {
+        String calendarsSql =
+            "CREATE TABLE IF NOT EXISTS calendars (\n" +
+            "    id TEXT PRIMARY KEY,\n" +
+            "    name TEXT NOT NULL UNIQUE\n" +
+            ");";
+
+        String appSettingsSql =
+            "CREATE TABLE IF NOT EXISTS app_settings (\n" +
+            "    key TEXT PRIMARY KEY,\n" +
+            "    value TEXT NOT NULL\n" +
+            ");";
+
         String lessonsSql =
             "CREATE TABLE IF NOT EXISTS lessons (\n" +
             "    id TEXT PRIMARY KEY,\n" +
+            "    calendar_id TEXT NOT NULL DEFAULT 'default',\n" +
             "    topic TEXT NOT NULL,\n" +
             "    lesson_name TEXT NOT NULL,\n" +
             "    class_name TEXT NOT NULL DEFAULT '',\n" +
@@ -24,6 +37,7 @@ public class SchemaInitializer {
         String scheduleItemsSql =
             "CREATE TABLE IF NOT EXISTS schedule_items (\n" +
             "    id TEXT PRIMARY KEY,\n" +
+            "    calendar_id TEXT NOT NULL DEFAULT 'default',\n" +
             "    topic TEXT NOT NULL,\n" +
             "    lesson_name TEXT NOT NULL,\n" +
             "    class_name TEXT NOT NULL DEFAULT '',\n" +
@@ -35,20 +49,25 @@ public class SchemaInitializer {
 
         String scheduleSettingsSql =
             "CREATE TABLE IF NOT EXISTS schedule_settings (\n" +
-            "    day_of_week INTEGER PRIMARY KEY,\n" +
-            "    max_hours INTEGER NOT NULL\n" +
+            "    calendar_id TEXT NOT NULL DEFAULT 'default',\n" +
+            "    day_of_week INTEGER NOT NULL,\n" +
+            "    max_hours INTEGER NOT NULL,\n" +
+            "    PRIMARY KEY (calendar_id, day_of_week)\n" +
             ");";
 
         String scheduleSubjectRulesSql =
             "CREATE TABLE IF NOT EXISTS schedule_subject_rules (\n" +
-            "    subject TEXT PRIMARY KEY,\n" +
+            "    calendar_id TEXT NOT NULL DEFAULT 'default',\n" +
+            "    subject TEXT NOT NULL,\n" +
             "    allowed_days INTEGER NOT NULL,\n" +
-            "    exclusive_days INTEGER NOT NULL\n" +
+            "    exclusive_days INTEGER NOT NULL,\n" +
+            "    PRIMARY KEY (calendar_id, subject)\n" +
             ");";
 
         String scheduleHistorySql =
             "CREATE TABLE IF NOT EXISTS schedule_history (\n" +
             "    id TEXT PRIMARY KEY,\n" +
+            "    calendar_id TEXT NOT NULL DEFAULT 'default',\n" +
             "    created_at TEXT NOT NULL,\n" +
             "    label TEXT NOT NULL,\n" +
             "    lessons_blob TEXT NOT NULL,\n" +
@@ -59,11 +78,17 @@ public class SchemaInitializer {
             Connection c = provider.getConnection();
             Statement s = c.createStatement()
         ) {
+            s.execute(calendarsSql);
+            s.execute(appSettingsSql);
             s.execute(lessonsSql);
             s.execute(scheduleItemsSql);
             s.execute(scheduleSettingsSql);
             s.execute(scheduleSubjectRulesSql);
             s.execute(scheduleHistorySql);
+            ensureColumnExists(
+                s,
+                "ALTER TABLE lessons ADD COLUMN calendar_id TEXT NOT NULL DEFAULT 'default'"
+            );
             ensureColumnExists(
                 s,
                 "ALTER TABLE lessons ADD COLUMN class_name TEXT NOT NULL DEFAULT ''"
@@ -78,28 +103,52 @@ public class SchemaInitializer {
             );
             ensureColumnExists(
                 s,
+                "ALTER TABLE schedule_items ADD COLUMN calendar_id TEXT NOT NULL DEFAULT 'default'"
+            );
+            ensureColumnExists(
+                s,
                 "ALTER TABLE schedule_items ADD COLUMN class_name TEXT NOT NULL DEFAULT ''"
             );
+            ensureColumnExists(
+                s,
+                "ALTER TABLE schedule_settings ADD COLUMN calendar_id TEXT NOT NULL DEFAULT 'default'"
+            );
+            ensureColumnExists(
+                s,
+                "ALTER TABLE schedule_subject_rules ADD COLUMN calendar_id TEXT NOT NULL DEFAULT 'default'"
+            );
+            ensureColumnExists(
+                s,
+                "ALTER TABLE schedule_history ADD COLUMN calendar_id TEXT NOT NULL DEFAULT 'default'"
+            );
+            normalizeScheduleSettingsTable(s);
+            normalizeScheduleSubjectRulesTable(s);
             s.execute(
-                "INSERT OR IGNORE INTO schedule_settings (day_of_week, max_hours) VALUES (1, 2)"
+                "INSERT OR IGNORE INTO calendars (id, name) VALUES ('default', 'Основной')"
             );
             s.execute(
-                "INSERT OR IGNORE INTO schedule_settings (day_of_week, max_hours) VALUES (2, 2)"
+                "INSERT OR IGNORE INTO app_settings (key, value) VALUES ('active_calendar_id', 'default')"
             );
             s.execute(
-                "INSERT OR IGNORE INTO schedule_settings (day_of_week, max_hours) VALUES (3, 2)"
+                "INSERT OR IGNORE INTO schedule_settings (calendar_id, day_of_week, max_hours) VALUES ('default', 1, 2)"
             );
             s.execute(
-                "INSERT OR IGNORE INTO schedule_settings (day_of_week, max_hours) VALUES (4, 2)"
+                "INSERT OR IGNORE INTO schedule_settings (calendar_id, day_of_week, max_hours) VALUES ('default', 2, 2)"
             );
             s.execute(
-                "INSERT OR IGNORE INTO schedule_settings (day_of_week, max_hours) VALUES (5, 2)"
+                "INSERT OR IGNORE INTO schedule_settings (calendar_id, day_of_week, max_hours) VALUES ('default', 3, 2)"
             );
             s.execute(
-                "INSERT OR IGNORE INTO schedule_settings (day_of_week, max_hours) VALUES (6, 0)"
+                "INSERT OR IGNORE INTO schedule_settings (calendar_id, day_of_week, max_hours) VALUES ('default', 4, 2)"
             );
             s.execute(
-                "INSERT OR IGNORE INTO schedule_settings (day_of_week, max_hours) VALUES (7, 0)"
+                "INSERT OR IGNORE INTO schedule_settings (calendar_id, day_of_week, max_hours) VALUES ('default', 5, 2)"
+            );
+            s.execute(
+                "INSERT OR IGNORE INTO schedule_settings (calendar_id, day_of_week, max_hours) VALUES ('default', 6, 0)"
+            );
+            s.execute(
+                "INSERT OR IGNORE INTO schedule_settings (calendar_id, day_of_week, max_hours) VALUES ('default', 7, 0)"
             );
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -111,5 +160,46 @@ public class SchemaInitializer {
         try {
             statement.execute(sql);
         } catch (Exception ignored) {}
+    }
+
+    private static void normalizeScheduleSettingsTable(Statement s)
+        throws Exception {
+        s.execute("DROP TABLE IF EXISTS schedule_settings_new");
+        s.execute(
+            "CREATE TABLE schedule_settings_new (\n" +
+            "    calendar_id TEXT NOT NULL DEFAULT 'default',\n" +
+            "    day_of_week INTEGER NOT NULL,\n" +
+            "    max_hours INTEGER NOT NULL,\n" +
+            "    PRIMARY KEY (calendar_id, day_of_week)\n" +
+            ");"
+        );
+        s.execute(
+            "INSERT OR IGNORE INTO schedule_settings_new (calendar_id, day_of_week, max_hours) " +
+            "SELECT COALESCE(calendar_id, 'default'), day_of_week, max_hours FROM schedule_settings"
+        );
+        s.execute("DROP TABLE schedule_settings");
+        s.execute("ALTER TABLE schedule_settings_new RENAME TO schedule_settings");
+    }
+
+    private static void normalizeScheduleSubjectRulesTable(Statement s)
+        throws Exception {
+        s.execute("DROP TABLE IF EXISTS schedule_subject_rules_new");
+        s.execute(
+            "CREATE TABLE schedule_subject_rules_new (\n" +
+            "    calendar_id TEXT NOT NULL DEFAULT 'default',\n" +
+            "    subject TEXT NOT NULL,\n" +
+            "    allowed_days INTEGER NOT NULL,\n" +
+            "    exclusive_days INTEGER NOT NULL,\n" +
+            "    PRIMARY KEY (calendar_id, subject)\n" +
+            ");"
+        );
+        s.execute(
+            "INSERT OR IGNORE INTO schedule_subject_rules_new (calendar_id, subject, allowed_days, exclusive_days) " +
+            "SELECT COALESCE(calendar_id, 'default'), subject, allowed_days, exclusive_days FROM schedule_subject_rules"
+        );
+        s.execute("DROP TABLE schedule_subject_rules");
+        s.execute(
+            "ALTER TABLE schedule_subject_rules_new RENAME TO schedule_subject_rules"
+        );
     }
 }

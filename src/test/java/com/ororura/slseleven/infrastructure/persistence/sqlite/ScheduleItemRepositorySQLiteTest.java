@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 class ScheduleItemRepositorySQLiteTest {
+    private static final String DEFAULT_CALENDAR_ID = "default";
 
     @TempDir
     Path tempDir;
@@ -36,7 +37,7 @@ class ScheduleItemRepositorySQLiteTest {
         repository.save(second);
         repository.save(third);
 
-        assertEquals(3, repository.findAll().size());
+        assertEquals(3, repository.findAll(DEFAULT_CALENDAR_ID).size());
         assertTrue(repository.findById(first.getId()).isPresent());
 
         second.setHours(5);
@@ -48,7 +49,7 @@ class ScheduleItemRepositorySQLiteTest {
         assertFalse(repository.existsById(second.getId()));
         assertTrue(repository.existsById(third.getId()));
 
-        repository.deleteAll();
-        assertTrue(repository.findAll().isEmpty());
+        repository.deleteAll(DEFAULT_CALENDAR_ID);
+        assertTrue(repository.findAll(DEFAULT_CALENDAR_ID).isEmpty());
     }
 }

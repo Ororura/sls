@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 class LessonRepositorySQLiteTest {
+    private static final String DEFAULT_CALENDAR_ID = "default";
 
     @TempDir
     Path tempDir;
@@ -37,12 +38,16 @@ class LessonRepositorySQLiteTest {
 
         assertTrue(repository.existsById(lesson.getId()));
         assertTrue(repository.findById(lesson.getId()).isPresent());
-        assertEquals(1, repository.findByDate(date).size());
+        assertEquals(1, repository.findByDate(date, DEFAULT_CALENDAR_ID).size());
 
         repository.save(new Lesson("Math", "L2", LocalTime.of(9, 0), "A1", "Ivanov", date.plusDays(1)));
         repository.save(new Lesson("Math", "L0", LocalTime.of(9, 0), "A1", "Ivanov", date.minusDays(1)));
 
-        List<Lesson> range = repository.findByDateRange(date, date.plusDays(1));
+        List<Lesson> range = repository.findByDateRange(
+            date,
+            date.plusDays(1),
+            DEFAULT_CALENDAR_ID
+        );
         assertEquals(2, range.size());
         assertEquals(date, range.get(0).getDate());
         assertEquals(date.plusDays(1), range.get(1).getDate());
@@ -50,7 +55,7 @@ class LessonRepositorySQLiteTest {
         repository.deleteById(lesson.getId());
         assertFalse(repository.existsById(lesson.getId()));
 
-        repository.deleteAll();
-        assertTrue(repository.findAll().isEmpty());
+        repository.deleteAll(DEFAULT_CALENDAR_ID);
+        assertTrue(repository.findAll(DEFAULT_CALENDAR_ID).isEmpty());
     }
 }

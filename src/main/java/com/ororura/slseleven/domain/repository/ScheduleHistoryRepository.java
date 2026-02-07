@@ -7,9 +7,9 @@ import java.util.Optional;
 public interface ScheduleHistoryRepository {
     void save(ScheduleHistorySnapshot snapshot);
 
-    List<ScheduleHistorySnapshot> findAll();
+    List<ScheduleHistorySnapshot> findAll(String calendarId);
 
-    Optional<ScheduleHistorySnapshot> findById(String id);
+    Optional<ScheduleHistorySnapshot> findById(String id, String calendarId);
 
     void deleteById(String id);
 }

@@ -20,19 +20,32 @@ public interface LessonRepository {
     Optional<Lesson> findById(String id);
 
     /**
-     * Получить все занятия
+     * Получить все занятия в календаре
      */
-    List<Lesson> findAll();
+    List<Lesson> findAll(String calendarId);
+
+    List<Lesson> findAllAcrossCalendars();
 
     /**
-     * Получить занятия на конкретную дату
+     * Получить занятия на конкретную дату в календаре
      */
-    List<Lesson> findByDate(LocalDate date);
+    List<Lesson> findByDate(LocalDate date, String calendarId);
+
+    List<Lesson> findByDateAcrossCalendars(LocalDate date);
 
     /**
-     * Получить занятия в диапазоне дат
+     * Получить занятия в диапазоне дат в календаре
      */
-    List<Lesson> findByDateRange(LocalDate startDate, LocalDate endDate);
+    List<Lesson> findByDateRange(
+        LocalDate startDate,
+        LocalDate endDate,
+        String calendarId
+    );
+
+    List<Lesson> findByDateRangeAcrossCalendars(
+        LocalDate startDate,
+        LocalDate endDate
+    );
 
     /**
      * Удалить занятие по ID
@@ -40,9 +53,9 @@ public interface LessonRepository {
     void deleteById(String id);
 
     /**
-     * Удалить все занятия
+     * Удалить все занятия календаря
      */
-    void deleteAll();
+    void deleteAll(String calendarId);
 
     /**
      * Проверить существование занятия по ID

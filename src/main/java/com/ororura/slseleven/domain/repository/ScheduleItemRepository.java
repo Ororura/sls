@@ -12,13 +12,13 @@ public interface ScheduleItemRepository {
 
     Optional<ScheduleItem> findById(String id);
 
-    List<ScheduleItem> findAll();
+    List<ScheduleItem> findAll(String calendarId);
 
     void deleteById(String id);
 
     void deleteAllByIds(List<String> ids);
 
-    void deleteAll();
+    void deleteAll(String calendarId);
 
     boolean existsById(String id);
 }
