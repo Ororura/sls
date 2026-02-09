@@ -1,40 +1,84 @@
 .app-root {
     -fx-font-family: "Avenir Next";
-    -fx-background-color: linear-gradient(to bottom, #f8f5f2, #ffffff);
-    -fx-text-fill: #1f2933;
+    -fx-background-color: linear-gradient(to bottom right, #f6f3ee, #eef5ff 55%, #f9fafb);
+    -fx-text-fill: #17212b;
 }
 
 .top-section {
-    -fx-padding: 20 24 10 24;
+    -fx-padding: 18 22 10 22;
 }
 
 .top-bar {
     -fx-alignment: center-left;
-    -fx-spacing: 16;
+    -fx-spacing: 12;
+}
+
+.toolbar {
+    -fx-background-color: transparent;
+    -fx-padding: 8 18 10 18;
+}
+
+.top-card,
+.panel-card,
+.sidebar,
+.footer-bar,
+.toolbar-card {
+    -fx-background-color: rgba(255, 255, 255, 0.9);
+    -fx-background-radius: 16;
+    -fx-border-color: rgba(198, 207, 221, 0.75);
+    -fx-border-radius: 16;
+    -fx-effect: dropshadow(gaussian, rgba(9, 18, 38, 0.08), 20, 0.2, 0, 4);
+}
+
+.toolbar-card {
+    -fx-padding: 12 14 14 14;
+    -fx-spacing: 10;
+}
+
+.control-bar {
+    -fx-alignment: center-left;
+    -fx-spacing: 10;
+}
+
+.action-flow {
+    -fx-hgap: 8;
+    -fx-vgap: 8;
+    -fx-alignment: center-left;
 }
 
 .title {
-    -fx-font-size: 22px;
+    -fx-font-size: 24px;
+    -fx-font-weight: 800;
+    -fx-text-fill: #0f172a;
+}
+
+.section-title {
+    -fx-font-size: 16px;
     -fx-font-weight: 700;
+    -fx-text-fill: #0f1f32;
 }
 
 .hint {
-    -fx-text-fill: #7a828a;
+    -fx-text-fill: #5c6673;
     -fx-font-size: 11px;
 }
 
+.muted {
+    -fx-text-fill: #667085;
+}
+
+.error-text {
+    -fx-text-fill: #b42318;
+}
+
 .content {
-    -fx-padding: 18 24 24 24;
-    -fx-spacing: 20;
+    -fx-padding: 14 22 22 22;
+    -fx-spacing: 18;
 }
 
 .calendar-panel {
-    -fx-background-color: rgba(255, 255, 255, 0.75);
-    -fx-background-radius: 16;
-    -fx-padding: 16;
-    -fx-border-color: #e5e1db;
-    -fx-border-radius: 16;
-    -fx-pref-width: 720;
+    -fx-padding: 14;
+    -fx-pref-width: 740;
 }
 
 .calendar-grid {
@@ -43,33 +87,33 @@
 }
 
 .day-cell {
-    -fx-background-color: rgba(255, 255, 255, 0.9);
+    -fx-background-color: linear-gradient(to bottom, #ffffff, #f9fbff);
     -fx-background-radius: 12;
     -fx-border-radius: 12;
-    -fx-border-color: #e6e3de;
+    -fx-border-color: #dde4ee;
     -fx-border-width: 1;
-    -fx-padding: 6 8;
+    -fx-padding: 7 9;
 }
 
 .day-cell:hover {
-    -fx-border-color: #7aa7ff;
-    -fx-background-color: #f0f6ff;
+    -fx-border-color: #578ef4;
+    -fx-background-color: linear-gradient(to bottom, #f5f9ff, #eaf2ff);
 }
 
 .day-cell:today {
-    -fx-border-color: #5a9cff;
-    -fx-background-color: #e9f1ff;
+    -fx-border-color: #3f7be3;
+    -fx-background-color: linear-gradient(to bottom, #eef4ff, #e3edff);
 }
 
 .day-cell:selected {
-    -fx-border-color: #3b7cff;
-    -fx-background-color: #dceaff;
+    -fx-border-color: #1f64d6;
+    -fx-background-color: linear-gradient(to bottom, #dbe9ff, #d0e2ff);
     -fx-border-width: 2;
 }
 
 .day-cell:today:selected {
-    -fx-border-color: #1f6feb;
-    -fx-background-color: #cfe3ff;
+    -fx-border-color: #0d5ad5;
+    -fx-background-color: linear-gradient(to bottom, #d4e5ff, #c8ddff);
     -fx-border-width: 2;
 }
 
@@ -81,75 +125,58 @@
 .dow-label {
     -fx-font-size: 12px;
     -fx-font-weight: 700;
-    -fx-text-fill: #54606b;
+    -fx-text-fill: #425466;
 }
 
 .lesson-count {
     -fx-font-size: 10px;
-    -fx-text-fill: #1f6feb;
-    -fx-background-color: rgba(31, 111, 235, 0.12);
+    -fx-text-fill: #1158cb;
+    -fx-background-color: rgba(17, 88, 203, 0.13);
     -fx-background-radius: 8;
     -fx-padding: 2 6;
 }
 
 .sidebar {
-    -fx-background-color: rgba(255, 255, 255, 0.88);
-    -fx-background-radius: 16;
-    -fx-padding: 16;
-    -fx-border-color: #e5e1db;
-    -fx-border-radius: 16;
-    -fx-pref-width: 340;
-}
-
-.section-title {
-    -fx-font-size: 16px;
-    -fx-font-weight: 700;
-}
-
-.muted {
-    -fx-text-fill: #7a828a;
-}
-
-.error-text {
-    -fx-text-fill: #b42318;
+    -fx-padding: 14;
+    -fx-pref-width: 350;
 }
 
 .lesson-card {
-    -fx-background-color: #ffffff;
+    -fx-background-color: linear-gradient(to bottom, #ffffff, #fbfcfe);
     -fx-background-radius: 12;
     -fx-border-radius: 12;
-    -fx-border-color: #e6e3de;
+    -fx-border-color: #d9e1ec;
     -fx-padding: 10 12;
-    -fx-effect: dropshadow(gaussian, rgba(16, 24, 40, 0.12), 12, 0.2, 0, 2);
+    -fx-effect: dropshadow(gaussian, rgba(16, 24, 40, 0.1), 12, 0.2, 0, 2);
 }
 
 .lesson-card-current {
-    -fx-border-color: #2e7d32;
+    -fx-border-color: #208748;
     -fx-border-width: 2;
-    -fx-background-color: #f2fbf4;
+    -fx-background-color: #f0faf4;
 }
 
 .lesson-card-past {
-    -fx-background-color: #f2f4f7;
-    -fx-border-color: #d0d5dd;
+    -fx-background-color: #f3f5f8;
+    -fx-border-color: #d2d7df;
     -fx-effect: none;
 }
 
 .lesson-time {
     -fx-font-size: 14px;
-    -fx-font-weight: 700;
-    -fx-text-fill: #1f6feb;
+    -fx-font-weight: 800;
+    -fx-text-fill: #195fca;
 }
 
 .lesson-time-current {
-    -fx-text-fill: #2e7d32;
+    -fx-text-fill: #1d7b3f;
 }
 
 .lesson-status-current {
     -fx-text-fill: #157f3b;
     -fx-font-size: 11px;
     -fx-font-weight: 700;
-    -fx-background-color: #d4f5dd;
+    -fx-background-color: #d5f5df;
     -fx-background-radius: 8;
     -fx-padding: 2 8;
 }
@@ -164,7 +191,7 @@
 }
 
 .lesson-meta {
-    -fx-text-fill: #364152;
+    -fx-text-fill: #33475c;
     -fx-font-size: 12px;
 }
 
@@ -175,29 +202,38 @@
 
 .button {
     -fx-background-radius: 10;
-    -fx-padding: 6 14;
-    -fx-font-weight: 600;
+    -fx-padding: 7 14;
+    -fx-font-weight: 700;
+    -fx-cursor: hand;
 }
 
 .button-primary {
-    -fx-background-color: #1f6feb;
+    -fx-background-color: linear-gradient(to bottom, #2a7cf3, #1f69da);
     -fx-text-fill: white;
 }
 
 .button-primary:hover {
-    -fx-background-color: #1859bf;
+    -fx-background-color: linear-gradient(to bottom, #1f70e5, #175ec6);
 }
 
 .button-ghost {
-    -fx-background-color: transparent;
-    -fx-border-color: #d6d3ce;
+    -fx-background-color: rgba(255, 255, 255, 0.7);
+    -fx-border-color: #ccd4e0;
     -fx-border-radius: 10;
-    -fx-text-fill: #334155;
+    -fx-text-fill: #344355;
+}
+
+.button-ghost:hover {
+    -fx-background-color: #f5f8fd;
 }
 
 .button-secondary {
-    -fx-background-color: #e8eefb;
+    -fx-background-color: #e8effd;
     -fx-text-fill: #1f3a8a;
+}
+
+.button-secondary:hover {
+    -fx-background-color: #dbe8fd;
 }
 
 .button-danger {
@@ -207,17 +243,26 @@
     -fx-border-radius: 10;
 }
 
-.toolbar {
-    -fx-background-color: transparent;
-    -fx-padding: 14 18;
+.button-danger:hover {
+    -fx-background-color: #ffe7e4;
 }
 
 .footer-bar {
-    -fx-background-color: rgba(255, 255, 255, 0.8);
-    -fx-padding: 10 14;
-    -fx-spacing: 12;
-    -fx-border-color: #e6e3de;
-    -fx-border-width: 1 0 0 0;
+    -fx-padding: 12 14;
+    -fx-spacing: 10;
+}
+
+.footer-stack {
+    -fx-spacing: 10;
+}
+
+.form-strip {
+    -fx-background-color: rgba(248, 250, 253, 0.9);
+    -fx-background-radius: 12;
+    -fx-padding: 10 12;
+    -fx-spacing: 10;
+    -fx-border-color: #e1e7f0;
+    -fx-border-radius: 12;
 }
 
 .table-view {
@@ -225,23 +270,47 @@
     -fx-control-inner-background: #ffffff;
     -fx-background-radius: 12;
     -fx-border-radius: 12;
-    -fx-border-color: #e6e3de;
+    -fx-border-color: #d9e1ec;
 }
 
 .table-view .column-header-background {
-    -fx-background-color: #f8fafc;
+    -fx-background-color: #f4f7fb;
     -fx-background-radius: 12 12 0 0;
 }
 
 .table-view .column-header,
 .table-view .filler {
-    -fx-size: 32;
+    -fx-size: 33;
     -fx-border-color: transparent;
+}
+
+.table-row-cell:filled {
+    -fx-border-color: transparent transparent #eef2f7 transparent;
+}
+
+.table-row-cell:filled:hover {
+    -fx-background-color: #f4f8ff;
 }
 
 .table-row-cell:filled:selected,
 .table-row-cell:filled:selected:focused {
     -fx-background-color: #dceaff;
+}
+
+.text-field,
+.combo-box,
+.date-picker,
+.spinner,
+.text-area {
+    -fx-background-radius: 9;
+    -fx-border-radius: 9;
+    -fx-border-color: #ccd5e1;
+}
+
+.combo-box,
+.date-picker,
+.spinner {
+    -fx-background-color: #ffffff;
 }
 
 .dialog-grid {

@@ -8,59 +8,77 @@
 >
 
     <top>
-        <ToolBar styleClass="toolbar">
-            <Label text="Авторасписание" styleClass="title" />
-            <Pane HBox.hgrow="ALWAYS" />
-            <Button
-                text="Добавить"
-                onAction="#onAddItem"
-                styleClass="button-primary"
-            />
-            <Button
-                text="Редактировать"
-                onAction="#onEditItem"
-                styleClass="button-secondary"
-            />
-            <Button
-                text="Импорт"
-                onAction="#onImport"
-                styleClass="button-secondary"
-            />
-            <Button
-                text="Импорт XLSX"
-                onAction="#onImportXlsx"
-                styleClass="button-secondary"
-            />
-            <Button
-                text="Быстрый экспорт"
-                onAction="#onQuickExport"
-                styleClass="button-secondary"
-            />
-            <Button
-                text="Экспорт XLSX"
-                onAction="#onExportXlsx"
-                styleClass="button-secondary"
-            />
-           
-        </ToolBar>
+        <VBox styleClass="toolbar">
+            <VBox spacing="10" styleClass="toolbar-card">
+                <HBox alignment="CENTER_LEFT" spacing="10">
+                    <Label text="Авторасписание" styleClass="title" />
+                    <Pane HBox.hgrow="ALWAYS" />
+                    <Button
+                        text="Добавить"
+                        onAction="#onAddItem"
+                        styleClass="button-primary"
+                    />
+                    <Button
+                        text="Редактировать"
+                        onAction="#onEditItem"
+                        styleClass="button-secondary"
+                    />
+                </HBox>
+
+                <FlowPane styleClass="action-flow">
+                    <Button
+                        text="Импорт"
+                        onAction="#onImport"
+                        styleClass="button-secondary"
+                    />
+                    <Button
+                        text="Импорт XLSX"
+                        onAction="#onImportXlsx"
+                        styleClass="button-secondary"
+                    />
+                    <Button
+                        text="Быстрый экспорт"
+                        onAction="#onQuickExport"
+                        styleClass="button-secondary"
+                    />
+                    <Button
+                        text="Экспорт XLSX"
+                        onAction="#onExportXlsx"
+                        styleClass="button-secondary"
+                    />
+                    <Button
+                        text="Удалить"
+                        onAction="#onDeleteItem"
+                        styleClass="button-danger"
+                    />
+                    <Button
+                        text="Удалить все"
+                        onAction="#onDeleteAll"
+                        styleClass="button-danger"
+                    />
+                </FlowPane>
+            </VBox>
+        </VBox>
     </top>
 
     <center>
-        <TableView fx:id="scheduleTable" styleClass="table-view">
-            <columns>
-                <TableColumn fx:id="topicColumn" text="Предмет" />
-                <TableColumn fx:id="lessonNameColumn" text="Тема" />
-                <TableColumn fx:id="classNameColumn" text="Занятие" />
-                <TableColumn fx:id="locationColumn" text="Место" />
-                <TableColumn fx:id="instructorColumn" text="Преподаватель" />
-                <TableColumn fx:id="hoursColumn" text="Часы" />
-            </columns>
-        </TableView>
+        <VBox styleClass="content">
+            <TableView fx:id="scheduleTable" styleClass="table-view">
+                <columns>
+                    <TableColumn fx:id="topicColumn" text="Предмет" />
+                    <TableColumn fx:id="lessonNameColumn" text="Тема" />
+                    <TableColumn fx:id="classNameColumn" text="Занятие" />
+                    <TableColumn fx:id="locationColumn" text="Место" />
+                    <TableColumn fx:id="instructorColumn" text="Преподаватель" />
+                    <TableColumn fx:id="hoursColumn" text="Часы" />
+                </columns>
+            </TableView>
+        </VBox>
     </center>
 
     <bottom>
-        <VBox spacing="10" styleClass="footer-bar">
-            <HBox spacing="12">
+        <VBox spacing="10" styleClass="footer-bar footer-stack">
+            <HBox spacing="12" styleClass="form-strip">
                 <Label fx:id="totalHoursLabel" text="Всего часов: 0" />
                 <Pane HBox.hgrow="ALWAYS" />
                 <Label text="Дата начала:" />
@@ -69,7 +87,7 @@
                 <DatePicker fx:id="endDatePicker" promptText="Не ограничивать" />
             </HBox>
 
-            <GridPane hgap="12" vgap="8">
+            <GridPane hgap="12" vgap="8" styleClass="form-strip">
                 <Label
                     text="Пн"
                     GridPane.rowIndex="0"
@@ -148,8 +166,7 @@
                 />
             </GridPane>
 
-            <HBox spacing="10">
-                <Pane HBox.hgrow="ALWAYS" />
+            <FlowPane styleClass="action-flow">
                 <Button
                     text="Сохранить настройки"
                     onAction="#onSaveSettings"
@@ -166,6 +183,11 @@
                     styleClass="button-secondary"
                 />
                 <Button
+                    text="История"
+                    onAction="#onHistory"
+                    styleClass="button-secondary"
+                />
+                <Button
                     text="Сформировать расписание"
                     onAction="#onAutoSchedule"
                     styleClass="button-primary"
@@ -175,22 +197,7 @@
                     onAction="#onReschedule"
                     styleClass="button-secondary"
                 />
-                <Button
-                    text="История"
-                    onAction="#onHistory"
-                    styleClass="button-secondary"
-                />
-                <Button
-                    text="Удалить"
-                    onAction="#onDeleteItem"
-                    styleClass="button-danger"
-                />
-                <Button
-                    text="Удалить все"
-                    onAction="#onDeleteAll"
-                    styleClass="button-danger"
-                />
-            </HBox>
+            </FlowPane>
         </VBox>
     </bottom>
 

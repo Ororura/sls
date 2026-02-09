@@ -9,57 +9,70 @@
 >
     <top>
         <VBox spacing="10" styleClass="top-section">
-            <HBox alignment="CENTER" spacing="20" styleClass="top-bar">
-                <Button
-                    fx:id="previousMonthButton"
-                    text="◀ Предыдущий месяц"
-                    styleClass="button-ghost"
-                />
-                <Label fx:id="monthYearLabel" styleClass="title" />
-                <Button
-                    fx:id="nextMonthButton"
-                    text="Следующий месяц ▶"
-                    styleClass="button-ghost"
-                />
-                <Label text="Календарь:" />
-                <ComboBox fx:id="calendarComboBox" prefWidth="220" />
-                <Button
-                    text="Новый"
-                    onAction="#onCreateCalendar"
-                    styleClass="button-secondary"
-                />
-                <Button
-                    text="Переименовать"
-                    onAction="#onRenameCalendar"
-                    styleClass="button-secondary"
-                />
-                <Button
-                    text="Удалить"
-                    onAction="#onDeleteCalendar"
-                    styleClass="button-danger"
-                />
-                <Pane HBox.hgrow="ALWAYS" />
-                <Button
-                    text="Авторасписание"
-                    styleClass="button-secondary"
-                    onAction="#onOpenSchedulePlanner"
-                />
-                <Button
-                    text="Все занятия"
-                    styleClass="button-primary"
-                    onAction="#onOpenLessonsList"
-                />
-            </HBox>
-            <Label
-                text="Левый клик - выбрать дату, Правый клик - добавить занятие"
-                styleClass="hint"
-            />
+            <VBox spacing="10" styleClass="top-card">
+                <padding>
+                    <Insets top="10" right="10" bottom="10" left="10" />
+                </padding>
+                <HBox alignment="CENTER_LEFT" styleClass="top-bar">
+                    <Button
+                        fx:id="previousMonthButton"
+                        text="◀ Предыдущий"
+                        styleClass="button-ghost"
+                    />
+                    <Label fx:id="monthYearLabel" styleClass="title" />
+                    <Button
+                        fx:id="nextMonthButton"
+                        text="Следующий ▶"
+                        styleClass="button-ghost"
+                    />
+                    <Pane HBox.hgrow="ALWAYS" />
+                    <Button
+                        text="Авторасписание"
+                        styleClass="button-secondary"
+                        onAction="#onOpenSchedulePlanner"
+                    />
+                    <Button
+                        text="Все занятия"
+                        styleClass="button-primary"
+                        onAction="#onOpenLessonsList"
+                    />
+                </HBox>
+
+                <HBox alignment="CENTER_LEFT" styleClass="control-bar">
+                    <Label text="Календарь:" />
+                    <ComboBox
+                        fx:id="calendarComboBox"
+                        prefWidth="260"
+                        promptText="Выберите календарь"
+                    />
+                    <Button
+                        text="Новый"
+                        onAction="#onCreateCalendar"
+                        styleClass="button-secondary"
+                    />
+                    <Button
+                        text="Переименовать"
+                        onAction="#onRenameCalendar"
+                        styleClass="button-secondary"
+                    />
+                    <Button
+                        text="Удалить"
+                        onAction="#onDeleteCalendar"
+                        styleClass="button-danger"
+                    />
+                    <Pane HBox.hgrow="ALWAYS" />
+                    <Label
+                        text="ЛКМ: открыть день, ПКМ: добавить занятие"
+                        styleClass="hint"
+                    />
+                </HBox>
+            </VBox>
         </VBox>
     </top>
 
     <center>
         <HBox spacing="20" styleClass="content">
-            <VBox spacing="10" styleClass="calendar-panel">
+            <VBox spacing="10" styleClass="calendar-panel panel-card">
                 <GridPane fx:id="calendarGrid" styleClass="calendar-grid" />
             </VBox>
 
@@ -70,9 +83,20 @@
                 styleClass="sidebar"
                 HBox.hgrow="ALWAYS"
             >
+            <padding>
+                <Insets top="10" right="10" bottom="10" left="10" />
+            </padding>
                 <content>
                     <VBox fx:id="lessonsList" spacing="10" styleClass="sidebar">
-                        <Label text="Занятия" styleClass="section-title" />
+
+                        <Label
+                            text="Занятия на день"
+                            styleClass="section-title"
+                        />
+                        <Label
+                            text="Выберите дату слева, чтобы увидеть список занятий"
+                            styleClass="muted"
+                        />
                     </VBox>
                 </content>
             </ScrollPane>

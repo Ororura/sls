@@ -7,85 +7,89 @@
     styleClass="app-root"
 >
 
-    <!-- Верхняя панель -->
     <top>
-        <ToolBar styleClass="toolbar">
-            <Label text="Все занятия" styleClass="title" />
-            <Pane HBox.hgrow="ALWAYS" />
-            <Button
-                text="Быстрый импорт"
-                onAction="#onQuickImport"
-                styleClass="button-secondary"
-            />
-            <Button
-                text="Импорт"
-                onAction="#onImport"
-                styleClass="button-secondary"
-            />
-            <Button
-                text="Импорт XLSX"
-                onAction="#onImportXlsx"
-                styleClass="button-secondary"
-            />
-            <Button
-                text="Быстрый экспорт"
-                onAction="#onQuickExport"
-                styleClass="button-secondary"
-            />
-            <Button
-                text="Экспорт"
-                onAction="#onExport"
-                styleClass="button-secondary"
-            />
-            <Button
-                text="Экспорт XLSX"
-                onAction="#onExportXlsx"
-                styleClass="button-secondary"
-            />
-            <Button
-                text="Отчет по неделям"
-                onAction="#onWeeklyReport"
-                styleClass="button-secondary"
-            />
-            <Button
-                text="Обновить"
-                onAction="#onRefresh"
-                styleClass="button-ghost"
-            />
-            <Button
-                text="Архив"
-                onAction="#onShowArchive"
-                styleClass="button-secondary"
-            />
-        </ToolBar>
+        <VBox styleClass="toolbar">
+            <VBox spacing="10" styleClass="toolbar-card">
+                <HBox alignment="CENTER_LEFT" spacing="10">
+                    <Label text="Все занятия" styleClass="title" />
+                    <Pane HBox.hgrow="ALWAYS" />
+                    <Button
+                        text="Обновить"
+                        onAction="#onRefresh"
+                        styleClass="button-ghost"
+                    />
+                    <Button
+                        text="Архив"
+                        onAction="#onShowArchive"
+                        styleClass="button-secondary"
+                    />
+                </HBox>
+
+                <FlowPane styleClass="action-flow">
+                    <Button
+                        text="Быстрый импорт"
+                        onAction="#onQuickImport"
+                        styleClass="button-secondary"
+                    />
+                    <Button
+                        text="Импорт"
+                        onAction="#onImport"
+                        styleClass="button-secondary"
+                    />
+                    <Button
+                        text="Импорт XLSX"
+                        onAction="#onImportXlsx"
+                        styleClass="button-secondary"
+                    />
+                    <Button
+                        text="Быстрый экспорт"
+                        onAction="#onQuickExport"
+                        styleClass="button-secondary"
+                    />
+                    <Button
+                        text="Экспорт"
+                        onAction="#onExport"
+                        styleClass="button-secondary"
+                    />
+                    <Button
+                        text="Экспорт XLSX"
+                        onAction="#onExportXlsx"
+                        styleClass="button-secondary"
+                    />
+                    <Button
+                        text="Отчет по неделям"
+                        onAction="#onWeeklyReport"
+                        styleClass="button-secondary"
+                    />
+                </FlowPane>
+            </VBox>
+        </VBox>
     </top>
 
-    <!-- Таблица занятий -->
     <center>
-        <TableView fx:id="lessonTable" styleClass="table-view">
-
-            <columns>
-                <TableColumn fx:id="dateColumn" text="Дата" />
-                <TableColumn fx:id="timeColumn" text="Время" />
-                <TableColumn fx:id="topicColumn" text="Предмет" />
-                <TableColumn fx:id="lessonNameColumn" text="Тема" />
-                <TableColumn fx:id="classNameColumn" text="Занятие" />
-                <TableColumn fx:id="locationColumn" text="Место" />
-                <TableColumn fx:id="instructorColumn" text="Преподаватель" />
-            </columns>
-
-        </TableView>
+        <VBox styleClass="content">
+            <TableView fx:id="lessonTable" styleClass="table-view">
+                <columns>
+                    <TableColumn fx:id="dateColumn" text="Дата" />
+                    <TableColumn fx:id="timeColumn" text="Время" />
+                    <TableColumn fx:id="topicColumn" text="Предмет" />
+                    <TableColumn fx:id="lessonNameColumn" text="Тема" />
+                    <TableColumn fx:id="classNameColumn" text="Занятие" />
+                    <TableColumn fx:id="locationColumn" text="Место" />
+                    <TableColumn fx:id="instructorColumn" text="Преподаватель" />
+                </columns>
+            </TableView>
+        </VBox>
     </center>
 
-    <!-- Нижняя панель -->
     <bottom>
         <HBox spacing="10" styleClass="footer-bar">
             <Label fx:id="countLabel" text="Всего занятий: 0" />
             <Pane HBox.hgrow="ALWAYS" />
             <Button
-                text="Удалить все"
-                onAction="#onDeleteAll"
-                styleClass="button-danger"
+                text="Добавить"
+                onAction="#onSave"
+                styleClass="button-primary"
             />
             <Button
                 text="Удалить"
@@ -93,9 +97,9 @@
                 styleClass="button-danger"
             />
             <Button
-                text="Добавить"
-                onAction="#onSave"
-                styleClass="button-primary"
+                text="Удалить все"
+                onAction="#onDeleteAll"
+                styleClass="button-danger"
             />
         </HBox>
     </bottom>
