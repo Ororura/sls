@@ -25,6 +25,11 @@
                         text="Следующий ▶"
                         styleClass="button-ghost"
                     />
+                    <Button
+                        text="Текущий месяц"
+                        onAction="#onCurrentMonth"
+                        styleClass="button-secondary"
+                    />
                     <Pane HBox.hgrow="ALWAYS" />
                     <Button
                         text="Авторасписание"
@@ -65,6 +70,12 @@
                         text="ЛКМ: открыть день, ПКМ: добавить занятие"
                         styleClass="hint"
                     />
+                </HBox>
+
+                <HBox alignment="CENTER_LEFT" spacing="14" styleClass="status-bar">
+                    <Label fx:id="currentDateLabel" styleClass="status-chip" text="Дата: -" />
+                    <Label fx:id="currentTimeLabel" styleClass="status-chip" text="Время: -" />
+                    <Label fx:id="currentLessonLabel" styleClass="status-chip status-lesson" text="Текущее занятие: -" />
                 </HBox>
             </VBox>
         </VBox>

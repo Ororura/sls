@@ -40,6 +40,25 @@
     -fx-spacing: 10;
 }
 
+.status-bar {
+    -fx-alignment: center-left;
+    -fx-spacing: 10;
+}
+
+.status-chip {
+    -fx-background-color: rgba(232, 239, 253, 0.95);
+    -fx-text-fill: #1f3a8a;
+    -fx-background-radius: 10;
+    -fx-padding: 5 10;
+    -fx-font-size: 12px;
+    -fx-font-weight: 700;
+}
+
+.status-lesson {
+    -fx-background-color: rgba(218, 242, 227, 0.95);
+    -fx-text-fill: #136b39;
+}
+
 .action-flow {
     -fx-hgap: 8;
     -fx-vgap: 8;

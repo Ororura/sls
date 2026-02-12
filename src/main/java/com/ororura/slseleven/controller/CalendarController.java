@@ -1,5 +1,7 @@
 package com.ororura.slseleven.controller;
 
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
 import com.ororura.slseleven.domain.model.AppCalendar;
 import com.ororura.slseleven.domain.model.Lesson;
 import com.ororura.slseleven.ui.UiFormatters;
@@ -27,6 +29,7 @@ import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
+import javafx.util.Duration;
 
 /**
  * Контроллер календаря
@@ -56,6 +59,15 @@ public class CalendarController {
     @FXML
     private ComboBox<AppCalendar> calendarComboBox;
 
+    @FXML
+    private Label currentDateLabel;
+
+    @FXML
+    private Label currentTimeLabel;
+
+    @FXML
+    private Label currentLessonLabel;
+
     private YearMonth currentYearMonth;
     private LocalDate selectedDate;
     private LessonUseCase lessonUseCase;
@@ -67,6 +79,11 @@ public class CalendarController {
     private final Map<LocalDate, List<Lesson>> monthLessons = new HashMap<>();
     private final DateTimeFormatter monthYearFormatter =
         UiFormatters.MONTH_YEAR_FORMATTER;
+    private final DateTimeFormatter statusDateFormatter =
+        UiFormatters.LONG_DATE_FORMATTER;
+    private final DateTimeFormatter statusTimeFormatter =
+        UiFormatters.TIME_FORMATTER;
+    private Timeline headerTimeline;
     private static final PseudoClass PSEUDO_TODAY = PseudoClass.getPseudoClass(
         "today"
     );
@@ -114,6 +131,7 @@ public class CalendarController {
         this.lessonUseCase = lessonUseCase;
         applyCalendarSelection();
         refreshCalendar();
+        updateHeaderStatus();
     }
 
     public void setScheduleUseCase(ScheduleUseCase scheduleUseCase) {
@@ -195,6 +213,7 @@ public class CalendarController {
                 }
                 switchCalendar(newValue);
             });
+        startHeaderTicker();
         buildCalendar();
     }
 
@@ -304,6 +323,12 @@ public class CalendarController {
         buildCalendar();
     }
 
+    @FXML
+    private void onCurrentMonth() {
+        currentYearMonth = YearMonth.now();
+        buildCalendar();
+    }
+
     private void buildCalendar() {
         if (lessonUseCase != null && !allCalendarsMode) {
             lessonUseCase.archivePastLessons(LocalDate.now());
@@ -342,6 +367,7 @@ public class CalendarController {
 
         ensureSelectedDateForCurrentMonth();
         showLessonsForDate(selectedDate);
+        updateHeaderStatus();
     }
 
     private void preloadMonthLessons() {
@@ -672,6 +698,7 @@ public class CalendarController {
         applyCalendarSelection();
         selectedDate = null;
         buildCalendar();
+        updateHeaderStatus();
     }
 
     private void ensureSelectedDateForCurrentMonth() {
@@ -770,5 +797,80 @@ public class CalendarController {
         alert.setContentText(message);
         UiStyles.apply(alert.getDialogPane());
         alert.showAndWait();
+    }
+
+    private void startHeaderTicker() {
+        if (headerTimeline != null) {
+            headerTimeline.stop();
+        }
+        headerTimeline = new Timeline(
+            new KeyFrame(Duration.ZERO, event -> updateHeaderStatus()),
+            new KeyFrame(Duration.seconds(1))
+        );
+        headerTimeline.setCycleCount(Timeline.INDEFINITE);
+        headerTimeline.play();
+    }
+
+    private void updateHeaderStatus() {
+        LocalDate today = LocalDate.now();
+        LocalTime now = LocalTime.now();
+        currentDateLabel.setText("Дата: " + statusDateFormatter.format(today));
+        currentTimeLabel.setText("Время: " + statusTimeFormatter.format(now));
+
+        if (lessonUseCase == null) {
+            currentLessonLabel.setText("Текущее занятие: -");
+            return;
+        }
+
+        List<Lesson> todayLessons = allCalendarsMode
+            ? lessonUseCase.getLessonsByDateAllCalendars(today)
+            : lessonUseCase.getLessonsByDate(today);
+        if (todayLessons.isEmpty()) {
+            currentLessonLabel.setText("Текущее занятие: сегодня занятий нет");
+            return;
+        }
+
+        Lesson currentLesson = null;
+        Lesson nextLesson = null;
+        for (Lesson lesson : todayLessons) {
+            LocalTime start = lesson.getTime();
+            LocalTime end = calculateLessonEndTime(lesson);
+            if (start == null || end == null) {
+                continue;
+            }
+
+            if (!now.isBefore(start) && now.isBefore(end)) {
+                currentLesson = lesson;
+                break;
+            }
+            if (now.isBefore(start) && (nextLesson == null || start.isBefore(nextLesson.getTime()))) {
+                nextLesson = lesson;
+            }
+        }
+
+        if (currentLesson != null) {
+            currentLessonLabel.setText(
+                "Текущее занятие: " +
+                safe(currentLesson.getTopic()) +
+                " (" +
+                formatLessonTimeRange(currentLesson) +
+                ")"
+            );
+            return;
+        }
+        if (nextLesson != null) {
+            currentLessonLabel.setText(
+                "Следующее занятие: " +
+                safe(nextLesson.getTopic()) +
+                " в " +
+                nextLesson.getTime().format(statusTimeFormatter)
+            );
+            return;
+        }
+        currentLessonLabel.setText("Текущее занятие: занятий больше нет");
+    }
+
+    private String safe(String value) {
+        return value == null || value.isBlank() ? "-" : value;
     }
 }
