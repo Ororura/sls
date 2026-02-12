@@ -200,6 +200,42 @@ public class CalendarController {
     }
 
     @FXML
+    private void onAboutApp() {
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("О приложении");
+        dialog.setHeaderText(null);
+
+        Label title = new Label("Авторы проекта");
+        title.getStyleClass().add("about-title");
+
+        Label ideaLabel = new Label("Автор идеи");
+        ideaLabel.getStyleClass().add("about-label");
+        Label ideaValue = new Label("капитан 2 ранга Киселев О. А.");
+        ideaValue.getStyleClass().add("about-line");
+
+        Label devLabel = new Label("Разработчик");
+        devLabel.getStyleClass().add("about-label");
+        Label devValue = new Label("старший матрос Гладких Е. Ю.");
+        devValue.getStyleClass().add("about-line");
+
+        VBox content = new VBox(
+            10,
+            title,
+            new Separator(),
+            ideaLabel,
+            ideaValue,
+            devLabel,
+            devValue
+        );
+        content.getStyleClass().add("about-card");
+
+        dialog.getDialogPane().setContent(content);
+        dialog.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);
+        UiStyles.apply(dialog.getDialogPane());
+        dialog.showAndWait();
+    }
+
+    @FXML
     public void initialize() {
         previousMonthButton.setOnAction(e -> previousMonth());
         nextMonthButton.setOnAction(e -> nextMonth());

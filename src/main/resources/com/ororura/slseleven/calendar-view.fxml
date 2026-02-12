@@ -41,6 +41,11 @@
                         styleClass="button-primary"
                         onAction="#onOpenLessonsList"
                     />
+                    <Button
+                        text="О приложении"
+                        styleClass="button-ghost"
+                        onAction="#onAboutApp"
+                    />
                 </HBox>
 
                 <HBox alignment="CENTER_LEFT" styleClass="control-bar">
