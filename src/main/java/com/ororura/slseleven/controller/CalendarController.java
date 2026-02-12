@@ -27,7 +27,6 @@ import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
-import com.ororura.slseleven.domain.model.Lesson;
 
 /**
  * Контроллер календаря
@@ -103,6 +102,7 @@ public class CalendarController {
     public void setLessonUseCase(LessonUseCase lessonUseCase) {
         this.lessonUseCase = lessonUseCase;
         applyCalendarSelection();
+        refreshCalendar();
     }
 
     public void setScheduleUseCase(ScheduleUseCase scheduleUseCase) {
@@ -133,6 +133,7 @@ public class CalendarController {
             Stage stage = new Stage();
             stage.setTitle("Все занятия");
             stage.setScene(scene);
+            stage.setOnHidden(event -> refreshCalendar());
             stage.show();
         } catch (IOException e) {
             e.printStackTrace();
@@ -162,6 +163,7 @@ public class CalendarController {
             Stage stage = new Stage();
             stage.setTitle("Авторасписание");
             stage.setScene(scene);
+            stage.setOnHidden(event -> refreshCalendar());
             stage.show();
         } catch (IOException e) {
             e.printStackTrace();
@@ -327,13 +329,8 @@ public class CalendarController {
             currentDayOfWeek = (currentDayOfWeek + 1) % 7;
         }
 
-        // Выделить выбранную дату
-        if (
-            selectedDate != null &&
-            YearMonth.from(selectedDate).equals(currentYearMonth)
-        ) {
-            showLessonsForDate(selectedDate);
-        }
+        ensureSelectedDateForCurrentMonth();
+        showLessonsForDate(selectedDate);
     }
 
     private void preloadMonthLessons() {
@@ -666,8 +663,21 @@ public class CalendarController {
         }
         applyCalendarSelection();
         selectedDate = null;
-        lessonsList.getChildren().clear();
         buildCalendar();
+    }
+
+    private void ensureSelectedDateForCurrentMonth() {
+        if (selectedDate != null && YearMonth.from(selectedDate).equals(currentYearMonth)) {
+            return;
+        }
+
+        LocalDate today = LocalDate.now();
+        if (YearMonth.from(today).equals(currentYearMonth)) {
+            selectedDate = today;
+            return;
+        }
+
+        selectedDate = currentYearMonth.atDay(1);
     }
 
     private void applyCalendarSelection() {

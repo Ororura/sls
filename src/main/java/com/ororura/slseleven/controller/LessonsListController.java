@@ -18,10 +18,12 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.StringJoiner;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -182,7 +184,63 @@ public class LessonsListController {
             return;
         }
 
+        Map<String, TopicSummary> summaryByTopic = new LinkedHashMap<>();
+        for (Lesson lesson : archived) {
+            String key = topicThemeKey(lesson);
+            TopicSummary summary = summaryByTopic.computeIfAbsent(
+                key,
+                ignored -> new TopicSummary(topicThemeLabel(lesson))
+            );
+            summary.archivedCount++;
+        }
+
+        List<Lesson> activeLessons = lessonUseCase.getAllLessons();
+        for (Lesson lesson : activeLessons) {
+            String key = topicThemeKey(lesson);
+            TopicSummary summary = summaryByTopic.computeIfAbsent(
+                key,
+                ignored -> new TopicSummary(topicThemeLabel(lesson))
+            );
+            summary.activeCount++;
+        }
+
+        Set<String> completed = new HashSet<>();
+        Set<String> notCompleted = new HashSet<>();
+        for (TopicSummary summary : summaryByTopic.values()) {
+            if (summary.activeCount > 0) {
+                notCompleted.add(summary.label);
+            } else if (summary.archivedCount > 0) {
+                completed.add(summary.label);
+            }
+        }
+
+        List<String> completedList = new ArrayList<>(completed);
+        completedList.sort(String::compareToIgnoreCase);
+        List<String> notCompletedList = new ArrayList<>(notCompleted);
+        notCompletedList.sort(String::compareToIgnoreCase);
+
         StringJoiner joiner = new StringJoiner(System.lineSeparator());
+        joiner.add("Статус тем и предметов:");
+        joiner.add("");
+        joiner.add("Завершено:");
+        if (completedList.isEmpty()) {
+            joiner.add("  - Нет завершённых тем");
+        } else {
+            for (String label : completedList) {
+                joiner.add("  - " + label);
+            }
+        }
+        joiner.add("");
+        joiner.add("Не завершено:");
+        if (notCompletedList.isEmpty()) {
+            joiner.add("  - Нет незавершённых тем");
+        } else {
+            for (String label : notCompletedList) {
+                joiner.add("  - " + label);
+            }
+        }
+        joiner.add("");
+        joiner.add("Архивные занятия:");
         for (Lesson lesson : archived) {
             joiner.add(
                 formatDateValue(lesson.getDate()) +
@@ -203,7 +261,14 @@ public class LessonsListController {
 
         Dialog<ButtonType> dialog = new Dialog<>();
         dialog.setTitle("Архив занятий");
-        dialog.setHeaderText("Архивных занятий: " + archived.size());
+        dialog.setHeaderText(
+            "Архивных занятий: " +
+            archived.size() +
+            " | Завершено тем: " +
+            completedList.size() +
+            " | Не завершено тем: " +
+            notCompletedList.size()
+        );
         TextArea archiveArea = new TextArea(joiner.toString());
         archiveArea.setEditable(false);
         archiveArea.setWrapText(false);
@@ -212,6 +277,22 @@ public class LessonsListController {
         dialog.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);
         UiStyles.apply(dialog.getDialogPane());
         dialog.showAndWait();
+    }
+
+    private String topicThemeKey(Lesson lesson) {
+        return (
+            safeValue(lesson.getTopic()).trim().toLowerCase(Locale.ROOT) +
+            "||" +
+            safeValue(lesson.getLessonName()).trim().toLowerCase(Locale.ROOT)
+        );
+    }
+
+    private String topicThemeLabel(Lesson lesson) {
+        return (
+            safeValue(lesson.getTopic()).trim() +
+            " / " +
+            safeValue(lesson.getLessonName()).trim()
+        );
     }
 
     @FXML
@@ -1251,6 +1332,16 @@ public class LessonsListController {
         }
 
         return new WeeklyReportData(headers, rows);
+    }
+
+    private static final class TopicSummary {
+        private final String label;
+        private int archivedCount;
+        private int activeCount;
+
+        private TopicSummary(String label) {
+            this.label = label;
+        }
     }
 
     private static final class WeekRange {
