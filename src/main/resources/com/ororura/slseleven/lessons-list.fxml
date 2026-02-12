@@ -12,7 +12,12 @@
             <VBox spacing="10" styleClass="toolbar-card">
                 <HBox alignment="CENTER_LEFT" spacing="10">
                     <Label text="Все занятия" styleClass="title" />
-                    <Pane HBox.hgrow="ALWAYS" />
+                    <TextField
+                        fx:id="searchField"
+                        promptText="Поиск: предмет, тема, занятие, место, преподаватель"
+                        HBox.hgrow="ALWAYS"
+                        styleClass="search-field"
+                    />
                     <Button
                         text="Обновить"
                         onAction="#onRefresh"

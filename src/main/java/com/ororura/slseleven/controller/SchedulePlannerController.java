@@ -26,6 +26,7 @@ import java.util.StringJoiner;
 import java.util.stream.Collectors;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.collections.transformation.FilteredList;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.control.*;
@@ -101,14 +102,22 @@ public class SchedulePlannerController {
     @FXML
     private Spinner<Integer> sundayHours;
 
+    @FXML
+    private TextField searchField;
+
     private final ObservableList<ScheduleItem> data =
         FXCollections.observableArrayList();
+    private FilteredList<ScheduleItem> filteredData;
 
     private ScheduleUseCase scheduleUseCase;
 
     @FXML
     public void initialize() {
-        scheduleTable.setItems(data);
+        filteredData = new FilteredList<>(data, item -> true);
+        scheduleTable.setItems(filteredData);
+        scheduleTable.setPlaceholder(
+            new Label("Пул пуст. Добавьте записи или измените фильтр.")
+        );
         scheduleTable
             .getSelectionModel()
             .setSelectionMode(SelectionMode.MULTIPLE);
@@ -140,6 +149,10 @@ public class SchedulePlannerController {
 
         startDatePicker.setValue(LocalDate.now());
         endDatePicker.setValue(null);
+        searchField.textProperty().addListener((obs, oldValue, newValue) -> {
+            applySearchFilter(newValue);
+            updateTotalLabel();
+        });
     }
 
     public void setScheduleUseCase(ScheduleUseCase scheduleUseCase) {
@@ -971,8 +984,8 @@ public class SchedulePlannerController {
         }
         List<ScheduleItem> items = scheduleUseCase.getAllItems();
         data.setAll(items);
-        int total = items.stream().mapToInt(ScheduleItem::getHours).sum();
-        totalHoursLabel.setText("Всего часов: " + total);
+        applySearchFilter(searchField.getText());
+        updateTotalLabel();
     }
 
     private void loadSettings() {
@@ -1227,6 +1240,40 @@ public class SchedulePlannerController {
 
     private String safeValue(String value) {
         return value == null ? "" : value;
+    }
+
+    private void applySearchFilter(String query) {
+        if (filteredData == null) {
+            return;
+        }
+        String normalized = query == null
+            ? ""
+            : query.trim().toLowerCase();
+        if (normalized.isEmpty()) {
+            filteredData.setPredicate(item -> true);
+            return;
+        }
+        filteredData.setPredicate(item ->
+            safeValue(item.getTopic()).toLowerCase().contains(normalized) ||
+            safeValue(item.getLessonName()).toLowerCase().contains(normalized) ||
+            safeValue(item.getClassName()).toLowerCase().contains(normalized) ||
+            safeValue(item.getLocation()).toLowerCase().contains(normalized) ||
+            safeValue(item.getInstructor()).toLowerCase().contains(normalized)
+        );
+    }
+
+    private void updateTotalLabel() {
+        int total = data.stream().mapToInt(ScheduleItem::getHours).sum();
+        int visible = filteredData == null
+            ? data.size()
+            : filteredData.stream().mapToInt(ScheduleItem::getHours).sum();
+        if (searchField == null || searchField.getText().isBlank()) {
+            totalHoursLabel.setText("Всего часов: " + total);
+            return;
+        }
+        totalHoursLabel.setText(
+            "Показано часов: " + visible + " из " + total
+        );
     }
 
     private List<List<String>> readXlsxRows(

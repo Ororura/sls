@@ -27,6 +27,7 @@ import java.util.Set;
 import java.util.StringJoiner;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.collections.transformation.FilteredList;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.control.*;
@@ -76,10 +77,14 @@ public class LessonsListController {
     @FXML
     private Label countLabel;
 
+    @FXML
+    private TextField searchField;
+
     private LessonUseCase lessonUseCase;
 
     private final ObservableList<Lesson> data =
         FXCollections.observableArrayList();
+    private FilteredList<Lesson> filteredData;
 
     private final DateTimeFormatter dateFormatter = UiFormatters.DATE_FORMATTER;
     private final DateTimeFormatter timeFormatter = UiFormatters.TIME_FORMATTER;
@@ -95,7 +100,11 @@ public class LessonsListController {
 
     @FXML
     public void initialize() {
-        lessonTable.setItems(data);
+        filteredData = new FilteredList<>(data, lesson -> true);
+        lessonTable.setItems(filteredData);
+        lessonTable.setPlaceholder(
+            new Label("Нет занятий. Добавьте запись или измените фильтр.")
+        );
         lessonTable
             .getSelectionModel()
             .setSelectionMode(SelectionMode.MULTIPLE);
@@ -144,6 +153,10 @@ public class LessonsListController {
                 }
             }
         );
+        searchField.textProperty().addListener((obs, oldValue, newValue) -> {
+            applySearchFilter(newValue);
+            updateCountLabel();
+        });
     }
 
     public void setLessonUseCase(LessonUseCase lessonUseCase) {
@@ -155,7 +168,8 @@ public class LessonsListController {
         lessonUseCase.archivePastLessons(LocalDate.now());
         List<Lesson> lessons = lessonUseCase.getAllLessons();
         data.setAll(lessons);
-        countLabel.setText("Всего занятий: " + data.size());
+        applySearchFilter(searchField.getText());
+        updateCountLabel();
     }
 
     @FXML
@@ -1023,6 +1037,42 @@ public class LessonsListController {
 
     private String safeValue(String value) {
         return value == null ? "" : value;
+    }
+
+    private void applySearchFilter(String query) {
+        if (filteredData == null) {
+            return;
+        }
+        String normalized = query == null ? "" : query.trim().toLowerCase(Locale.ROOT);
+        if (normalized.isEmpty()) {
+            filteredData.setPredicate(lesson -> true);
+            return;
+        }
+        filteredData.setPredicate(lesson -> lessonMatchesQuery(lesson, normalized));
+    }
+
+    private boolean lessonMatchesQuery(Lesson lesson, String query) {
+        return (
+            safeValue(lesson.getTopic()).toLowerCase(Locale.ROOT).contains(query) ||
+            safeValue(lesson.getLessonName()).toLowerCase(Locale.ROOT).contains(query) ||
+            safeValue(lesson.getClassName()).toLowerCase(Locale.ROOT).contains(query) ||
+            safeValue(lesson.getLocation()).toLowerCase(Locale.ROOT).contains(query) ||
+            safeValue(lesson.getInstructor()).toLowerCase(Locale.ROOT).contains(query)
+        );
+    }
+
+    private void updateCountLabel() {
+        if (filteredData == null) {
+            countLabel.setText("Всего занятий: " + data.size());
+            return;
+        }
+        int visible = filteredData.size();
+        int total = data.size();
+        if (searchField.getText() == null || searchField.getText().isBlank()) {
+            countLabel.setText("Всего занятий: " + total);
+            return;
+        }
+        countLabel.setText("Показано: " + visible + " из " + total);
     }
 
     private List<List<String>> readXlsxRows(

@@ -14,6 +14,7 @@ import java.time.LocalTime;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -84,6 +85,10 @@ public class CalendarController {
     private final DateTimeFormatter statusTimeFormatter =
         UiFormatters.TIME_FORMATTER;
     private Timeline headerTimeline;
+    private static final String STATUS_LESSON_CURRENT_CLASS =
+        "status-lesson-current";
+    private static final String STATUS_LESSON_NEXT_CLASS = "status-lesson-next";
+    private static final String STATUS_LESSON_NONE_CLASS = "status-lesson-none";
     private static final PseudoClass PSEUDO_TODAY = PseudoClass.getPseudoClass(
         "today"
     );
@@ -855,14 +860,23 @@ public class CalendarController {
 
         if (lessonUseCase == null) {
             currentLessonLabel.setText("Текущее занятие: -");
+            setLessonStatusStyle(STATUS_LESSON_NONE_CLASS);
             return;
         }
 
-        List<Lesson> todayLessons = allCalendarsMode
+        List<Lesson> sourceLessons = allCalendarsMode
             ? lessonUseCase.getLessonsByDateAllCalendars(today)
             : lessonUseCase.getLessonsByDate(today);
+        List<Lesson> todayLessons = new ArrayList<>(sourceLessons);
+        todayLessons.sort(
+            Comparator.comparing(
+                Lesson::getTime,
+                Comparator.nullsLast(LocalTime::compareTo)
+            )
+        );
         if (todayLessons.isEmpty()) {
             currentLessonLabel.setText("Текущее занятие: сегодня занятий нет");
+            setLessonStatusStyle(STATUS_LESSON_NONE_CLASS);
             return;
         }
 
@@ -892,6 +906,7 @@ public class CalendarController {
                 formatLessonTimeRange(currentLesson) +
                 ")"
             );
+            setLessonStatusStyle(STATUS_LESSON_CURRENT_CLASS);
             return;
         }
         if (nextLesson != null) {
@@ -901,9 +916,24 @@ public class CalendarController {
                 " в " +
                 nextLesson.getTime().format(statusTimeFormatter)
             );
+            setLessonStatusStyle(STATUS_LESSON_NEXT_CLASS);
             return;
         }
         currentLessonLabel.setText("Текущее занятие: занятий больше нет");
+        setLessonStatusStyle(STATUS_LESSON_NONE_CLASS);
+    }
+
+    private void setLessonStatusStyle(String statusClass) {
+        currentLessonLabel
+            .getStyleClass()
+            .removeAll(
+                STATUS_LESSON_CURRENT_CLASS,
+                STATUS_LESSON_NEXT_CLASS,
+                STATUS_LESSON_NONE_CLASS
+            );
+        if (statusClass != null && !statusClass.isBlank()) {
+            currentLessonLabel.getStyleClass().add(statusClass);
+        }
     }
 
     private String safe(String value) {

@@ -78,9 +78,10 @@
                 </HBox>
 
                 <HBox alignment="CENTER_LEFT" spacing="14" styleClass="status-bar">
-                    <Label fx:id="currentDateLabel" styleClass="status-chip" text="Дата: -" />
-                    <Label fx:id="currentTimeLabel" styleClass="status-chip" text="Время: -" />
-                    <Label fx:id="currentLessonLabel" styleClass="status-chip status-lesson" text="Текущее занятие: -" />
+                    <Label text="СЕЙЧАС" styleClass="status-title" />
+                    <Label fx:id="currentDateLabel" styleClass="status-chip-date" text="Дата: -" />
+                    <Label fx:id="currentTimeLabel" styleClass="status-chip-time" text="Время: -" />
+                    <Label fx:id="currentLessonLabel" styleClass="status-lesson-none" text="Текущее занятие: -" />
                 </HBox>
             </VBox>
         </VBox>
@@ -103,7 +104,7 @@
                 <Insets top="10" right="10" bottom="10" left="10" />
             </padding>
                 <content>
-                    <VBox fx:id="lessonsList" spacing="10" styleClass="sidebar">
+                    <VBox fx:id="lessonsList" spacing="10" styleClass="sidebar-content">
 
                         <Label
                             text="Занятия на день"
