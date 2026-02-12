@@ -22,8 +22,8 @@ public class ScheduleItemRepositorySQLite implements ScheduleItemRepository {
     public void save(ScheduleItem item) {
         String sql =
             "INSERT OR REPLACE INTO schedule_items " +
-            "(id, calendar_id, topic, lesson_name, class_name, location, instructor, hours, created_at) " +
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            "(id, calendar_id, topic, lesson_name, class_name, location, instructor, hours, consecutive_hours, created_at) " +
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
         try (
             Connection conn = provider.getConnection();
@@ -42,7 +42,8 @@ public class ScheduleItemRepositorySQLite implements ScheduleItemRepository {
             ps.setString(6, item.getLocation());
             ps.setString(7, item.getInstructor());
             ps.setInt(8, item.getHours());
-            ps.setString(9, item.getCreatedAt().toString());
+            ps.setInt(9, Math.max(1, item.getConsecutiveHours()));
+            ps.setString(10, item.getCreatedAt().toString());
             ps.executeUpdate();
         } catch (Exception e) {
             throw new RuntimeException(
@@ -55,7 +56,7 @@ public class ScheduleItemRepositorySQLite implements ScheduleItemRepository {
     @Override
     public Optional<ScheduleItem> findById(String id) {
         String sql =
-            "SELECT id, calendar_id, topic, lesson_name, class_name, location, instructor, hours, created_at " +
+            "SELECT id, calendar_id, topic, lesson_name, class_name, location, instructor, hours, consecutive_hours, created_at " +
             "FROM schedule_items WHERE id = ?";
 
         try (
@@ -76,7 +77,7 @@ public class ScheduleItemRepositorySQLite implements ScheduleItemRepository {
     @Override
     public List<ScheduleItem> findAll(String calendarId) {
         String sql =
-            "SELECT id, calendar_id, topic, lesson_name, class_name, location, instructor, hours, created_at " +
+            "SELECT id, calendar_id, topic, lesson_name, class_name, location, instructor, hours, consecutive_hours, created_at " +
             "FROM schedule_items WHERE calendar_id = ? ORDER BY created_at";
 
         List<ScheduleItem> items = new ArrayList<>();
@@ -193,6 +194,7 @@ public class ScheduleItemRepositorySQLite implements ScheduleItemRepository {
         item.setLocation(rs.getString("location"));
         item.setInstructor(rs.getString("instructor"));
         item.setHours(rs.getInt("hours"));
+        item.setConsecutiveHours(Math.max(1, rs.getInt("consecutive_hours")));
         item.setCreatedAt(LocalDateTime.parse(rs.getString("created_at")));
         return item;
     }

@@ -35,6 +35,9 @@ public class LessonDialogController {
     @FXML
     private DatePicker datePicker;
 
+    @FXML
+    private TextField durationHoursField;
+
     private Lesson lesson;
     private LessonUseCase lessonUseCase;
 
@@ -65,6 +68,9 @@ public class LessonDialogController {
             locationField.setText(lesson.getLocation());
             instructorField.setText(lesson.getInstructor());
             datePicker.setValue(lesson.getDate());
+            durationHoursField.setText(String.valueOf(lesson.getDurationHours()));
+        } else {
+            durationHoursField.setText("1");
         }
 
         // Обработка результата диалога
@@ -115,6 +121,10 @@ public class LessonDialogController {
                 showError("Дата не может быть пустой");
                 return false;
             }
+            if (durationHoursField.getText().trim().isEmpty()) {
+                showError("Длительность не может быть пустой");
+                return false;
+            }
 
             // Парсинг времени
             LocalTime time;
@@ -127,6 +137,19 @@ public class LessonDialogController {
                 showError(
                     "Неверный формат времени. Используйте формат HH:mm (например, 14:30)"
                 );
+                return false;
+            }
+            int durationHours;
+            try {
+                durationHours = Integer.parseInt(
+                    durationHoursField.getText().trim()
+                );
+            } catch (NumberFormatException e) {
+                showError("Длительность должна быть целым числом");
+                return false;
+            }
+            if (durationHours <= 0) {
+                showError("Длительность должна быть больше 0");
                 return false;
             }
 
@@ -142,6 +165,7 @@ public class LessonDialogController {
             lesson.setLocation(locationField.getText().trim());
             lesson.setInstructor(instructorField.getText().trim());
             lesson.setDate(datePicker.getValue());
+            lesson.setDurationHours(durationHours);
 
             if (
                 lesson.getId() == null ||

@@ -33,4 +33,7 @@
 
     <Label text="Дата:" GridPane.columnIndex="0" GridPane.rowIndex="6" styleClass="form-label"/>
     <DatePicker fx:id="datePicker" GridPane.columnIndex="1" GridPane.rowIndex="6" styleClass="form-field"/>
+
+    <Label text="Длительность (часы подряд):" GridPane.columnIndex="0" GridPane.rowIndex="7" styleClass="form-label"/>
+    <TextField fx:id="durationHoursField" GridPane.columnIndex="1" GridPane.rowIndex="7" promptText="Например, 2" styleClass="form-field"/>
 </GridPane>

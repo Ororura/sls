@@ -69,6 +69,9 @@ public class SchedulePlannerController {
     private TableColumn<ScheduleItem, Integer> hoursColumn;
 
     @FXML
+    private TableColumn<ScheduleItem, Integer> consecutiveHoursColumn;
+
+    @FXML
     private Label totalHoursLabel;
 
     @FXML
@@ -123,6 +126,9 @@ public class SchedulePlannerController {
             new PropertyValueFactory<>("instructor")
         );
         hoursColumn.setCellValueFactory(new PropertyValueFactory<>("hours"));
+        consecutiveHoursColumn.setCellValueFactory(
+            new PropertyValueFactory<>("consecutiveHours")
+        );
 
         setupSpinner(mondayHours);
         setupSpinner(tuesdayHours);
@@ -219,7 +225,7 @@ public class SchedulePlannerController {
         textArea.setPrefRowCount(18);
 
         Label hint = new Label(
-            "Ожидаемые колонки: Предмет, Тема, Занятие, Место, Преподаватель, Часы."
+            "Ожидаемые колонки: Предмет, Тема, Занятие, Место, Преподаватель, Часы, Подряд (необязательно)."
         );
         Label hint2 = new Label(
             "Поддерживаются табуляции (TSV) и CSV с ';' или ','. Заголовок необязателен."
@@ -325,6 +331,7 @@ public class SchedulePlannerController {
                 "Место",
                 "Преподаватель",
                 "Часы",
+                "Подряд",
             };
             for (int i = 0; i < headers.length; i++) {
                 header.createCell(i).setCellValue(headers[i]);
@@ -339,6 +346,7 @@ public class SchedulePlannerController {
                 row.createCell(3).setCellValue(safeValue(item.getLocation()));
                 row.createCell(4).setCellValue(safeValue(item.getInstructor()));
                 row.createCell(5).setCellValue(item.getHours());
+                row.createCell(6).setCellValue(item.getConsecutiveHours());
             }
 
             try (FileOutputStream out = new FileOutputStream(file)) {
@@ -375,7 +383,7 @@ public class SchedulePlannerController {
         textArea.setPrefRowCount(18);
 
         Label hint = new Label(
-            "Ожидаемые колонки: Предмет, Тема, Занятие, Место, Преподаватель, Часы."
+            "Ожидаемые колонки: Предмет, Тема, Занятие, Место, Преподаватель, Часы, Подряд (необязательно)."
         );
         Label hint2 = new Label(
             "Поддерживаются табуляции (TSV) и CSV с ';' или ','. Заголовок необязателен."
@@ -1089,6 +1097,7 @@ public class SchedulePlannerController {
                 String location = mapping.get(row, "location");
                 String instructor = mapping.get(row, "instructor");
                 String hoursRaw = mapping.get(row, "hours");
+                String consecutiveRaw = mapping.get(row, "consecutive");
                 if (isBlank(className)) {
                     className = lessonName;
                 }
@@ -1115,6 +1124,27 @@ public class SchedulePlannerController {
                     );
                     continue;
                 }
+                int consecutive = 1;
+                if (!isBlank(consecutiveRaw)) {
+                    try {
+                        consecutive = Integer.parseInt(consecutiveRaw.trim());
+                    } catch (NumberFormatException ex) {
+                        errors.add(
+                            "Строка " +
+                            rowNumber +
+                            ": неверный формат часов подряд."
+                        );
+                        continue;
+                    }
+                    if (consecutive <= 0) {
+                        errors.add(
+                            "Строка " +
+                            rowNumber +
+                            ": часы подряд должны быть больше 0."
+                        );
+                        continue;
+                    }
+                }
 
                 ScheduleItem item = new ScheduleItem(
                     topic,
@@ -1124,6 +1154,7 @@ public class SchedulePlannerController {
                     instructor,
                     hours
                 );
+                item.setConsecutiveHours(consecutive);
                 scheduleUseCase.createItem(item);
                 added++;
             } catch (Exception ex) {
@@ -1277,7 +1308,9 @@ public class SchedulePlannerController {
 
     private String buildTsvExport(List<ScheduleItem> items) {
         StringJoiner joiner = new StringJoiner(System.lineSeparator());
-        joiner.add("Предмет\tТема\tЗанятие\tМесто\tПреподаватель\tЧасы");
+        joiner.add(
+            "Предмет\tТема\tЗанятие\tМесто\tПреподаватель\tЧасы\tПодряд"
+        );
         for (ScheduleItem item : items) {
             joiner.add(
                 safe(item.getTopic()) +
@@ -1290,7 +1323,9 @@ public class SchedulePlannerController {
                     "\t" +
                     safe(item.getInstructor()) +
                     "\t" +
-                    item.getHours()
+                    item.getHours() +
+                    "\t" +
+                    item.getConsecutiveHours()
             );
         }
         return joiner.toString();
@@ -1472,6 +1507,10 @@ public class SchedulePlannerController {
             aliases.put("часы", "hours");
             aliases.put("hours", "hours");
             aliases.put("hour", "hours");
+            aliases.put("подряд", "consecutive");
+            aliases.put("часыподряд", "consecutive");
+            aliases.put("consecutive", "consecutive");
+            aliases.put("consecutivehours", "consecutive");
 
             List<String> required = List.of(
                 "topic",
@@ -1488,6 +1527,9 @@ public class SchedulePlannerController {
                 if (headerMap.keySet().containsAll(required)) {
                     if (!headerMap.containsKey("class")) {
                         headerMap.put("class", -1);
+                    }
+                    if (!headerMap.containsKey("consecutive")) {
+                        headerMap.put("consecutive", -1);
                     }
                     return new HeaderMapping(headerMap, 1);
                 }
@@ -1518,6 +1560,10 @@ public class SchedulePlannerController {
                 defaultMap.put("location", 3 + offset);
                 defaultMap.put("instructor", 4 + offset);
                 defaultMap.put("hours", 5 + offset);
+                defaultMap.put(
+                    "consecutive",
+                    row.size() - offset >= 7 ? 6 + offset : -1
+                );
                 return defaultMap;
             }
             defaultMap.put("topic", 0 + offset);
@@ -1526,6 +1572,7 @@ public class SchedulePlannerController {
             defaultMap.put("location", 2 + offset);
             defaultMap.put("instructor", 3 + offset);
             defaultMap.put("hours", 4 + offset);
+            defaultMap.put("consecutive", -1);
             return defaultMap;
         }
 

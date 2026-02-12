@@ -28,6 +28,7 @@ public class SchemaInitializer {
             "    class_name TEXT NOT NULL DEFAULT '',\n" +
             "    auto_scheduled INTEGER NOT NULL DEFAULT 0,\n" +
             "    archived INTEGER NOT NULL DEFAULT 0,\n" +
+            "    duration_hours INTEGER NOT NULL DEFAULT 1,\n" +
             "    time TEXT NOT NULL,\n" +
             "    location TEXT NOT NULL,\n" +
             "    instructor TEXT NOT NULL,\n" +
@@ -44,6 +45,7 @@ public class SchemaInitializer {
             "    location TEXT NOT NULL,\n" +
             "    instructor TEXT NOT NULL,\n" +
             "    hours INTEGER NOT NULL,\n" +
+            "    consecutive_hours INTEGER NOT NULL DEFAULT 1,\n" +
             "    created_at TEXT NOT NULL\n" +
             ");";
 
@@ -103,11 +105,19 @@ public class SchemaInitializer {
             );
             ensureColumnExists(
                 s,
+                "ALTER TABLE lessons ADD COLUMN duration_hours INTEGER NOT NULL DEFAULT 1"
+            );
+            ensureColumnExists(
+                s,
                 "ALTER TABLE schedule_items ADD COLUMN calendar_id TEXT NOT NULL DEFAULT 'default'"
             );
             ensureColumnExists(
                 s,
                 "ALTER TABLE schedule_items ADD COLUMN class_name TEXT NOT NULL DEFAULT ''"
+            );
+            ensureColumnExists(
+                s,
+                "ALTER TABLE schedule_items ADD COLUMN consecutive_hours INTEGER NOT NULL DEFAULT 1"
             );
             ensureColumnExists(
                 s,

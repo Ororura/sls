@@ -17,11 +17,13 @@ public class ScheduleItem {
     private String location;
     private String instructor;
     private int hours;
+    private int consecutiveHours;
     private LocalDateTime createdAt;
 
     public ScheduleItem() {
         this.id = java.util.UUID.randomUUID().toString();
         this.calendarId = DEFAULT_CALENDAR_ID;
+        this.consecutiveHours = 1;
         this.createdAt = LocalDateTime.now();
     }
 
@@ -114,6 +116,14 @@ public class ScheduleItem {
 
     public void setHours(int hours) {
         this.hours = hours;
+    }
+
+    public int getConsecutiveHours() {
+        return consecutiveHours;
+    }
+
+    public void setConsecutiveHours(int consecutiveHours) {
+        this.consecutiveHours = consecutiveHours;
     }
 
     public LocalDateTime getCreatedAt() {

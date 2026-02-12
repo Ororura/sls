@@ -21,10 +21,12 @@ public class Lesson {
     private String location; // Расположение проведения занятия
     private String instructor; // Кто проводит
     private LocalDate date; // Дата занятия
+    private int durationHours; // Длительность занятия в академических часах подряд
 
     public Lesson() {
         this.id = java.util.UUID.randomUUID().toString();
         this.calendarId = DEFAULT_CALENDAR_ID;
+        this.durationHours = 1;
     }
 
     public Lesson(
@@ -42,6 +44,7 @@ public class Lesson {
         this.className = className;
         this.autoScheduled = false;
         this.archived = false;
+        this.durationHours = 1;
         this.time = time;
         this.location = location;
         this.instructor = instructor;
@@ -160,6 +163,14 @@ public class Lesson {
 
     public void setDate(LocalDate date) {
         this.date = date;
+    }
+
+    public int getDurationHours() {
+        return durationHours;
+    }
+
+    public void setDurationHours(int durationHours) {
+        this.durationHours = durationHours;
     }
 
     @Override

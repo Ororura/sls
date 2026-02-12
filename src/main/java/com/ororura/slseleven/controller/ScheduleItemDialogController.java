@@ -28,6 +28,9 @@ public class ScheduleItemDialogController {
     @FXML
     private TextField hoursField;
 
+    @FXML
+    private TextField consecutiveHoursField;
+
     private ScheduleItem item;
     private ScheduleUseCase scheduleUseCase;
 
@@ -46,6 +49,11 @@ public class ScheduleItemDialogController {
             locationField.setText(item.getLocation());
             instructorField.setText(item.getInstructor());
             hoursField.setText(String.valueOf(item.getHours()));
+            consecutiveHoursField.setText(
+                String.valueOf(item.getConsecutiveHours())
+            );
+        } else {
+            consecutiveHoursField.setText("1");
         }
 
         if (dialog != null) {
@@ -90,12 +98,29 @@ public class ScheduleItemDialogController {
                 showError("Часы не могут быть пустыми");
                 return false;
             }
+            if (consecutiveHoursField.getText().trim().isEmpty()) {
+                showError("Часы подряд не могут быть пустыми");
+                return false;
+            }
 
             int hours;
             try {
                 hours = Integer.parseInt(hoursField.getText().trim());
             } catch (NumberFormatException e) {
                 showError("Часы должны быть целым числом");
+                return false;
+            }
+            int consecutiveHours;
+            try {
+                consecutiveHours = Integer.parseInt(
+                    consecutiveHoursField.getText().trim()
+                );
+            } catch (NumberFormatException e) {
+                showError("Часы подряд должны быть целым числом");
+                return false;
+            }
+            if (consecutiveHours <= 0) {
+                showError("Часы подряд должны быть больше 0");
                 return false;
             }
 
@@ -110,6 +135,7 @@ public class ScheduleItemDialogController {
             item.setLocation(locationField.getText().trim());
             item.setInstructor(instructorField.getText().trim());
             item.setHours(hours);
+            item.setConsecutiveHours(consecutiveHours);
 
             if (isNew) {
                 scheduleUseCase.createItem(item);

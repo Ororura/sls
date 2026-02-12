@@ -72,6 +72,17 @@ public class CalendarController {
     );
     private static final PseudoClass PSEUDO_SELECTED =
         PseudoClass.getPseudoClass("selected");
+    private static final List<LocalTime> LESSON_SLOT_START_TIMES_ORDERED =
+        List.of(
+            LocalTime.of(9, 0),
+            LocalTime.of(9, 50),
+            LocalTime.of(10, 50),
+            LocalTime.of(11, 40),
+            LocalTime.of(12, 40),
+            LocalTime.of(13, 30),
+            LocalTime.of(16, 0),
+            LocalTime.of(16, 50)
+        );
     private static final Map<LocalTime, LocalTime> LESSON_END_BY_START =
         Map.of(
             LocalTime.of(9, 0),
@@ -443,7 +454,7 @@ public class CalendarController {
         UiStyles.applyInteractiveAnimations(card);
 
         Label timeLabel = new Label(
-            lesson.getTime().format(UiFormatters.TIME_FORMATTER)
+            formatLessonTimeRange(lesson)
         );
         timeLabel.getStyleClass().add("lesson-time");
 
@@ -544,10 +555,7 @@ public class CalendarController {
 
         LocalTime now = LocalTime.now();
         LocalTime start = lesson.getTime();
-        LocalTime end = LESSON_END_BY_START.getOrDefault(
-            start,
-            start.plusMinutes(50)
-        );
+        LocalTime end = calculateLessonEndTime(lesson);
 
         if (!now.isBefore(start) && now.isBefore(end)) {
             card.getStyleClass().add("lesson-card-current");
@@ -678,6 +686,50 @@ public class CalendarController {
         }
 
         selectedDate = currentYearMonth.atDay(1);
+    }
+
+    private String formatLessonTimeRange(Lesson lesson) {
+        LocalTime start = lesson.getTime();
+        if (start == null) {
+            return "";
+        }
+        LocalTime end = calculateLessonEndTime(lesson);
+        if (end == null || end.equals(start)) {
+            return start.format(UiFormatters.TIME_FORMATTER);
+        }
+        return (
+            start.format(UiFormatters.TIME_FORMATTER) +
+            " - " +
+            end.format(UiFormatters.TIME_FORMATTER)
+        );
+    }
+
+    private LocalTime calculateLessonEndTime(Lesson lesson) {
+        if (lesson == null || lesson.getTime() == null) {
+            return null;
+        }
+
+        int duration = Math.max(1, lesson.getDurationHours());
+        LocalTime start = lesson.getTime();
+        int startIndex = lessonStartSlotIndex(start);
+        if (startIndex < 0) {
+            return start.plusMinutes(50L * duration);
+        }
+        int endSlotIndex = Math.min(
+            startIndex + duration - 1,
+            LESSON_SLOT_START_TIMES_ORDERED.size() - 1
+        );
+        LocalTime endSlotStart = LESSON_SLOT_START_TIMES_ORDERED.get(endSlotIndex);
+        return LESSON_END_BY_START.getOrDefault(endSlotStart, endSlotStart.plusMinutes(50));
+    }
+
+    private int lessonStartSlotIndex(LocalTime start) {
+        for (int i = 0; i < LESSON_SLOT_START_TIMES_ORDERED.size(); i++) {
+            if (LESSON_SLOT_START_TIMES_ORDERED.get(i).equals(start)) {
+                return i;
+            }
+        }
+        return -1;
     }
 
     private void applyCalendarSelection() {

@@ -33,6 +33,7 @@ public class LessonUseCase {
         if (lesson == null) {
             throw new IllegalArgumentException("Занятие не может быть null");
         }
+        normalizeDuration(lesson);
         lesson.setCalendarId(currentCalendarId);
         lessonRepository.save(lesson);
     }
@@ -57,6 +58,7 @@ public class LessonUseCase {
                 "Занятие с ID " + lesson.getId() + " не найдено"
             );
         }
+        normalizeDuration(lesson);
         lesson.setCalendarId(currentCalendarId);
         lessonRepository.save(lesson);
     }
@@ -261,5 +263,11 @@ public class LessonUseCase {
             }
         }
         return activeLessons;
+    }
+
+    private void normalizeDuration(Lesson lesson) {
+        if (lesson.getDurationHours() <= 0) {
+            lesson.setDurationHours(1);
+        }
     }
 }

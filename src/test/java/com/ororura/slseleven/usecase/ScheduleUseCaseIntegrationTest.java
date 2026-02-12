@@ -228,6 +228,29 @@ class ScheduleUseCaseIntegrationTest {
         assertEquals(2, items.get(0).getHours());
     }
 
+    @Test
+    void autoSchedule_shouldCreateConsecutiveBlockWhenConfigured() {
+        LocalDate monday = LocalDate.of(2026, 2, 2);
+        scheduleUseCase.saveMaxHoursByDay(onlyDayCapacity(DayOfWeek.MONDAY, 3));
+
+        ScheduleItem item = new ScheduleItem("Math", "Block", "A", "A1", "Ivanov", 3);
+        item.setConsecutiveHours(2);
+        scheduleUseCase.createItem(item);
+
+        AutoScheduleResult result = scheduleUseCase.autoSchedule(monday, monday);
+
+        assertEquals(2, result.getCreatedLessons());
+        assertEquals(0, result.getRemainingHours());
+
+        List<Lesson> mondayLessons = lessonRepository.findByDate(
+            monday,
+            DEFAULT_CALENDAR_ID
+        );
+        assertEquals(2, mondayLessons.size());
+        assertEquals(2, mondayLessons.get(0).getDurationHours());
+        assertEquals(1, mondayLessons.get(1).getDurationHours());
+    }
+
     private Map<DayOfWeek, Integer> onlyDayCapacity(DayOfWeek day, int capacity) {
         Map<DayOfWeek, Integer> map = new EnumMap<>(DayOfWeek.class);
         for (DayOfWeek value : DayOfWeek.values()) {

@@ -36,12 +36,22 @@ public class ScheduleUseCase {
         LocalTime.of(16, 0),
         LocalTime.of(16, 50)
     );
+    private static final Map<LocalTime, Integer> SLOT_INDEX_BY_START_TIME =
+        buildSlotIndexByStartTime();
 
     private final LessonRepository lessonRepository;
     private final ScheduleItemRepository scheduleItemRepository;
     private final ScheduleSettingsRepository scheduleSettingsRepository;
     private final ScheduleHistoryRepository scheduleHistoryRepository;
     private String currentCalendarId = Lesson.DEFAULT_CALENDAR_ID;
+
+    private static Map<LocalTime, Integer> buildSlotIndexByStartTime() {
+        Map<LocalTime, Integer> indexByTime = new HashMap<>();
+        for (int i = 0; i < LESSON_SLOT_START_TIMES.size(); i++) {
+            indexByTime.put(LESSON_SLOT_START_TIMES.get(i), i);
+        }
+        return indexByTime;
+    }
 
     public ScheduleUseCase(
         LessonRepository lessonRepository,
@@ -225,6 +235,7 @@ public class ScheduleUseCase {
     public int moveArchivedLessonsToPool() {
         List<Lesson> allLessons = lessonRepository.findAll(currentCalendarId);
         Map<ScheduleKey, Integer> aggregatedHours = new LinkedHashMap<>();
+        Map<ScheduleKey, Integer> preferredConsecutiveByKey = new HashMap<>();
         List<String> archivedLessonIds = new ArrayList<>();
 
         for (Lesson lesson : allLessons) {
@@ -238,7 +249,13 @@ public class ScheduleUseCase {
                 lesson.getLocation(),
                 lesson.getInstructor()
             );
-            aggregatedHours.merge(key, 1, Integer::sum);
+            int durationHours = Math.max(1, lesson.getDurationHours());
+            aggregatedHours.merge(key, durationHours, Integer::sum);
+            preferredConsecutiveByKey.merge(
+                key,
+                durationHours,
+                Math::max
+            );
             archivedLessonIds.add(lesson.getId());
         }
 
@@ -248,6 +265,17 @@ public class ScheduleUseCase {
 
         Map<ScheduleKey, ScheduleItem> existingItemsByKey = new HashMap<>();
         for (ScheduleItem item : scheduleItemRepository.findAll(currentCalendarId)) {
+            preferredConsecutiveByKey.merge(
+                new ScheduleKey(
+                    item.getTopic(),
+                    item.getLessonName(),
+                    item.getClassName(),
+                    item.getLocation(),
+                    item.getInstructor()
+                ),
+                Math.max(1, item.getConsecutiveHours()),
+                Math::max
+            );
             existingItemsByKey.put(
                 new ScheduleKey(
                     item.getTopic(),
@@ -266,6 +294,12 @@ public class ScheduleUseCase {
             ScheduleItem existing = existingItemsByKey.get(key);
             if (existing != null) {
                 existing.setHours(existing.getHours() + hoursToAdd);
+                existing.setConsecutiveHours(
+                    Math.max(
+                        existing.getConsecutiveHours(),
+                        preferredConsecutiveByKey.getOrDefault(key, 1)
+                    )
+                );
                 scheduleItemRepository.save(existing);
                 continue;
             }
@@ -278,6 +312,9 @@ public class ScheduleUseCase {
                 hoursToAdd
             );
             created.setCalendarId(currentCalendarId);
+            created.setConsecutiveHours(
+                preferredConsecutiveByKey.getOrDefault(key, 1)
+            );
             scheduleItemRepository.save(created);
         }
 
@@ -318,6 +355,7 @@ public class ScheduleUseCase {
 
         List<ScheduleItem> queuedItems = scheduleItemRepository.findAll(currentCalendarId);
         Map<ScheduleKey, Integer> aggregatedHours = new LinkedHashMap<>();
+        Map<ScheduleKey, Integer> preferredConsecutiveByKey = new HashMap<>();
 
         for (ScheduleItem item : queuedItems) {
             ScheduleKey key = new ScheduleKey(
@@ -328,6 +366,11 @@ public class ScheduleUseCase {
                 item.getInstructor()
             );
             aggregatedHours.merge(key, item.getHours(), Integer::sum);
+            preferredConsecutiveByKey.merge(
+                key,
+                Math.max(1, item.getConsecutiveHours()),
+                Math::max
+            );
         }
 
         for (Lesson lesson : lessonsToReschedule) {
@@ -338,7 +381,13 @@ public class ScheduleUseCase {
                 lesson.getLocation(),
                 lesson.getInstructor()
             );
-            aggregatedHours.merge(key, 1, Integer::sum);
+            int durationHours = Math.max(1, lesson.getDurationHours());
+            aggregatedHours.merge(key, durationHours, Integer::sum);
+            preferredConsecutiveByKey.merge(
+                key,
+                durationHours,
+                Math::max
+            );
         }
 
         scheduleItemRepository.deleteAll(currentCalendarId);
@@ -353,6 +402,9 @@ public class ScheduleUseCase {
                 entry.getValue()
             );
             created.setCalendarId(currentCalendarId);
+            created.setConsecutiveHours(
+                preferredConsecutiveByKey.getOrDefault(key, 1)
+            );
             scheduleItemRepository.save(created);
         }
 
@@ -430,17 +482,30 @@ public class ScheduleUseCase {
                 dayOfWeek,
                 rulesBySubject
             );
-            int existingCount = existingLessons.size();
-            int availableSlots = maxHours - existingCount;
+            Set<Integer> occupiedSlotIndexes = new HashSet<>();
+            int occupiedByCustomTime = 0;
+            for (Lesson lesson : existingLessons) {
+                int duration = Math.max(1, lesson.getDurationHours());
+                Integer startIndex = SLOT_INDEX_BY_START_TIME.get(lesson.getTime());
+                if (startIndex == null) {
+                    occupiedByCustomTime += duration;
+                    continue;
+                }
+                for (int offset = 0; offset < duration; offset++) {
+                    int slotIndex = startIndex + offset;
+                    if (slotIndex >= LESSON_SLOT_START_TIMES.size()) {
+                        break;
+                    }
+                    occupiedSlotIndexes.add(slotIndex);
+                }
+            }
+
+            int availableSlots =
+                maxHours - occupiedSlotIndexes.size() - occupiedByCustomTime;
             if (availableSlots <= 0) {
                 daysWithoutProgress++;
                 currentDate = currentDate.plusDays(1);
                 continue;
-            }
-
-            Set<LocalTime> occupiedTimes = new HashSet<>();
-            for (Lesson lesson : existingLessons) {
-                occupiedTimes.add(lesson.getTime());
             }
 
             int slotOffset = 0;
@@ -450,11 +515,10 @@ public class ScheduleUseCase {
                 totalHours > 0 &&
                 slotOffset < LESSON_SLOT_START_TIMES.size()
             ) {
-                LocalTime candidateTime = LESSON_SLOT_START_TIMES.get(
-                    slotOffset++
-                );
+                int candidateSlotIndex = slotOffset;
+                LocalTime candidateTime = LESSON_SLOT_START_TIMES.get(slotOffset++);
 
-                if (occupiedTimes.contains(candidateTime)) {
+                if (occupiedSlotIndexes.contains(candidateSlotIndex)) {
                     continue;
                 }
 
@@ -463,12 +527,31 @@ public class ScheduleUseCase {
                     remainingByItem,
                     dayOfWeek,
                     dayExclusiveSubjects,
-                    rulesBySubject
+                    rulesBySubject,
+                    occupiedSlotIndexes,
+                    candidateSlotIndex,
+                    availableSlots
                 );
                 if (itemIndex < 0) {
-                    break;
+                    continue;
                 }
                 ScheduleItem currentItem = items.get(itemIndex);
+                int blockHours = Math.min(
+                    Math.max(1, currentItem.getConsecutiveHours()),
+                    remainingByItem[itemIndex]
+                );
+
+                if (
+                    !canPlaceConsecutiveBlock(
+                        occupiedSlotIndexes,
+                        candidateSlotIndex,
+                        blockHours
+                    ) ||
+                    availableSlots < blockHours
+                ) {
+                    continue;
+                }
+
                 Lesson lesson = new Lesson(
                     currentItem.getTopic(),
                     currentItem.getLessonName(),
@@ -480,17 +563,26 @@ public class ScheduleUseCase {
                     currentDate
                 );
                 lesson.setCalendarId(currentCalendarId);
+                lesson.setDurationHours(blockHours);
                 lessonRepository.save(lesson);
 
                 createdLessons++;
-                totalHours--;
-                availableSlots--;
-                occupiedTimes.add(candidateTime);
+                totalHours -= blockHours;
+                availableSlots -= blockHours;
+                markConsecutiveBlockOccupied(
+                    occupiedSlotIndexes,
+                    candidateSlotIndex,
+                    blockHours
+                );
                 lastDate = currentDate;
-                remainingHoursByItemId.merge(currentItem.getId(), -1, Integer::sum);
+                remainingHoursByItemId.merge(
+                    currentItem.getId(),
+                    -blockHours,
+                    Integer::sum
+                );
                 createdToday++;
 
-                remainingByItem[itemIndex]--;
+                remainingByItem[itemIndex] -= blockHours;
                 if (remainingByItem[itemIndex] <= 0) {
                     completedItemIds.add(currentItem.getId());
                 }
@@ -565,13 +657,30 @@ public class ScheduleUseCase {
         int[] remainingByItem,
         DayOfWeek day,
         Set<String> dayExclusiveSubjects,
-        Map<String, SubjectScheduleRule> rulesBySubject
+        Map<String, SubjectScheduleRule> rulesBySubject,
+        Set<Integer> occupiedSlotIndexes,
+        int candidateSlotIndex,
+        int availableSlots
     ) {
         for (int i = 0; i < items.size(); i++) {
             if (remainingByItem[i] <= 0) {
                 continue;
             }
             ScheduleItem item = items.get(i);
+            int blockHours = Math.min(
+                Math.max(1, item.getConsecutiveHours()),
+                remainingByItem[i]
+            );
+            if (
+                blockHours > availableSlots ||
+                !canPlaceConsecutiveBlock(
+                    occupiedSlotIndexes,
+                    candidateSlotIndex,
+                    blockHours
+                )
+            ) {
+                continue;
+            }
             String normalizedSubject = normalizeSubject(item.getTopic());
             if (
                 !dayExclusiveSubjects.isEmpty() &&
@@ -586,6 +695,36 @@ public class ScheduleUseCase {
             return i;
         }
         return -1;
+    }
+
+    private boolean canPlaceConsecutiveBlock(
+        Set<Integer> occupiedSlotIndexes,
+        int startSlotIndex,
+        int durationHours
+    ) {
+        if (durationHours <= 0) {
+            return false;
+        }
+        int endExclusive = startSlotIndex + durationHours;
+        if (endExclusive > LESSON_SLOT_START_TIMES.size()) {
+            return false;
+        }
+        for (int i = startSlotIndex; i < endExclusive; i++) {
+            if (occupiedSlotIndexes.contains(i)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private void markConsecutiveBlockOccupied(
+        Set<Integer> occupiedSlotIndexes,
+        int startSlotIndex,
+        int durationHours
+    ) {
+        for (int i = 0; i < durationHours; i++) {
+            occupiedSlotIndexes.add(startSlotIndex + i);
+        }
     }
 
     private Set<String> getExclusiveSubjectsForDay(
@@ -706,6 +845,11 @@ public class ScheduleUseCase {
         if (item.getHours() <= 0) {
             throw new IllegalArgumentException("Часы должны быть больше 0");
         }
+        if (item.getConsecutiveHours() <= 0) {
+            throw new IllegalArgumentException(
+                "Часы подряд должны быть больше 0"
+            );
+        }
     }
 
     private static final class ScheduleKey {
@@ -801,6 +945,8 @@ public class ScheduleUseCase {
                 .append('\t')
                 .append(lesson.isArchived() ? "1" : "0")
                 .append('\t')
+                .append(Math.max(1, lesson.getDurationHours()))
+                .append('\t')
                 .append(lesson.getTime())
                 .append('\t')
                 .append(encode(lesson.getLocation()))
@@ -831,6 +977,8 @@ public class ScheduleUseCase {
                 .append('\t')
                 .append(item.getHours())
                 .append('\t')
+                .append(Math.max(1, item.getConsecutiveHours()))
+                .append('\t')
                 .append(item.getCreatedAt())
                 .append('\n');
         }
@@ -858,10 +1006,19 @@ public class ScheduleUseCase {
             lesson.setClassName(decode(parts[3]));
             lesson.setAutoScheduled("1".equals(parts[4]));
             lesson.setArchived("1".equals(parts[5]));
-            lesson.setTime(LocalTime.parse(parts[6]));
-            lesson.setLocation(decode(parts[7]));
-            lesson.setInstructor(decode(parts[8]));
-            lesson.setDate(LocalDate.parse(parts[9]));
+            if (parts.length >= 11) {
+                lesson.setDurationHours(Math.max(1, Integer.parseInt(parts[6])));
+                lesson.setTime(LocalTime.parse(parts[7]));
+                lesson.setLocation(decode(parts[8]));
+                lesson.setInstructor(decode(parts[9]));
+                lesson.setDate(LocalDate.parse(parts[10]));
+            } else {
+                lesson.setDurationHours(1);
+                lesson.setTime(LocalTime.parse(parts[6]));
+                lesson.setLocation(decode(parts[7]));
+                lesson.setInstructor(decode(parts[8]));
+                lesson.setDate(LocalDate.parse(parts[9]));
+            }
             lessons.add(lesson);
         }
         return lessons;
@@ -889,7 +1046,15 @@ public class ScheduleUseCase {
             item.setLocation(decode(parts[4]));
             item.setInstructor(decode(parts[5]));
             item.setHours(Integer.parseInt(parts[6]));
-            item.setCreatedAt(LocalDateTime.parse(parts[7]));
+            if (parts.length >= 9) {
+                item.setConsecutiveHours(
+                    Math.max(1, Integer.parseInt(parts[7]))
+                );
+                item.setCreatedAt(LocalDateTime.parse(parts[8]));
+            } else {
+                item.setConsecutiveHours(1);
+                item.setCreatedAt(LocalDateTime.parse(parts[7]));
+            }
             items.add(item);
         }
         return items;
