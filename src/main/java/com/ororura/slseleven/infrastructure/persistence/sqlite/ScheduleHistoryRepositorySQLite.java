@@ -1,5 +1,6 @@
 package com.ororura.slseleven.infrastructure.persistence.sqlite;
 
+import com.ororura.slseleven.domain.model.CalendarDefaults;
 import com.ororura.slseleven.domain.model.ScheduleHistorySnapshot;
 import com.ororura.slseleven.domain.repository.ScheduleHistoryRepository;
 import java.sql.Connection;
@@ -12,8 +13,11 @@ import java.util.Optional;
 
 public class ScheduleHistoryRepositorySQLite implements ScheduleHistoryRepository {
 
-    private static final String DEFAULT_CALENDAR_ID = "default";
     private final SQLiteConnectionProvider provider;
+    private static final String SNAPSHOT_COLUMNS =
+        "id, calendar_id, created_at, label, lessons_blob, schedule_items_blob";
+    private static final String SNAPSHOT_SELECT =
+        "SELECT " + SNAPSHOT_COLUMNS + " FROM schedule_history";
 
     public ScheduleHistoryRepositorySQLite(SQLiteConnectionProvider provider) {
         this.provider = provider;
@@ -33,7 +37,7 @@ public class ScheduleHistoryRepositorySQLite implements ScheduleHistoryRepositor
             ps.setString(
                 2,
                 snapshot.getCalendarId() == null || snapshot.getCalendarId().isBlank()
-                    ? DEFAULT_CALENDAR_ID
+                    ? CalendarDefaults.DEFAULT_ID
                     : snapshot.getCalendarId()
             );
             ps.setString(3, snapshot.getCreatedAt().toString());
@@ -49,8 +53,8 @@ public class ScheduleHistoryRepositorySQLite implements ScheduleHistoryRepositor
     @Override
     public List<ScheduleHistorySnapshot> findAll(String calendarId) {
         String sql =
-            "SELECT id, calendar_id, created_at, label, lessons_blob, schedule_items_blob " +
-            "FROM schedule_history WHERE calendar_id = ? ORDER BY created_at DESC";
+            SNAPSHOT_SELECT +
+            " WHERE calendar_id = ? ORDER BY created_at DESC";
 
         List<ScheduleHistorySnapshot> snapshots = new ArrayList<>();
         try (
@@ -73,9 +77,7 @@ public class ScheduleHistoryRepositorySQLite implements ScheduleHistoryRepositor
         String id,
         String calendarId
     ) {
-        String sql =
-            "SELECT id, calendar_id, created_at, label, lessons_blob, schedule_items_blob " +
-            "FROM schedule_history WHERE id = ? AND calendar_id = ?";
+        String sql = SNAPSHOT_SELECT + " WHERE id = ? AND calendar_id = ?";
         try (
             Connection conn = provider.getConnection();
             PreparedStatement ps = conn.prepareStatement(sql)

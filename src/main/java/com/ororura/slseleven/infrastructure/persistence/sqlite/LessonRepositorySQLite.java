@@ -1,5 +1,6 @@
 package com.ororura.slseleven.infrastructure.persistence.sqlite;
 
+import com.ororura.slseleven.domain.model.CalendarDefaults;
 import com.ororura.slseleven.domain.model.Lesson;
 import com.ororura.slseleven.domain.repository.LessonRepository;
 import java.sql.Connection;
@@ -17,6 +18,10 @@ import java.util.Optional;
 public class LessonRepositorySQLite implements LessonRepository {
 
     private final SQLiteConnectionProvider provider;
+    private static final String LESSON_COLUMNS =
+        "id, calendar_id, topic, lesson_name, class_name, auto_scheduled, archived, duration_hours, time, location, instructor, date";
+    private static final String LESSON_SELECT =
+        "SELECT " + LESSON_COLUMNS + " FROM lessons";
 
     public LessonRepositorySQLite(SQLiteConnectionProvider provider) {
         this.provider = provider;
@@ -36,7 +41,7 @@ public class LessonRepositorySQLite implements LessonRepository {
             ps.setString(
                 2,
                 lesson.getCalendarId() == null || lesson.getCalendarId().isBlank()
-                    ? Lesson.DEFAULT_CALENDAR_ID
+                    ? CalendarDefaults.DEFAULT_ID
                     : lesson.getCalendarId()
             );
             ps.setString(3, lesson.getTopic());
@@ -58,9 +63,7 @@ public class LessonRepositorySQLite implements LessonRepository {
 
     @Override
     public Optional<Lesson> findById(String id) {
-        String sql =
-            "SELECT id, calendar_id, topic, lesson_name, class_name, auto_scheduled, archived, duration_hours, time, location, instructor, date " +
-            "FROM lessons WHERE id = ?";
+        String sql = LESSON_SELECT + " WHERE id = ?";
 
         try (
             Connection conn = provider.getConnection();
@@ -82,8 +85,7 @@ public class LessonRepositorySQLite implements LessonRepository {
     @Override
     public List<Lesson> findAll(String calendarId) {
         String sql =
-            "SELECT id, calendar_id, topic, lesson_name, class_name, auto_scheduled, archived, duration_hours, time, location, instructor, date " +
-            "FROM lessons WHERE calendar_id = ? ORDER BY date, time";
+            LESSON_SELECT + " WHERE calendar_id = ? ORDER BY date, time";
 
         List<Lesson> lessons = new ArrayList<>();
         try (
@@ -103,9 +105,7 @@ public class LessonRepositorySQLite implements LessonRepository {
 
     @Override
     public List<Lesson> findAllAcrossCalendars() {
-        String sql =
-            "SELECT id, calendar_id, topic, lesson_name, class_name, auto_scheduled, archived, duration_hours, time, location, instructor, date " +
-            "FROM lessons ORDER BY date, time";
+        String sql = LESSON_SELECT + " ORDER BY date, time";
         List<Lesson> lessons = new ArrayList<>();
         try (
             Connection conn = provider.getConnection();
@@ -124,8 +124,7 @@ public class LessonRepositorySQLite implements LessonRepository {
     @Override
     public List<Lesson> findByDate(LocalDate date, String calendarId) {
         String sql =
-            "SELECT id, calendar_id, topic, lesson_name, class_name, auto_scheduled, archived, duration_hours, time, location, instructor, date " +
-            "FROM lessons WHERE date = ? AND calendar_id = ? ORDER BY time";
+            LESSON_SELECT + " WHERE date = ? AND calendar_id = ? ORDER BY time";
 
         List<Lesson> lessons = new ArrayList<>();
         try (
@@ -147,9 +146,7 @@ public class LessonRepositorySQLite implements LessonRepository {
 
     @Override
     public List<Lesson> findByDateAcrossCalendars(LocalDate date) {
-        String sql =
-            "SELECT id, calendar_id, topic, lesson_name, class_name, auto_scheduled, archived, duration_hours, time, location, instructor, date " +
-            "FROM lessons WHERE date = ? ORDER BY time";
+        String sql = LESSON_SELECT + " WHERE date = ? ORDER BY time";
 
         List<Lesson> lessons = new ArrayList<>();
         try (
@@ -175,8 +172,8 @@ public class LessonRepositorySQLite implements LessonRepository {
         String calendarId
     ) {
         String sql =
-            "SELECT id, calendar_id, topic, lesson_name, class_name, auto_scheduled, archived, duration_hours, time, location, instructor, date " +
-            "FROM lessons WHERE date >= ? AND date <= ? AND calendar_id = ? ORDER BY date, time";
+            LESSON_SELECT +
+            " WHERE date >= ? AND date <= ? AND calendar_id = ? ORDER BY date, time";
 
         List<Lesson> lessons = new ArrayList<>();
         try (
@@ -206,8 +203,7 @@ public class LessonRepositorySQLite implements LessonRepository {
         LocalDate endDate
     ) {
         String sql =
-            "SELECT id, calendar_id, topic, lesson_name, class_name, auto_scheduled, archived, duration_hours, time, location, instructor, date " +
-            "FROM lessons WHERE date >= ? AND date <= ? ORDER BY date, time";
+            LESSON_SELECT + " WHERE date >= ? AND date <= ? ORDER BY date, time";
 
         List<Lesson> lessons = new ArrayList<>();
         try (

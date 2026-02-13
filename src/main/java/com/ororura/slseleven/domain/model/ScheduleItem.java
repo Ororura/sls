@@ -7,7 +7,7 @@ import java.util.Objects;
  * Элемент списка расписаний (кол-во часов для распределения).
  */
 public class ScheduleItem {
-    public static final String DEFAULT_CALENDAR_ID = "default";
+    public static final String DEFAULT_CALENDAR_ID = CalendarDefaults.DEFAULT_ID;
 
     private String id;
     private String calendarId;

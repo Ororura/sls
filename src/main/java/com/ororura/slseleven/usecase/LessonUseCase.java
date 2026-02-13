@@ -1,5 +1,6 @@
 package com.ororura.slseleven.usecase;
 
+import com.ororura.slseleven.domain.model.CalendarDefaults;
 import com.ororura.slseleven.domain.model.Lesson;
 import com.ororura.slseleven.domain.repository.LessonRepository;
 import java.time.LocalDate;
@@ -13,7 +14,7 @@ import java.util.Optional;
 public class LessonUseCase {
 
     private final LessonRepository lessonRepository;
-    private String currentCalendarId = Lesson.DEFAULT_CALENDAR_ID;
+    private String currentCalendarId = CalendarDefaults.DEFAULT_ID;
 
     public LessonUseCase(LessonRepository lessonRepository) {
         this.lessonRepository = lessonRepository;

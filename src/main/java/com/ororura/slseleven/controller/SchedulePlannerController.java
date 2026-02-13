@@ -2,6 +2,7 @@ package com.ororura.slseleven.controller;
 
 import com.ororura.slseleven.domain.model.ScheduleItem;
 import com.ororura.slseleven.domain.model.SubjectScheduleRule;
+import com.ororura.slseleven.ui.UiAlerts;
 import com.ororura.slseleven.ui.UiStyles;
 import com.ororura.slseleven.usecase.AutoScheduleResult;
 import com.ororura.slseleven.usecase.ScheduleUseCase;
@@ -1125,19 +1126,11 @@ public class SchedulePlannerController {
     }
 
     private void showError(String message) {
-        Alert alert = new Alert(Alert.AlertType.ERROR);
-        alert.setTitle("Ошибка");
-        alert.setHeaderText(null);
-        alert.setContentText(message);
-        alert.showAndWait();
+        UiAlerts.showError("Ошибка", message);
     }
 
     private void showInfo(String message) {
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("Сообщение");
-        alert.setHeaderText(null);
-        alert.setContentText(message);
-        alert.showAndWait();
+        UiAlerts.showInfo("Сообщение", message);
     }
 
     private ImportResult importItemsFromText(String text) {

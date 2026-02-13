@@ -1,5 +1,6 @@
 package com.ororura.slseleven.usecase;
 
+import com.ororura.slseleven.domain.model.CalendarDefaults;
 import com.ororura.slseleven.domain.model.Lesson;
 import com.ororura.slseleven.domain.model.AppCalendar;
 import com.ororura.slseleven.domain.model.ScheduleHistorySnapshot;
@@ -43,7 +44,7 @@ public class ScheduleUseCase {
     private final ScheduleItemRepository scheduleItemRepository;
     private final ScheduleSettingsRepository scheduleSettingsRepository;
     private final ScheduleHistoryRepository scheduleHistoryRepository;
-    private String currentCalendarId = Lesson.DEFAULT_CALENDAR_ID;
+    private String currentCalendarId = CalendarDefaults.DEFAULT_ID;
 
     private static Map<LocalTime, Integer> buildSlotIndexByStartTime() {
         Map<LocalTime, Integer> indexByTime = new HashMap<>();

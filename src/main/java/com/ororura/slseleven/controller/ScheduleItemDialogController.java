@@ -1,9 +1,11 @@
 package com.ororura.slseleven.controller;
 
 import com.ororura.slseleven.domain.model.ScheduleItem;
+import com.ororura.slseleven.ui.UiAlerts;
+import com.ororura.slseleven.ui.UiValidation;
 import com.ororura.slseleven.usecase.ScheduleUseCase;
+import java.util.function.Consumer;
 import javafx.fxml.FXML;
-import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.TextField;
@@ -71,56 +73,95 @@ public class ScheduleItemDialogController {
     private boolean saveItem() {
         try {
             if (scheduleUseCase == null) {
-                showError("Ошибка: Use case не инициализирован");
-                return false;
-            }
-            if (topicField.getText().trim().isEmpty()) {
-                showError("Предмет не может быть пустым");
-                return false;
-            }
-            if (lessonNameField.getText().trim().isEmpty()) {
-                showError("Тема не может быть пустой");
-                return false;
-            }
-            if (classNameField.getText().trim().isEmpty()) {
-                showError("Занятие не может быть пустым");
-                return false;
-            }
-            if (locationField.getText().trim().isEmpty()) {
-                showError("Место не может быть пустым");
-                return false;
-            }
-            if (instructorField.getText().trim().isEmpty()) {
-                showError("Преподаватель не может быть пустым");
-                return false;
-            }
-            if (hoursField.getText().trim().isEmpty()) {
-                showError("Часы не могут быть пустыми");
-                return false;
-            }
-            if (consecutiveHoursField.getText().trim().isEmpty()) {
-                showError("Часы подряд для предмета не могут быть пустыми");
+                UiAlerts.showError("Ошибка", "Ошибка: Use case не инициализирован");
                 return false;
             }
 
-            int hours;
-            try {
-                hours = Integer.parseInt(hoursField.getText().trim());
-            } catch (NumberFormatException e) {
-                showError("Часы должны быть целым числом");
+            Consumer<String> onError = message ->
+                UiAlerts.showError("Ошибка", message);
+
+            if (
+                !UiValidation.requireNotBlank(
+                    topicField,
+                    "Предмет не может быть пустым",
+                    onError
+                )
+            ) {
                 return false;
             }
-            int consecutiveHours;
-            try {
-                consecutiveHours = Integer.parseInt(
-                    consecutiveHoursField.getText().trim()
-                );
-            } catch (NumberFormatException e) {
-                showError("Часы подряд для предмета должны быть целым числом");
+            if (
+                !UiValidation.requireNotBlank(
+                    lessonNameField,
+                    "Тема не может быть пустой",
+                    onError
+                )
+            ) {
+                return false;
+            }
+            if (
+                !UiValidation.requireNotBlank(
+                    classNameField,
+                    "Занятие не может быть пустым",
+                    onError
+                )
+            ) {
+                return false;
+            }
+            if (
+                !UiValidation.requireNotBlank(
+                    locationField,
+                    "Место не может быть пустым",
+                    onError
+                )
+            ) {
+                return false;
+            }
+            if (
+                !UiValidation.requireNotBlank(
+                    instructorField,
+                    "Преподаватель не может быть пустым",
+                    onError
+                )
+            ) {
+                return false;
+            }
+            if (
+                !UiValidation.requireNotBlank(
+                    hoursField,
+                    "Часы не могут быть пустыми",
+                    onError
+                )
+            ) {
+                return false;
+            }
+            if (
+                !UiValidation.requireNotBlank(
+                    consecutiveHoursField,
+                    "Часы подряд для предмета не могут быть пустыми",
+                    onError
+                )
+            ) {
+                return false;
+            }
+
+            Integer hours = UiValidation.parseInt(
+                hoursField,
+                "Часы должны быть целым числом",
+                onError
+            );
+            if (hours == null) {
+                return false;
+            }
+            Integer consecutiveHours = UiValidation.parseInt(
+                consecutiveHoursField,
+                "Часы подряд для предмета должны быть целым числом",
+                onError
+            );
+            if (consecutiveHours == null) {
                 return false;
             }
             if (consecutiveHours <= 0) {
-                showError("Часы подряд для предмета должны быть больше 0");
+                onError.accept("Часы подряд для предмета должны быть больше 0");
                 return false;
             }
 
@@ -145,16 +186,8 @@ public class ScheduleItemDialogController {
 
             return true;
         } catch (Exception e) {
-            showError("Ошибка при сохранении: " + e.getMessage());
+            UiAlerts.showError("Ошибка", "Ошибка при сохранении: " + e.getMessage());
             return false;
         }
-    }
-
-    private void showError(String message) {
-        Alert alert = new Alert(Alert.AlertType.ERROR);
-        alert.setTitle("Ошибка");
-        alert.setHeaderText(null);
-        alert.setContentText(message);
-        alert.showAndWait();
     }
 }

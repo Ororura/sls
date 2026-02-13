@@ -1,11 +1,13 @@
 package com.ororura.slseleven.controller;
 
 import com.ororura.slseleven.domain.model.Lesson;
+import com.ororura.slseleven.ui.UiAlerts;
 import com.ororura.slseleven.ui.UiFormatters;
+import com.ororura.slseleven.ui.UiValidation;
 import com.ororura.slseleven.usecase.LessonUseCase;
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.time.format.DateTimeParseException;
+import java.util.function.Consumer;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 
@@ -89,67 +91,101 @@ public class LessonDialogController {
     private boolean saveLesson() {
         try {
             if (lessonUseCase == null) {
-                showError("Ошибка: Use case не инициализирован");
-                return false;
-            }
-            // Валидация
-            if (topicField.getText().trim().isEmpty()) {
-                showError("Предмет не может быть пустым");
-                return false;
-            }
-            if (lessonNameField.getText().trim().isEmpty()) {
-                showError("Тема не может быть пустой");
-                return false;
-            }
-            if (classNameField.getText().trim().isEmpty()) {
-                showError("Занятие не может быть пустым");
-                return false;
-            }
-            if (timeField.getText().trim().isEmpty()) {
-                showError("Время не может быть пустым");
-                return false;
-            }
-            if (locationField.getText().trim().isEmpty()) {
-                showError("Место проведения не может быть пустым");
-                return false;
-            }
-            if (instructorField.getText().trim().isEmpty()) {
-                showError("Преподаватель не может быть пустым");
-                return false;
-            }
-            if (datePicker.getValue() == null) {
-                showError("Дата не может быть пустой");
-                return false;
-            }
-            if (durationHoursField.getText().trim().isEmpty()) {
-                showError("Длительность не может быть пустой");
+                UiAlerts.showError("Ошибка", "Ошибка: Use case не инициализирован");
                 return false;
             }
 
-            // Парсинг времени
-            LocalTime time;
-            try {
-                time = LocalTime.parse(
-                    timeField.getText().trim(),
-                    UiFormatters.TIME_FORMATTER
-                );
-            } catch (DateTimeParseException e) {
-                showError(
-                    "Неверный формат времени. Используйте формат HH:mm (например, 14:30)"
-                );
+            Consumer<String> onError = message ->
+                UiAlerts.showError("Ошибка", message);
+
+            if (
+                !UiValidation.requireNotBlank(
+                    topicField,
+                    "Предмет не может быть пустым",
+                    onError
+                )
+            ) {
                 return false;
             }
-            int durationHours;
-            try {
-                durationHours = Integer.parseInt(
-                    durationHoursField.getText().trim()
-                );
-            } catch (NumberFormatException e) {
-                showError("Длительность должна быть целым числом");
+            if (
+                !UiValidation.requireNotBlank(
+                    lessonNameField,
+                    "Тема не может быть пустой",
+                    onError
+                )
+            ) {
+                return false;
+            }
+            if (
+                !UiValidation.requireNotBlank(
+                    classNameField,
+                    "Занятие не может быть пустым",
+                    onError
+                )
+            ) {
+                return false;
+            }
+            if (
+                !UiValidation.requireNotBlank(
+                    timeField,
+                    "Время не может быть пустым",
+                    onError
+                )
+            ) {
+                return false;
+            }
+            if (
+                !UiValidation.requireNotBlank(
+                    locationField,
+                    "Место проведения не может быть пустым",
+                    onError
+                )
+            ) {
+                return false;
+            }
+            if (
+                !UiValidation.requireNotBlank(
+                    instructorField,
+                    "Преподаватель не может быть пустым",
+                    onError
+                )
+            ) {
+                return false;
+            }
+            if (datePicker.getValue() == null) {
+                onError.accept("Дата не может быть пустой");
+                return false;
+            }
+            if (
+                !UiValidation.requireNotBlank(
+                    durationHoursField,
+                    "Длительность не может быть пустой",
+                    onError
+                )
+            ) {
+                return false;
+            }
+
+            LocalTime time = UiValidation.parseTime(
+                timeField,
+                UiFormatters.TIME_FORMATTER,
+                "Неверный формат времени. Используйте формат HH:mm (например, 14:30)",
+                onError
+            );
+            if (time == null) {
+                return false;
+            }
+
+            Integer durationHours = UiValidation.parseInt(
+                durationHoursField,
+                "Длительность должна быть целым числом",
+                onError
+            );
+            if (durationHours == null) {
                 return false;
             }
             if (durationHours <= 0) {
-                showError("Длительность должна быть больше 0");
+                onError.accept("Длительность должна быть больше 0");
                 return false;
             }
 
@@ -180,16 +216,8 @@ public class LessonDialogController {
 
             return true;
         } catch (Exception e) {
-            showError("Ошибка при сохранении: " + e.getMessage());
+            UiAlerts.showError("Ошибка", "Ошибка при сохранении: " + e.getMessage());
             return false;
         }
-    }
-
-    private void showError(String message) {
-        Alert alert = new Alert(Alert.AlertType.ERROR);
-        alert.setTitle("Ошибка");
-        alert.setHeaderText(null);
-        alert.setContentText(message);
-        alert.showAndWait();
     }
 }

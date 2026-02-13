@@ -1,5 +1,6 @@
 package com.ororura.slseleven.infrastructure.persistence.sqlite;
 
+import com.ororura.slseleven.domain.model.CalendarDefaults;
 import com.ororura.slseleven.domain.model.ScheduleItem;
 import com.ororura.slseleven.domain.repository.ScheduleItemRepository;
 import java.sql.Connection;
@@ -13,6 +14,10 @@ import java.util.Optional;
 public class ScheduleItemRepositorySQLite implements ScheduleItemRepository {
 
     private final SQLiteConnectionProvider provider;
+    private static final String ITEM_COLUMNS =
+        "id, calendar_id, topic, lesson_name, class_name, location, instructor, hours, consecutive_hours, created_at";
+    private static final String ITEM_SELECT =
+        "SELECT " + ITEM_COLUMNS + " FROM schedule_items";
 
     public ScheduleItemRepositorySQLite(SQLiteConnectionProvider provider) {
         this.provider = provider;
@@ -33,7 +38,7 @@ public class ScheduleItemRepositorySQLite implements ScheduleItemRepository {
             ps.setString(
                 2,
                 item.getCalendarId() == null || item.getCalendarId().isBlank()
-                    ? ScheduleItem.DEFAULT_CALENDAR_ID
+                    ? CalendarDefaults.DEFAULT_ID
                     : item.getCalendarId()
             );
             ps.setString(3, item.getTopic());
@@ -55,9 +60,7 @@ public class ScheduleItemRepositorySQLite implements ScheduleItemRepository {
 
     @Override
     public Optional<ScheduleItem> findById(String id) {
-        String sql =
-            "SELECT id, calendar_id, topic, lesson_name, class_name, location, instructor, hours, consecutive_hours, created_at " +
-            "FROM schedule_items WHERE id = ?";
+        String sql = ITEM_SELECT + " WHERE id = ?";
 
         try (
             Connection conn = provider.getConnection();
@@ -77,8 +80,7 @@ public class ScheduleItemRepositorySQLite implements ScheduleItemRepository {
     @Override
     public List<ScheduleItem> findAll(String calendarId) {
         String sql =
-            "SELECT id, calendar_id, topic, lesson_name, class_name, location, instructor, hours, consecutive_hours, created_at " +
-            "FROM schedule_items WHERE calendar_id = ? ORDER BY created_at";
+            ITEM_SELECT + " WHERE calendar_id = ? ORDER BY created_at";
 
         List<ScheduleItem> items = new ArrayList<>();
         try (

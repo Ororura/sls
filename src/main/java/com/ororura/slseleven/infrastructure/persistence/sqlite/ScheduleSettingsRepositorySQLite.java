@@ -1,6 +1,7 @@
 package com.ororura.slseleven.infrastructure.persistence.sqlite;
 
 import com.ororura.slseleven.domain.model.AppCalendar;
+import com.ororura.slseleven.domain.model.CalendarDefaults;
 import com.ororura.slseleven.domain.model.SubjectScheduleRule;
 import com.ororura.slseleven.domain.repository.ScheduleSettingsRepository;
 import java.sql.Connection;
@@ -16,8 +17,6 @@ import java.util.UUID;
 
 public class ScheduleSettingsRepositorySQLite
     implements ScheduleSettingsRepository {
-
-    private static final String DEFAULT_CALENDAR_ID = "default";
 
     private final SQLiteConnectionProvider provider;
 
@@ -271,7 +270,7 @@ public class ScheduleSettingsRepositorySQLite
             .map(AppCalendar::getId)
             .filter(id -> !id.equals(calendarId))
             .findFirst()
-            .orElse(DEFAULT_CALENDAR_ID);
+            .orElse(CalendarDefaults.DEFAULT_ID);
 
         try (Connection conn = provider.getConnection()) {
             conn.setAutoCommit(false);
@@ -308,13 +307,13 @@ public class ScheduleSettingsRepositorySQLite
             ResultSet rs = ps.executeQuery()
         ) {
             if (!rs.next()) {
-                setActiveCalendarId(DEFAULT_CALENDAR_ID);
-                return DEFAULT_CALENDAR_ID;
+                setActiveCalendarId(CalendarDefaults.DEFAULT_ID);
+                return CalendarDefaults.DEFAULT_ID;
             }
             String value = rs.getString("value");
             if (value == null || value.isBlank()) {
-                setActiveCalendarId(DEFAULT_CALENDAR_ID);
-                return DEFAULT_CALENDAR_ID;
+                setActiveCalendarId(CalendarDefaults.DEFAULT_ID);
+                return CalendarDefaults.DEFAULT_ID;
             }
             return value;
         } catch (Exception e) {

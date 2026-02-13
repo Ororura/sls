@@ -4,6 +4,7 @@ import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import com.ororura.slseleven.domain.model.AppCalendar;
 import com.ororura.slseleven.domain.model.Lesson;
+import com.ororura.slseleven.ui.UiAlerts;
 import com.ororura.slseleven.ui.UiFormatters;
 import com.ororura.slseleven.ui.UiStyles;
 import com.ororura.slseleven.usecase.LessonUseCase;
@@ -824,21 +825,11 @@ public class CalendarController {
     }
 
     private void showError(String message) {
-        Alert alert = new Alert(Alert.AlertType.ERROR);
-        alert.setTitle("Ошибка");
-        alert.setHeaderText(null);
-        alert.setContentText(message);
-        UiStyles.apply(alert.getDialogPane());
-        alert.showAndWait();
+        UiAlerts.showError("Ошибка", message);
     }
 
     private void showInfo(String message) {
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("Информация");
-        alert.setHeaderText(null);
-        alert.setContentText(message);
-        UiStyles.apply(alert.getDialogPane());
-        alert.showAndWait();
+        UiAlerts.showInfo("Информация", message);
     }
 
     private void startHeaderTicker() {

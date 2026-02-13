@@ -8,7 +8,7 @@ import java.util.Objects;
  * Доменная модель занятия
  */
 public class Lesson {
-    public static final String DEFAULT_CALENDAR_ID = "default";
+    public static final String DEFAULT_CALENDAR_ID = CalendarDefaults.DEFAULT_ID;
 
     private String id;
     private String calendarId;
