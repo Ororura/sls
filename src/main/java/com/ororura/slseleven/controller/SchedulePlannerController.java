@@ -238,7 +238,7 @@ public class SchedulePlannerController {
         textArea.setPrefRowCount(18);
 
         Label hint = new Label(
-            "Ожидаемые колонки: Предмет, Тема, Занятие, Место, Преподаватель, Часы, Подряд (необязательно)."
+            "Ожидаемые колонки: Предмет, Тема, Занятие, Место, Преподаватель, Часы."
         );
         Label hint2 = new Label(
             "Поддерживаются табуляции (TSV) и CSV с ';' или ','. Заголовок необязателен."
@@ -344,7 +344,7 @@ public class SchedulePlannerController {
                 "Место",
                 "Преподаватель",
                 "Часы",
-                "Подряд",
+                "Подряд (предмет)",
             };
             for (int i = 0; i < headers.length; i++) {
                 header.createCell(i).setCellValue(headers[i]);
@@ -396,7 +396,7 @@ public class SchedulePlannerController {
         textArea.setPrefRowCount(18);
 
         Label hint = new Label(
-            "Ожидаемые колонки: Предмет, Тема, Занятие, Место, Преподаватель, Часы, Подряд (необязательно)."
+            "Ожидаемые колонки: Предмет, Тема, Занятие, Место, Преподаватель, Часы."
         );
         Label hint2 = new Label(
             "Поддерживаются табуляции (TSV) и CSV с ';' или ','. Заголовок необязателен."
@@ -537,7 +537,17 @@ public class SchedulePlannerController {
             Set<DayOfWeek> exclusive = current == null
                 ? EnumSet.noneOf(DayOfWeek.class)
                 : current.getExclusiveDays();
-            models.add(new SubjectRuleEditModel(subject, allowed, exclusive));
+            int consecutiveHours = current == null
+                ? detectSubjectConsecutiveHours(subject)
+                : current.getConsecutiveHours();
+            models.add(
+                new SubjectRuleEditModel(
+                    subject,
+                    allowed,
+                    exclusive,
+                    consecutiveHours
+                )
+            );
         }
 
         Dialog<ButtonType> dialog = new Dialog<>();
@@ -558,6 +568,11 @@ public class SchedulePlannerController {
 
         Label selectedSubjectLabel = new Label("Выберите предмет");
         selectedSubjectLabel.getStyleClass().add("section-title");
+        Spinner<Integer> consecutiveHoursSpinner = new Spinner<>();
+        consecutiveHoursSpinner.setValueFactory(
+            new SpinnerValueFactory.IntegerSpinnerValueFactory(1, 8, 1)
+        );
+        consecutiveHoursSpinner.setEditable(true);
 
         FlowPane allowedPane = new FlowPane(8, 8);
         FlowPane exclusivePane = new FlowPane(8, 8);
@@ -573,6 +588,7 @@ public class SchedulePlannerController {
         }
 
         Label hint = new Label(
+            "Часы подряд задаются на уровне предмета и применяются ко всем темам этого предмета.\n" +
             "Разрешенные дни: когда предмет можно ставить.\n" +
             "Эксклюзивные дни: в эти дни можно ставить только этот предмет."
         );
@@ -582,6 +598,8 @@ public class SchedulePlannerController {
         VBox editor = new VBox(
             10,
             selectedSubjectLabel,
+            new Label("Часы подряд (для предмета):"),
+            consecutiveHoursSpinner,
             new Label("Разрешенные дни:"),
             allowedPane,
             new Label("Эксклюзивные дни:"),
@@ -608,6 +626,10 @@ public class SchedulePlannerController {
             selectedSubjectLabel.setText(
                 hasSubject ? model.subject : "Выберите предмет"
             );
+            consecutiveHoursSpinner.setDisable(!hasSubject);
+            consecutiveHoursSpinner
+                .getValueFactory()
+                .setValue(hasSubject ? Math.max(1, model.consecutiveHours) : 1);
             for (DayOfWeek day : DayOfWeek.values()) {
                 CheckBox allow = allowedBoxes.get(day);
                 CheckBox exclusive = exclusiveBoxes.get(day);
@@ -621,6 +643,14 @@ public class SchedulePlannerController {
             allDaysButton.setDisable(!hasSubject);
             clearExclusiveButton.setDisable(!hasSubject);
         };
+
+        consecutiveHoursSpinner.valueProperty().addListener((obs, oldV, newV) -> {
+            SubjectRuleEditModel model = currentModel[0];
+            if (model == null || newV == null) {
+                return;
+            }
+            model.consecutiveHours = Math.max(1, newV);
+        });
 
         for (DayOfWeek day : DayOfWeek.values()) {
             CheckBox allow = allowedBoxes.get(day);
@@ -704,7 +734,8 @@ public class SchedulePlannerController {
                             new SubjectScheduleRule(
                                 model.subject,
                                 model.allowedDays,
-                                model.exclusiveDays
+                                model.exclusiveDays,
+                                model.consecutiveHours
                             )
                         );
                     }
@@ -930,6 +961,32 @@ public class SchedulePlannerController {
         return value == null ? "" : value.trim().toLowerCase();
     }
 
+    private int resolveConsecutiveHoursForImportedSubject(
+        String topic,
+        Map<String, Integer> subjectConsecutiveByRule
+    ) {
+        String subjectKey = normalizeSubjectKey(topic);
+        if (subjectConsecutiveByRule != null) {
+            Integer fromRules = subjectConsecutiveByRule.get(subjectKey);
+            if (fromRules != null) {
+                return Math.max(1, fromRules);
+            }
+        }
+        return detectSubjectConsecutiveHours(topic);
+    }
+
+    private int detectSubjectConsecutiveHours(String subject) {
+        String key = normalizeSubjectKey(subject);
+        int result = 1;
+        for (ScheduleItem item : data) {
+            if (!key.equals(normalizeSubjectKey(item.getTopic()))) {
+                continue;
+            }
+            result = Math.max(result, Math.max(1, item.getConsecutiveHours()));
+        }
+        return result;
+    }
+
     private String dayToShort(DayOfWeek day) {
         switch (day) {
             case MONDAY:
@@ -955,11 +1012,13 @@ public class SchedulePlannerController {
         private final String subject;
         private final EnumSet<DayOfWeek> allowedDays;
         private final EnumSet<DayOfWeek> exclusiveDays;
+        private int consecutiveHours;
 
         private SubjectRuleEditModel(
             String subject,
             Set<DayOfWeek> allowedDays,
-            Set<DayOfWeek> exclusiveDays
+            Set<DayOfWeek> exclusiveDays,
+            int consecutiveHours
         ) {
             this.subject = subject;
             this.allowedDays = allowedDays == null || allowedDays.isEmpty()
@@ -968,12 +1027,14 @@ public class SchedulePlannerController {
             this.exclusiveDays = exclusiveDays == null || exclusiveDays.isEmpty()
                 ? EnumSet.noneOf(DayOfWeek.class)
                 : EnumSet.copyOf(exclusiveDays);
+            this.consecutiveHours = Math.max(1, consecutiveHours);
         }
 
         private boolean isDefaultRule() {
             return (
                 allowedDays.size() == DayOfWeek.values().length &&
-                exclusiveDays.isEmpty()
+                exclusiveDays.isEmpty() &&
+                consecutiveHours == 1
             );
         }
     }
@@ -1100,6 +1161,18 @@ public class SchedulePlannerController {
         }
 
         int added = 0;
+        Map<String, Integer> subjectConsecutiveByRule = new HashMap<>();
+        if (scheduleUseCase != null) {
+            for (SubjectScheduleRule rule : scheduleUseCase.getSubjectRules()) {
+                if (rule == null || isBlank(rule.getSubject())) {
+                    continue;
+                }
+                subjectConsecutiveByRule.put(
+                    normalizeSubjectKey(rule.getSubject()),
+                    Math.max(1, rule.getConsecutiveHours())
+                );
+            }
+        }
         for (int i = mapping.startRowIndex; i < rows.size(); i++) {
             List<String> row = rows.get(i);
             int rowNumber = i + 1;
@@ -1110,7 +1183,6 @@ public class SchedulePlannerController {
                 String location = mapping.get(row, "location");
                 String instructor = mapping.get(row, "instructor");
                 String hoursRaw = mapping.get(row, "hours");
-                String consecutiveRaw = mapping.get(row, "consecutive");
                 if (isBlank(className)) {
                     className = lessonName;
                 }
@@ -1137,28 +1209,6 @@ public class SchedulePlannerController {
                     );
                     continue;
                 }
-                int consecutive = 1;
-                if (!isBlank(consecutiveRaw)) {
-                    try {
-                        consecutive = Integer.parseInt(consecutiveRaw.trim());
-                    } catch (NumberFormatException ex) {
-                        errors.add(
-                            "Строка " +
-                            rowNumber +
-                            ": неверный формат часов подряд."
-                        );
-                        continue;
-                    }
-                    if (consecutive <= 0) {
-                        errors.add(
-                            "Строка " +
-                            rowNumber +
-                            ": часы подряд должны быть больше 0."
-                        );
-                        continue;
-                    }
-                }
-
                 ScheduleItem item = new ScheduleItem(
                     topic,
                     lessonName,
@@ -1167,7 +1217,12 @@ public class SchedulePlannerController {
                     instructor,
                     hours
                 );
-                item.setConsecutiveHours(consecutive);
+                item.setConsecutiveHours(
+                    resolveConsecutiveHoursForImportedSubject(
+                        topic,
+                        subjectConsecutiveByRule
+                    )
+                );
                 scheduleUseCase.createItem(item);
                 added++;
             } catch (Exception ex) {
@@ -1356,7 +1411,7 @@ public class SchedulePlannerController {
     private String buildTsvExport(List<ScheduleItem> items) {
         StringJoiner joiner = new StringJoiner(System.lineSeparator());
         joiner.add(
-            "Предмет\tТема\tЗанятие\tМесто\tПреподаватель\tЧасы\tПодряд"
+            "Предмет\tТема\tЗанятие\tМесто\tПреподаватель\tЧасы\tПодряд (предмет)"
         );
         for (ScheduleItem item : items) {
             joiner.add(
@@ -1554,10 +1609,6 @@ public class SchedulePlannerController {
             aliases.put("часы", "hours");
             aliases.put("hours", "hours");
             aliases.put("hour", "hours");
-            aliases.put("подряд", "consecutive");
-            aliases.put("часыподряд", "consecutive");
-            aliases.put("consecutive", "consecutive");
-            aliases.put("consecutivehours", "consecutive");
 
             List<String> required = List.of(
                 "topic",
@@ -1574,9 +1625,6 @@ public class SchedulePlannerController {
                 if (headerMap.keySet().containsAll(required)) {
                     if (!headerMap.containsKey("class")) {
                         headerMap.put("class", -1);
-                    }
-                    if (!headerMap.containsKey("consecutive")) {
-                        headerMap.put("consecutive", -1);
                     }
                     return new HeaderMapping(headerMap, 1);
                 }
@@ -1607,10 +1655,6 @@ public class SchedulePlannerController {
                 defaultMap.put("location", 3 + offset);
                 defaultMap.put("instructor", 4 + offset);
                 defaultMap.put("hours", 5 + offset);
-                defaultMap.put(
-                    "consecutive",
-                    row.size() - offset >= 7 ? 6 + offset : -1
-                );
                 return defaultMap;
             }
             defaultMap.put("topic", 0 + offset);

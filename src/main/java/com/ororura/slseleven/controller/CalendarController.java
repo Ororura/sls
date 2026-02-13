@@ -163,6 +163,7 @@ public class CalendarController {
 
             LessonsListController controller = loader.getController();
             controller.setLessonUseCase(lessonUseCase);
+            controller.setScheduleUseCase(scheduleUseCase);
 
             Stage stage = new Stage();
             stage.setTitle("Все занятия");

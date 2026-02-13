@@ -63,6 +63,7 @@ public class SchemaInitializer {
             "    subject TEXT NOT NULL,\n" +
             "    allowed_days INTEGER NOT NULL,\n" +
             "    exclusive_days INTEGER NOT NULL,\n" +
+            "    consecutive_hours INTEGER NOT NULL DEFAULT 1,\n" +
             "    PRIMARY KEY (calendar_id, subject)\n" +
             ");";
 
@@ -126,6 +127,10 @@ public class SchemaInitializer {
             ensureColumnExists(
                 s,
                 "ALTER TABLE schedule_subject_rules ADD COLUMN calendar_id TEXT NOT NULL DEFAULT 'default'"
+            );
+            ensureColumnExists(
+                s,
+                "ALTER TABLE schedule_subject_rules ADD COLUMN consecutive_hours INTEGER NOT NULL DEFAULT 1"
             );
             ensureColumnExists(
                 s,
@@ -200,12 +205,13 @@ public class SchemaInitializer {
             "    subject TEXT NOT NULL,\n" +
             "    allowed_days INTEGER NOT NULL,\n" +
             "    exclusive_days INTEGER NOT NULL,\n" +
+            "    consecutive_hours INTEGER NOT NULL DEFAULT 1,\n" +
             "    PRIMARY KEY (calendar_id, subject)\n" +
             ");"
         );
         s.execute(
-            "INSERT OR IGNORE INTO schedule_subject_rules_new (calendar_id, subject, allowed_days, exclusive_days) " +
-            "SELECT COALESCE(calendar_id, 'default'), subject, allowed_days, exclusive_days FROM schedule_subject_rules"
+            "INSERT OR IGNORE INTO schedule_subject_rules_new (calendar_id, subject, allowed_days, exclusive_days, consecutive_hours) " +
+            "SELECT COALESCE(calendar_id, 'default'), subject, allowed_days, exclusive_days, COALESCE(consecutive_hours, 1) FROM schedule_subject_rules"
         );
         s.execute("DROP TABLE schedule_subject_rules");
         s.execute(

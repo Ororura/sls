@@ -8,11 +8,21 @@ public class SubjectScheduleRule {
     private final String subject;
     private final Set<DayOfWeek> allowedDays;
     private final Set<DayOfWeek> exclusiveDays;
+    private final int consecutiveHours;
 
     public SubjectScheduleRule(
         String subject,
         Set<DayOfWeek> allowedDays,
         Set<DayOfWeek> exclusiveDays
+    ) {
+        this(subject, allowedDays, exclusiveDays, 1);
+    }
+
+    public SubjectScheduleRule(
+        String subject,
+        Set<DayOfWeek> allowedDays,
+        Set<DayOfWeek> exclusiveDays,
+        int consecutiveHours
     ) {
         this.subject = subject == null ? "" : subject.trim();
         this.allowedDays = allowedDays == null
@@ -21,6 +31,7 @@ public class SubjectScheduleRule {
         this.exclusiveDays = exclusiveDays == null
             ? EnumSet.noneOf(DayOfWeek.class)
             : EnumSet.copyOf(exclusiveDays);
+        this.consecutiveHours = Math.max(1, consecutiveHours);
     }
 
     public String getSubject() {
@@ -41,5 +52,9 @@ public class SubjectScheduleRule {
 
     public boolean isExclusiveOn(DayOfWeek day) {
         return exclusiveDays.contains(day);
+    }
+
+    public int getConsecutiveHours() {
+        return consecutiveHours;
     }
 }

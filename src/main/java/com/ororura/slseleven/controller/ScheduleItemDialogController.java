@@ -99,7 +99,7 @@ public class ScheduleItemDialogController {
                 return false;
             }
             if (consecutiveHoursField.getText().trim().isEmpty()) {
-                showError("Часы подряд не могут быть пустыми");
+                showError("Часы подряд для предмета не могут быть пустыми");
                 return false;
             }
 
@@ -116,11 +116,11 @@ public class ScheduleItemDialogController {
                     consecutiveHoursField.getText().trim()
                 );
             } catch (NumberFormatException e) {
-                showError("Часы подряд должны быть целым числом");
+                showError("Часы подряд для предмета должны быть целым числом");
                 return false;
             }
             if (consecutiveHours <= 0) {
-                showError("Часы подряд должны быть больше 0");
+                showError("Часы подряд для предмета должны быть больше 0");
                 return false;
             }
 

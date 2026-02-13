@@ -29,6 +29,6 @@
     <Label text="Часы всего:" GridPane.columnIndex="0" GridPane.rowIndex="5" styleClass="form-label"/>
     <TextField fx:id="hoursField" GridPane.columnIndex="1" GridPane.rowIndex="5" promptText="Например, 6" styleClass="form-field"/>
 
-    <Label text="Часы подряд:" GridPane.columnIndex="0" GridPane.rowIndex="6" styleClass="form-label"/>
+    <Label text="Часы подряд (для предмета):" GridPane.columnIndex="0" GridPane.rowIndex="6" styleClass="form-label"/>
     <TextField fx:id="consecutiveHoursField" GridPane.columnIndex="1" GridPane.rowIndex="6" promptText="Например, 2" styleClass="form-field"/>
 </GridPane>

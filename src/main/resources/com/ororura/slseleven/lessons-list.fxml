@@ -1,71 +1,25 @@
-<?xml version="1.0" encoding="UTF-8" ?>
+<?xml version="1.0" encoding="UTF-8"?>
+
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
-<BorderPane
-    xmlns:fx="http://javafx.com/fxml"
-    fx:controller="com.ororura.slseleven.controller.LessonsListController"
-    styleClass="app-root"
->
+
+<BorderPane styleClass="app-root" xmlns:fx="http://javafx.com/fxml/1" xmlns="http://javafx.com/javafx/17.0.12" fx:controller="com.ororura.slseleven.controller.LessonsListController">
 
     <top>
         <VBox styleClass="toolbar">
             <VBox spacing="10" styleClass="toolbar-card">
                 <HBox alignment="CENTER_LEFT" spacing="10">
-                    <Label text="Все занятия" styleClass="title" />
-                    <TextField
-                        fx:id="searchField"
-                        promptText="Поиск: предмет, тема, занятие, место, преподаватель"
-                        HBox.hgrow="ALWAYS"
-                        styleClass="search-field"
-                    />
-                    <Button
-                        text="Обновить"
-                        onAction="#onRefresh"
-                        styleClass="button-ghost"
-                    />
-                    <Button
-                        text="Архив"
-                        onAction="#onShowArchive"
-                        styleClass="button-secondary"
-                    />
+                    <Label styleClass="title" text="Все занятия" />
+                    <TextField fx:id="searchField" promptText="Поиск: предмет, тема, занятие, место, преподаватель" styleClass="search-field" HBox.hgrow="ALWAYS" />
+                    <Button onAction="#onRefresh" styleClass="button-ghost" text="Обновить" />
+                    <Button onAction="#onShowArchive" styleClass="button-secondary" text="Архив" />
                 </HBox>
 
                 <FlowPane styleClass="action-flow">
-                    <Button
-                        text="Быстрый импорт"
-                        onAction="#onQuickImport"
-                        styleClass="button-secondary"
-                    />
-                    <Button
-                        text="Импорт"
-                        onAction="#onImport"
-                        styleClass="button-secondary"
-                    />
-                    <Button
-                        text="Импорт XLSX"
-                        onAction="#onImportXlsx"
-                        styleClass="button-secondary"
-                    />
-                    <Button
-                        text="Быстрый экспорт"
-                        onAction="#onQuickExport"
-                        styleClass="button-secondary"
-                    />
-                    <Button
-                        text="Экспорт"
-                        onAction="#onExport"
-                        styleClass="button-secondary"
-                    />
-                    <Button
-                        text="Экспорт XLSX"
-                        onAction="#onExportXlsx"
-                        styleClass="button-secondary"
-                    />
-                    <Button
-                        text="Отчет по неделям"
-                        onAction="#onWeeklyReport"
-                        styleClass="button-secondary"
-                    />
+                    <Button onAction="#onImport" styleClass="button-secondary" text="Импорт" />
+                    <Button onAction="#onImportXlsx" styleClass="button-secondary" text="Импорт XLSX" />
+                    <Button onAction="#onExport" styleClass="button-secondary" text="Экспорт" />
+                    <Button onAction="#onWeeklyReport" styleClass="button-secondary" text="Отчет по неделям" />
                 </FlowPane>
             </VBox>
         </VBox>
@@ -91,21 +45,11 @@
         <HBox spacing="10" styleClass="footer-bar">
             <Label fx:id="countLabel" text="Всего занятий: 0" />
             <Pane HBox.hgrow="ALWAYS" />
-            <Button
-                text="Добавить"
-                onAction="#onSave"
-                styleClass="button-primary"
-            />
-            <Button
-                text="Удалить"
-                onAction="#onDelete"
-                styleClass="button-danger"
-            />
-            <Button
-                text="Удалить все"
-                onAction="#onDeleteAll"
-                styleClass="button-danger"
-            />
+            <Button onAction="#onSave" styleClass="button-primary" text="Добавить" />
+            <Button onAction="#onReturnOneAutoToPool" styleClass="button-secondary" text="Вернуть в пул" />
+            <Button onAction="#onReturnAllAutoToPool" styleClass="button-secondary" text="Вернуть все в пул" />
+            <Button onAction="#onDelete" styleClass="button-danger" text="Удалить" />
+            <Button onAction="#onDeleteAll" styleClass="button-danger" text="Удалить все" />
         </HBox>
     </bottom>
 

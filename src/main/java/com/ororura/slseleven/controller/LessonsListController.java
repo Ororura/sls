@@ -4,6 +4,7 @@ import com.ororura.slseleven.domain.model.Lesson;
 import com.ororura.slseleven.ui.UiFormatters;
 import com.ororura.slseleven.ui.UiStyles;
 import com.ororura.slseleven.usecase.LessonUseCase;
+import com.ororura.slseleven.usecase.ScheduleUseCase;
 import com.ororura.slseleven.util.DelimitedText;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -81,6 +82,7 @@ public class LessonsListController {
     private TextField searchField;
 
     private LessonUseCase lessonUseCase;
+    private ScheduleUseCase scheduleUseCase;
 
     private final ObservableList<Lesson> data =
         FXCollections.observableArrayList();
@@ -162,6 +164,10 @@ public class LessonsListController {
     public void setLessonUseCase(LessonUseCase lessonUseCase) {
         this.lessonUseCase = lessonUseCase;
         reload();
+    }
+
+    public void setScheduleUseCase(ScheduleUseCase scheduleUseCase) {
+        this.scheduleUseCase = scheduleUseCase;
     }
 
     private void reload() {
@@ -347,20 +353,37 @@ public class LessonsListController {
     }
 
     @FXML
-    private void onDeleteOneAuto() {
+    private void onReturnOneAutoToPool() {
         Lesson selected = lessonTable.getSelectionModel().getSelectedItem();
         if (selected == null) {
             Alert alert = new Alert(Alert.AlertType.INFORMATION);
             alert.setTitle("Автораспределение");
             alert.setHeaderText(null);
-            alert.setContentText("Выберите занятие для удаления.");
+            alert.setContentText("Выберите занятие для возврата в пул.");
+            alert.showAndWait();
+            return;
+        }
+        if (scheduleUseCase == null) {
+            Alert alert = new Alert(Alert.AlertType.ERROR);
+            alert.setTitle("Автораспределение");
+            alert.setHeaderText(null);
+            alert.setContentText(
+                "Ошибка: модуль автораспределения не инициализирован"
+            );
             alert.showAndWait();
             return;
         }
 
         try {
-            lessonUseCase.deleteAutoScheduledLesson(selected.getId());
+            scheduleUseCase.moveAutoScheduledLessonToPool(selected.getId());
             reload();
+            Alert info = new Alert(Alert.AlertType.INFORMATION);
+            info.setTitle("Автораспределение");
+            info.setHeaderText(null);
+            info.setContentText(
+                "Занятие возвращено в нераспределенный пул."
+            );
+            info.showAndWait();
         } catch (Exception ex) {
             Alert alert = new Alert(Alert.AlertType.ERROR);
             alert.setTitle("Автораспределение");
@@ -371,23 +394,43 @@ public class LessonsListController {
     }
 
     @FXML
-    private void onDeleteAllAuto() {
+    private void onReturnAllAutoToPool() {
+        if (scheduleUseCase == null) {
+            Alert alert = new Alert(Alert.AlertType.ERROR);
+            alert.setTitle("Автораспределение");
+            alert.setHeaderText(null);
+            alert.setContentText(
+                "Ошибка: модуль автораспределения не инициализирован"
+            );
+            alert.showAndWait();
+            return;
+        }
+
         Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
         confirm.setTitle("Автораспределение");
-        confirm.setHeaderText("Удалить все занятия автораспределения?");
-        confirm.setContentText("Будут удалены только авто-созданные занятия.");
+        confirm.setHeaderText("Вернуть все авто-занятия в нераспределенный пул?");
+        confirm.setContentText(
+            "Все занятия, созданные автораспределением, будут удалены из расписания и возвращены в пул."
+        );
         if (confirm.showAndWait().orElse(ButtonType.CANCEL) != ButtonType.OK) {
             return;
         }
 
-        int deleted = lessonUseCase.deleteAllAutoScheduledLessons();
-        reload();
-
-        Alert info = new Alert(Alert.AlertType.INFORMATION);
-        info.setTitle("Автораспределение");
-        info.setHeaderText(null);
-        info.setContentText("Удалено авто-занятий: " + deleted);
-        info.showAndWait();
+        try {
+            int moved = scheduleUseCase.moveAllAutoScheduledLessonsToPool();
+            reload();
+            Alert info = new Alert(Alert.AlertType.INFORMATION);
+            info.setTitle("Автораспределение");
+            info.setHeaderText(null);
+            info.setContentText("Возвращено в пул: " + moved + " занятий.");
+            info.showAndWait();
+        } catch (Exception ex) {
+            Alert alert = new Alert(Alert.AlertType.ERROR);
+            alert.setTitle("Автораспределение");
+            alert.setHeaderText(null);
+            alert.setContentText(ex.getMessage());
+            alert.showAndWait();
+        }
     }
 
     @FXML

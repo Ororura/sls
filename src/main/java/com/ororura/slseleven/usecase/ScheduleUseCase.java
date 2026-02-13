@@ -103,6 +103,7 @@ public class ScheduleUseCase {
         validateItem(item);
         item.setCalendarId(currentCalendarId);
         scheduleItemRepository.save(item);
+        syncSubjectConsecutiveHours(item.getTopic(), item.getConsecutiveHours(), item.getId());
     }
 
     public void updateItem(ScheduleItem item) {
@@ -125,6 +126,7 @@ public class ScheduleUseCase {
         }
         item.setCalendarId(currentCalendarId);
         scheduleItemRepository.save(item);
+        syncSubjectConsecutiveHours(item.getTopic(), item.getConsecutiveHours(), item.getId());
     }
 
     public void deleteItem(String id) {
@@ -156,6 +158,35 @@ public class ScheduleUseCase {
 
     public void saveSubjectRules(List<SubjectScheduleRule> rules) {
         scheduleSettingsRepository.saveSubjectRules(rules);
+        if (rules == null || rules.isEmpty()) {
+            return;
+        }
+        Map<String, Integer> consecutiveBySubject = new HashMap<>();
+        for (SubjectScheduleRule rule : rules) {
+            if (rule == null || rule.getSubject().isBlank()) {
+                continue;
+            }
+            consecutiveBySubject.put(
+                normalizeSubject(rule.getSubject()),
+                Math.max(1, rule.getConsecutiveHours())
+            );
+        }
+        if (consecutiveBySubject.isEmpty()) {
+            return;
+        }
+        for (ScheduleItem item : scheduleItemRepository.findAll(currentCalendarId)) {
+            Integer subjectConsecutive = consecutiveBySubject.get(
+                normalizeSubject(item.getTopic())
+            );
+            if (subjectConsecutive == null) {
+                continue;
+            }
+            if (item.getConsecutiveHours() == subjectConsecutive) {
+                continue;
+            }
+            item.setConsecutiveHours(subjectConsecutive);
+            scheduleItemRepository.save(item);
+        }
     }
 
     public List<HistoryEntry> getHistoryEntries() {
@@ -235,24 +266,18 @@ public class ScheduleUseCase {
     public int moveArchivedLessonsToPool() {
         List<Lesson> allLessons = lessonRepository.findAll(currentCalendarId);
         Map<ScheduleKey, Integer> aggregatedHours = new LinkedHashMap<>();
-        Map<ScheduleKey, Integer> preferredConsecutiveByKey = new HashMap<>();
+        Map<String, Integer> preferredConsecutiveBySubject = new HashMap<>();
         List<String> archivedLessonIds = new ArrayList<>();
 
         for (Lesson lesson : allLessons) {
             if (!lesson.isArchived()) {
                 continue;
             }
-            ScheduleKey key = new ScheduleKey(
-                lesson.getTopic(),
-                lesson.getLessonName(),
-                lesson.getClassName(),
-                lesson.getLocation(),
-                lesson.getInstructor()
-            );
+            ScheduleKey key = scheduleKeyOfLesson(lesson);
             int durationHours = Math.max(1, lesson.getDurationHours());
             aggregatedHours.merge(key, durationHours, Integer::sum);
-            preferredConsecutiveByKey.merge(
-                key,
+            preferredConsecutiveBySubject.merge(
+                normalizeSubject(lesson.getTopic()),
                 durationHours,
                 Math::max
             );
@@ -265,39 +290,28 @@ public class ScheduleUseCase {
 
         Map<ScheduleKey, ScheduleItem> existingItemsByKey = new HashMap<>();
         for (ScheduleItem item : scheduleItemRepository.findAll(currentCalendarId)) {
-            preferredConsecutiveByKey.merge(
-                new ScheduleKey(
-                    item.getTopic(),
-                    item.getLessonName(),
-                    item.getClassName(),
-                    item.getLocation(),
-                    item.getInstructor()
-                ),
+            preferredConsecutiveBySubject.merge(
+                normalizeSubject(item.getTopic()),
                 Math.max(1, item.getConsecutiveHours()),
                 Math::max
             );
-            existingItemsByKey.put(
-                new ScheduleKey(
-                    item.getTopic(),
-                    item.getLessonName(),
-                    item.getClassName(),
-                    item.getLocation(),
-                    item.getInstructor()
-                ),
-                item
-            );
+            existingItemsByKey.put(scheduleKeyOfItem(item), item);
         }
 
         for (Map.Entry<ScheduleKey, Integer> entry : aggregatedHours.entrySet()) {
             ScheduleKey key = entry.getKey();
             int hoursToAdd = entry.getValue();
             ScheduleItem existing = existingItemsByKey.get(key);
+            int subjectConsecutive = preferredConsecutiveBySubject.getOrDefault(
+                normalizeSubject(key.topic),
+                1
+            );
             if (existing != null) {
                 existing.setHours(existing.getHours() + hoursToAdd);
                 existing.setConsecutiveHours(
                     Math.max(
                         existing.getConsecutiveHours(),
-                        preferredConsecutiveByKey.getOrDefault(key, 1)
+                        subjectConsecutive
                     )
                 );
                 scheduleItemRepository.save(existing);
@@ -312,9 +326,7 @@ public class ScheduleUseCase {
                 hoursToAdd
             );
             created.setCalendarId(currentCalendarId);
-            created.setConsecutiveHours(
-                preferredConsecutiveByKey.getOrDefault(key, 1)
-            );
+            created.setConsecutiveHours(subjectConsecutive);
             scheduleItemRepository.save(created);
         }
 
@@ -322,6 +334,96 @@ public class ScheduleUseCase {
             lessonRepository.deleteById(lessonId);
         }
         return archivedLessonIds.size();
+    }
+
+    public void moveArchivedLessonToPool(String lessonId) {
+        if (lessonId == null || lessonId.isBlank()) {
+            throw new IllegalArgumentException("ID занятия не может быть пустым");
+        }
+
+        Lesson lesson = lessonRepository.findById(lessonId).orElse(null);
+        if (lesson == null || !currentCalendarId.equals(lesson.getCalendarId())) {
+            throw new IllegalArgumentException("Занятие не найдено");
+        }
+        if (!lesson.isArchived()) {
+            throw new IllegalArgumentException("Занятие не находится в архиве");
+        }
+
+        moveLessonToPoolAndDelete(lesson);
+    }
+
+    public void moveAutoScheduledLessonToPool(String lessonId) {
+        if (lessonId == null || lessonId.isBlank()) {
+            throw new IllegalArgumentException("ID занятия не может быть пустым");
+        }
+
+        Lesson lesson = lessonRepository.findById(lessonId).orElse(null);
+        if (lesson == null || !currentCalendarId.equals(lesson.getCalendarId())) {
+            throw new IllegalArgumentException("Занятие не найдено");
+        }
+        if (lesson.isArchived()) {
+            throw new IllegalArgumentException("Архивное занятие верните через кнопку архива");
+        }
+        if (!lesson.isAutoScheduled()) {
+            throw new IllegalArgumentException(
+                "Можно вернуть в пул только занятие, созданное автораспределением"
+            );
+        }
+
+        moveLessonToPoolAndDelete(lesson);
+    }
+
+    public int moveAllAutoScheduledLessonsToPool() {
+        List<Lesson> allLessons = lessonRepository.findAll(currentCalendarId);
+        int moved = 0;
+        for (Lesson lesson : allLessons) {
+            if (!lesson.isAutoScheduled() || lesson.isArchived()) {
+                continue;
+            }
+            moveLessonToPoolAndDelete(lesson);
+            moved++;
+        }
+        return moved;
+    }
+
+    private void moveLessonToPoolAndDelete(Lesson lesson) {
+        if (lesson == null) {
+            return;
+        }
+
+        ScheduleKey key = scheduleKeyOfLesson(lesson);
+        int durationHours = Math.max(1, lesson.getDurationHours());
+        ScheduleItem existing = null;
+        for (ScheduleItem item : scheduleItemRepository.findAll(currentCalendarId)) {
+            if (scheduleKeyOfItem(item).equals(key)) {
+                existing = item;
+                break;
+            }
+        }
+
+        if (existing != null) {
+            existing.setHours(existing.getHours() + durationHours);
+            existing.setConsecutiveHours(
+                Math.max(existing.getConsecutiveHours(), durationHours)
+            );
+            scheduleItemRepository.save(existing);
+        } else {
+            ScheduleItem created = new ScheduleItem(
+                lesson.getTopic(),
+                lesson.getLessonName(),
+                lesson.getClassName(),
+                lesson.getLocation(),
+                lesson.getInstructor(),
+                durationHours
+            );
+            created.setCalendarId(currentCalendarId);
+            created.setConsecutiveHours(durationHours);
+            scheduleItemRepository.save(created);
+        }
+
+        int subjectConsecutive = resolveSubjectConsecutiveHours(lesson.getTopic());
+        syncSubjectConsecutiveHours(lesson.getTopic(), subjectConsecutive, null);
+        lessonRepository.deleteById(lesson.getId());
     }
 
     public int countAutoScheduledLessonsInRange(
@@ -355,7 +457,7 @@ public class ScheduleUseCase {
 
         List<ScheduleItem> queuedItems = scheduleItemRepository.findAll(currentCalendarId);
         Map<ScheduleKey, Integer> aggregatedHours = new LinkedHashMap<>();
-        Map<ScheduleKey, Integer> preferredConsecutiveByKey = new HashMap<>();
+        Map<String, Integer> preferredConsecutiveBySubject = new HashMap<>();
 
         for (ScheduleItem item : queuedItems) {
             ScheduleKey key = new ScheduleKey(
@@ -366,8 +468,8 @@ public class ScheduleUseCase {
                 item.getInstructor()
             );
             aggregatedHours.merge(key, item.getHours(), Integer::sum);
-            preferredConsecutiveByKey.merge(
-                key,
+            preferredConsecutiveBySubject.merge(
+                normalizeSubject(item.getTopic()),
                 Math.max(1, item.getConsecutiveHours()),
                 Math::max
             );
@@ -383,8 +485,8 @@ public class ScheduleUseCase {
             );
             int durationHours = Math.max(1, lesson.getDurationHours());
             aggregatedHours.merge(key, durationHours, Integer::sum);
-            preferredConsecutiveByKey.merge(
-                key,
+            preferredConsecutiveBySubject.merge(
+                normalizeSubject(lesson.getTopic()),
                 durationHours,
                 Math::max
             );
@@ -403,7 +505,10 @@ public class ScheduleUseCase {
             );
             created.setCalendarId(currentCalendarId);
             created.setConsecutiveHours(
-                preferredConsecutiveByKey.getOrDefault(key, 1)
+                preferredConsecutiveBySubject.getOrDefault(
+                    normalizeSubject(key.topic),
+                    1
+                )
             );
             scheduleItemRepository.save(created);
         }
@@ -447,6 +552,8 @@ public class ScheduleUseCase {
         }
 
         int totalHours = items.stream().mapToInt(ScheduleItem::getHours).sum();
+        Map<String, Integer> subjectConsecutiveHours =
+            buildSubjectConsecutiveHours(items, rulesBySubject);
         int createdLessons = 0;
         LocalDate currentDate = startDate;
         LocalDate lastDate = null;
@@ -527,6 +634,7 @@ public class ScheduleUseCase {
                     remainingByItem,
                     dayOfWeek,
                     dayExclusiveSubjects,
+                    subjectConsecutiveHours,
                     rulesBySubject,
                     occupiedSlotIndexes,
                     candidateSlotIndex,
@@ -536,8 +644,12 @@ public class ScheduleUseCase {
                     continue;
                 }
                 ScheduleItem currentItem = items.get(itemIndex);
+                int subjectBlockHours = subjectConsecutiveHours.getOrDefault(
+                    normalizeSubject(currentItem.getTopic()),
+                    1
+                );
                 int blockHours = Math.min(
-                    Math.max(1, currentItem.getConsecutiveHours()),
+                    subjectBlockHours,
                     remainingByItem[itemIndex]
                 );
 
@@ -657,6 +769,7 @@ public class ScheduleUseCase {
         int[] remainingByItem,
         DayOfWeek day,
         Set<String> dayExclusiveSubjects,
+        Map<String, Integer> subjectConsecutiveHours,
         Map<String, SubjectScheduleRule> rulesBySubject,
         Set<Integer> occupiedSlotIndexes,
         int candidateSlotIndex,
@@ -667,8 +780,12 @@ public class ScheduleUseCase {
                 continue;
             }
             ScheduleItem item = items.get(i);
+            int subjectBlockHours = subjectConsecutiveHours.getOrDefault(
+                normalizeSubject(item.getTopic()),
+                1
+            );
             int blockHours = Math.min(
-                Math.max(1, item.getConsecutiveHours()),
+                subjectBlockHours,
                 remainingByItem[i]
             );
             if (
@@ -695,6 +812,31 @@ public class ScheduleUseCase {
             return i;
         }
         return -1;
+    }
+
+    private Map<String, Integer> buildSubjectConsecutiveHours(
+        List<ScheduleItem> items,
+        Map<String, SubjectScheduleRule> rulesBySubject
+    ) {
+        Map<String, Integer> result = new HashMap<>();
+        for (ScheduleItem item : items) {
+            result.merge(
+                normalizeSubject(item.getTopic()),
+                Math.max(1, item.getConsecutiveHours()),
+                Math::max
+            );
+        }
+        if (rulesBySubject == null || rulesBySubject.isEmpty()) {
+            return result;
+        }
+        for (Map.Entry<String, SubjectScheduleRule> entry : rulesBySubject.entrySet()) {
+            SubjectScheduleRule rule = entry.getValue();
+            if (rule == null) {
+                continue;
+            }
+            result.put(entry.getKey(), Math.max(1, rule.getConsecutiveHours()));
+        }
+        return result;
     }
 
     private boolean canPlaceConsecutiveBlock(
@@ -1075,5 +1217,66 @@ public class ScheduleUseCase {
             Base64.getDecoder().decode(value),
             StandardCharsets.UTF_8
         );
+    }
+
+    private ScheduleKey scheduleKeyOfLesson(Lesson lesson) {
+        return new ScheduleKey(
+            safeText(lesson.getTopic()),
+            safeText(lesson.getLessonName()),
+            safeText(lesson.getClassName()),
+            safeText(lesson.getLocation()),
+            safeText(lesson.getInstructor())
+        );
+    }
+
+    private ScheduleKey scheduleKeyOfItem(ScheduleItem item) {
+        return new ScheduleKey(
+            safeText(item.getTopic()),
+            safeText(item.getLessonName()),
+            safeText(item.getClassName()),
+            safeText(item.getLocation()),
+            safeText(item.getInstructor())
+        );
+    }
+
+    private String safeText(String value) {
+        return value == null ? "" : value;
+    }
+
+    private int resolveSubjectConsecutiveHours(String topic) {
+        String subjectKey = normalizeSubject(topic);
+        int result = 1;
+        for (ScheduleItem item : scheduleItemRepository.findAll(currentCalendarId)) {
+            if (!subjectKey.equals(normalizeSubject(item.getTopic()))) {
+                continue;
+            }
+            result = Math.max(result, Math.max(1, item.getConsecutiveHours()));
+        }
+        return result;
+    }
+
+    private void syncSubjectConsecutiveHours(
+        String topic,
+        int consecutiveHours,
+        String sourceItemId
+    ) {
+        String subjectKey = normalizeSubject(topic);
+        if (subjectKey.isBlank()) {
+            return;
+        }
+        int normalizedConsecutive = Math.max(1, consecutiveHours);
+        for (ScheduleItem existing : scheduleItemRepository.findAll(currentCalendarId)) {
+            if (!subjectKey.equals(normalizeSubject(existing.getTopic()))) {
+                continue;
+            }
+            if (sourceItemId != null && sourceItemId.equals(existing.getId())) {
+                continue;
+            }
+            if (existing.getConsecutiveHours() == normalizedConsecutive) {
+                continue;
+            }
+            existing.setConsecutiveHours(normalizedConsecutive);
+            scheduleItemRepository.save(existing);
+        }
     }
 }

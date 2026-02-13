@@ -98,7 +98,7 @@ public class ScheduleSettingsRepositorySQLite
     @Override
     public List<SubjectScheduleRule> getSubjectRules() {
         String sql =
-            "SELECT subject, allowed_days, exclusive_days FROM schedule_subject_rules WHERE calendar_id = ? ORDER BY subject";
+            "SELECT subject, allowed_days, exclusive_days, consecutive_hours FROM schedule_subject_rules WHERE calendar_id = ? ORDER BY subject";
         List<SubjectScheduleRule> rules = new ArrayList<>();
         try (
             Connection conn = provider.getConnection();
@@ -110,11 +110,16 @@ public class ScheduleSettingsRepositorySQLite
                 String subject = rs.getString("subject");
                 int allowedMask = rs.getInt("allowed_days");
                 int exclusiveMask = rs.getInt("exclusive_days");
+                int consecutiveHours = Math.max(
+                    1,
+                    rs.getInt("consecutive_hours")
+                );
                 rules.add(
                     new SubjectScheduleRule(
                         subject,
                         fromMask(allowedMask),
-                        fromMask(exclusiveMask)
+                        fromMask(exclusiveMask),
+                        consecutiveHours
                     )
                 );
             }
@@ -129,7 +134,7 @@ public class ScheduleSettingsRepositorySQLite
         String deleteSql =
             "DELETE FROM schedule_subject_rules WHERE calendar_id = ?";
         String insertSql =
-            "INSERT INTO schedule_subject_rules (calendar_id, subject, allowed_days, exclusive_days) VALUES (?, ?, ?, ?)";
+            "INSERT INTO schedule_subject_rules (calendar_id, subject, allowed_days, exclusive_days, consecutive_hours) VALUES (?, ?, ?, ?, ?)";
         try (
             Connection conn = provider.getConnection();
             PreparedStatement delete = conn.prepareStatement(deleteSql);
@@ -149,6 +154,7 @@ public class ScheduleSettingsRepositorySQLite
                 insert.setString(2, rule.getSubject().trim());
                 insert.setInt(3, toMask(rule.getAllowedDays()));
                 insert.setInt(4, toMask(rule.getExclusiveDays()));
+                insert.setInt(5, Math.max(1, rule.getConsecutiveHours()));
                 insert.addBatch();
             }
             insert.executeBatch();
