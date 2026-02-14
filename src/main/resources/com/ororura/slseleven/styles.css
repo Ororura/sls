@@ -371,6 +371,21 @@
     -fx-prompt-text-fill: #8a94a6;
 }
 
+.directory-combo,
+.calendar-combo {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #cfd8e6;
+    -fx-border-radius: 10;
+    -fx-background-radius: 10;
+}
+
+.directory-combo .list-cell,
+.calendar-combo .list-cell {
+    -fx-padding: 6 10;
+    -fx-text-fill: #1f2937;
+    -fx-font-size: 12px;
+}
+
 .text-field,
 .combo-box,
 .date-picker,

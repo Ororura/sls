@@ -50,7 +50,13 @@ public interface ScheduleSettingsRepository {
 
     AppCalendar createCalendar(String name);
 
+    AppCalendar createCalendar(String name, String directoryPath);
+
     void renameCalendar(String calendarId, String newName);
+
+    void moveCalendarToDirectory(String calendarId, String directoryPath);
+
+    List<String> getCalendarDirectories();
 
     void deleteCalendar(String calendarId);
 

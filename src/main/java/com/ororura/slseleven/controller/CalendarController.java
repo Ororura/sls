@@ -29,6 +29,7 @@ import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import javafx.util.Duration;
@@ -38,6 +39,8 @@ import javafx.util.Duration;
  */
 public class CalendarController {
     private static final String ALL_CALENDARS_ID = "__all__";
+    private static final String DIR_ALL = "Все директории";
+    private static final String DIR_ROOT = "Без директории";
     private static final AppCalendar ALL_CALENDARS_OPTION = new AppCalendar(
         ALL_CALENDARS_ID,
         "Общий (все календари)"
@@ -62,6 +65,9 @@ public class CalendarController {
     private ComboBox<AppCalendar> calendarComboBox;
 
     @FXML
+    private ComboBox<String> directoryComboBox;
+
+    @FXML
     private Label currentDateLabel;
 
     @FXML
@@ -76,6 +82,9 @@ public class CalendarController {
     private ScheduleUseCase scheduleUseCase;
     private final ObservableList<AppCalendar> calendars =
         FXCollections.observableArrayList();
+    private final ObservableList<String> directories =
+        FXCollections.observableArrayList();
+    private final List<AppCalendar> allCalendarsLoaded = new ArrayList<>();
     private boolean updatingCalendarSelection;
     private boolean allCalendarsMode;
     private final Map<LocalDate, List<Lesson>> monthLessons = new HashMap<>();
@@ -246,7 +255,19 @@ public class CalendarController {
     public void initialize() {
         previousMonthButton.setOnAction(e -> previousMonth());
         nextMonthButton.setOnAction(e -> nextMonth());
+        directoryComboBox.setItems(directories);
+        directoryComboBox
+            .getSelectionModel()
+            .selectedItemProperty()
+            .addListener((obs, oldValue, newValue) -> {
+                if (updatingCalendarSelection) {
+                    return;
+                }
+                applyDirectoryFilter();
+            });
+        configureDirectoryComboCells();
         calendarComboBox.setItems(calendars);
+        configureCalendarComboCells();
         calendarComboBox
             .getSelectionModel()
             .selectedItemProperty()
@@ -260,6 +281,72 @@ public class CalendarController {
         buildCalendar();
     }
 
+    private void configureCalendarComboCells() {
+        calendarComboBox.setCellFactory(list -> new ListCell<>() {
+            @Override
+            protected void updateItem(AppCalendar item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    return;
+                }
+                setText(formatCalendarForCombo(item));
+            }
+        });
+        calendarComboBox.setButtonCell(new ListCell<>() {
+            @Override
+            protected void updateItem(AppCalendar item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    return;
+                }
+                setText(formatCalendarForCombo(item));
+            }
+        });
+    }
+
+    private void configureDirectoryComboCells() {
+        directoryComboBox.setCellFactory(list -> new ListCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                setText(empty || item == null ? null : formatDirectoryLabel(item));
+            }
+        });
+        directoryComboBox.setButtonCell(new ListCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                setText(empty || item == null ? null : formatDirectoryLabel(item));
+            }
+        });
+    }
+
+    private String formatDirectoryLabel(String directory) {
+        if (directory == null || directory.isBlank()) {
+            return DIR_ALL;
+        }
+        if (DIR_ALL.equals(directory) || DIR_ROOT.equals(directory)) {
+            return directory;
+        }
+        return directory.replace("/", " / ");
+    }
+
+    private String formatCalendarForCombo(AppCalendar calendar) {
+        if (calendar == null) {
+            return "";
+        }
+        if (ALL_CALENDARS_ID.equals(calendar.getId())) {
+            return "Все календари";
+        }
+        String path = calendar.getDirectoryPath();
+        if (path == null || path.isBlank()) {
+            return calendar.getName() + "  [Корень]";
+        }
+        return calendar.getName() + "  [" + path.replace("/", " / ") + "]";
+    }
+
     @FXML
     private void onCreateCalendar() {
         if (scheduleUseCase == null) {
@@ -267,23 +354,95 @@ public class CalendarController {
             return;
         }
 
-        TextInputDialog dialog = new TextInputDialog();
+        Dialog<ButtonType> dialog = new Dialog<>();
         dialog.setTitle("Новый календарь");
         dialog.setHeaderText("Создание календаря");
-        dialog.setContentText("Название:");
+        TextField directoryField = new TextField();
+        directoryField.setPromptText("Например: 2 бат/2 рота/ОВП");
+        TextField nameField = new TextField();
+        nameField.setPromptText("Название календаря");
+        VBox content = new VBox(
+            8,
+            new Label("Директория (необязательно):"),
+            directoryField,
+            new Label("Название календаря:"),
+            nameField
+        );
+        VBox.setVgrow(directoryField, Priority.NEVER);
+        VBox.setVgrow(nameField, Priority.NEVER);
+        dialog.getDialogPane().setContent(content);
+        dialog
+            .getDialogPane()
+            .getButtonTypes()
+            .addAll(ButtonType.OK, ButtonType.CANCEL);
         UiStyles.apply(dialog.getDialogPane());
+
+        if (dialog.showAndWait().orElse(ButtonType.CANCEL) != ButtonType.OK) {
+            return;
+        }
+        try {
+            AppCalendar created = scheduleUseCase.createCalendar(
+                nameField.getText(),
+                directoryField.getText()
+            );
+            scheduleUseCase.setCurrentCalendarId(created.getId());
+            allCalendarsMode = false;
+            applyCalendarSelection();
+            loadCalendars();
+        } catch (Exception ex) {
+            showError("Не удалось создать календарь: " + ex.getMessage());
+        }
+    }
+
+    @FXML
+    private void onMoveCalendarToDirectory() {
+        AppCalendar selected = calendarComboBox
+            .getSelectionModel()
+            .getSelectedItem();
+        if (selected == null || scheduleUseCase == null) {
+            showError("Выберите календарь");
+            return;
+        }
+        if (ALL_CALENDARS_ID.equals(selected.getId())) {
+            showError("Общий календарь нельзя перенести в папку");
+            return;
+        }
+
+        List<String> knownDirectories = new ArrayList<>(
+            scheduleUseCase.getCalendarDirectories()
+        );
+        if (
+            selected.getDirectoryPath() != null &&
+            !selected.getDirectoryPath().isBlank() &&
+            !knownDirectories.contains(selected.getDirectoryPath())
+        ) {
+            knownDirectories.add(selected.getDirectoryPath());
+        }
+        knownDirectories.sort(String.CASE_INSENSITIVE_ORDER);
+
+        TextInputDialog dialog = new TextInputDialog(selected.getDirectoryPath());
+        dialog.setTitle("Папка календаря");
+        dialog.setHeaderText(
+            "Укажите директорию для \"" + selected.getName() + "\""
+        );
+        dialog.setContentText("Путь (например 2 бат/2 рота/ОВП, пусто = корень):");
+        UiStyles.apply(dialog.getDialogPane());
+        if (!knownDirectories.isEmpty()) {
+            dialog
+                .getEditor()
+                .setPromptText("Доступные: " + String.join(", ", knownDirectories));
+        }
 
         dialog
             .showAndWait()
-            .ifPresent(name -> {
+            .ifPresent(path -> {
                 try {
-                    AppCalendar created = scheduleUseCase.createCalendar(name);
-                    scheduleUseCase.setCurrentCalendarId(created.getId());
-                    allCalendarsMode = false;
-                    applyCalendarSelection();
+                    scheduleUseCase.moveCalendarToDirectory(selected.getId(), path);
                     loadCalendars();
                 } catch (Exception ex) {
-                    showError("Не удалось создать календарь: " + ex.getMessage());
+                    showError(
+                        "Не удалось перенести календарь: " + ex.getMessage()
+                    );
                 }
             });
     }
@@ -709,11 +868,17 @@ public class CalendarController {
         if (scheduleUseCase == null) {
             return;
         }
-        List<AppCalendar> loaded = new ArrayList<>();
-        loaded.add(ALL_CALENDARS_OPTION);
-        loaded.addAll(scheduleUseCase.getCalendars());
-        calendars.setAll(loaded);
+        allCalendarsLoaded.clear();
+        allCalendarsLoaded.addAll(scheduleUseCase.getCalendars());
+        rebuildDirectoryOptions();
+        if (directoryComboBox.getSelectionModel().getSelectedItem() == null) {
+            updatingCalendarSelection = true;
+            directoryComboBox.getSelectionModel().select(DIR_ALL);
+            updatingCalendarSelection = false;
+        }
+        applyDirectoryFilter();
 
+        List<AppCalendar> loaded = new ArrayList<>(calendars);
         String activeId = scheduleUseCase.getCurrentCalendarId();
         AppCalendar selected = allCalendarsMode
             ? ALL_CALENDARS_OPTION
@@ -728,6 +893,64 @@ public class CalendarController {
         updatingCalendarSelection = false;
 
         applyCalendarSelection();
+    }
+
+    private void rebuildDirectoryOptions() {
+        List<String> loaded = new ArrayList<>();
+        loaded.add(DIR_ALL);
+        loaded.add(DIR_ROOT);
+        for (AppCalendar calendar : allCalendarsLoaded) {
+            String path = calendar.getDirectoryPath();
+            if (path == null || path.isBlank()) {
+                continue;
+            }
+            if (!loaded.contains(path)) {
+                loaded.add(path);
+            }
+        }
+        loaded.subList(2, loaded.size()).sort(String.CASE_INSENSITIVE_ORDER);
+        directories.setAll(loaded);
+    }
+
+    private void applyDirectoryFilter() {
+        String directory = directoryComboBox
+            .getSelectionModel()
+            .getSelectedItem();
+        List<AppCalendar> filtered = new ArrayList<>();
+        filtered.add(ALL_CALENDARS_OPTION);
+        for (AppCalendar calendar : allCalendarsLoaded) {
+            if (DIR_ALL.equals(directory) || directory == null) {
+                filtered.add(calendar);
+                continue;
+            }
+            if (DIR_ROOT.equals(directory)) {
+                if (
+                    calendar.getDirectoryPath() == null ||
+                    calendar.getDirectoryPath().isBlank()
+                ) {
+                    filtered.add(calendar);
+                }
+                continue;
+            }
+            if (directory.equals(calendar.getDirectoryPath())) {
+                filtered.add(calendar);
+            }
+        }
+        AppCalendar selected = calendarComboBox.getSelectionModel().getSelectedItem();
+        String selectedId = selected == null ? null : selected.getId();
+        calendars.setAll(filtered);
+        if (selectedId != null) {
+            AppCalendar same = filtered
+                .stream()
+                .filter(item -> selectedId.equals(item.getId()))
+                .findFirst()
+                .orElse(null);
+            if (same != null) {
+                updatingCalendarSelection = true;
+                calendarComboBox.getSelectionModel().select(same);
+                updatingCalendarSelection = false;
+            }
+        }
     }
 
     private void switchCalendar(AppCalendar calendar) {

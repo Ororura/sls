@@ -5,10 +5,16 @@ import java.util.Objects;
 public class AppCalendar {
     private String id;
     private String name;
+    private String directoryPath;
 
     public AppCalendar(String id, String name) {
+        this(id, name, "");
+    }
+
+    public AppCalendar(String id, String name, String directoryPath) {
         this.id = id;
         this.name = name;
+        this.directoryPath = directoryPath == null ? "" : directoryPath.trim();
     }
 
     public String getId() {
@@ -27,6 +33,23 @@ public class AppCalendar {
         this.name = name;
     }
 
+    public String getDirectoryPath() {
+        return directoryPath;
+    }
+
+    public void setDirectoryPath(String directoryPath) {
+        this.directoryPath = directoryPath == null
+            ? ""
+            : directoryPath.trim();
+    }
+
+    public String getDisplayName() {
+        if (directoryPath == null || directoryPath.isBlank()) {
+            return name;
+        }
+        return directoryPath.replace("/", " / ") + " / " + name;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -42,6 +65,6 @@ public class AppCalendar {
 
     @Override
     public String toString() {
-        return name;
+        return getDisplayName();
     }
 }

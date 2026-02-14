@@ -49,15 +49,28 @@
                 </HBox>
 
                 <HBox alignment="CENTER_LEFT" styleClass="control-bar">
+                    <Label text="Директория:" />
+                    <ComboBox
+                        fx:id="directoryComboBox"
+                        prefWidth="220"
+                        promptText="Все директории"
+                        styleClass="directory-combo"
+                    />
                     <Label text="Календарь:" />
                     <ComboBox
                         fx:id="calendarComboBox"
-                        prefWidth="260"
+                        prefWidth="340"
                         promptText="Выберите календарь"
+                        styleClass="calendar-combo"
                     />
                     <Button
                         text="Новый"
                         onAction="#onCreateCalendar"
+                        styleClass="button-secondary"
+                    />
+                    <Button
+                        text="Папка"
+                        onAction="#onMoveCalendarToDirectory"
                         styleClass="button-secondary"
                     />
                     <Button

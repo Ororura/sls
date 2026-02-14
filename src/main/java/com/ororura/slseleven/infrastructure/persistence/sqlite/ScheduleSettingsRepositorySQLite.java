@@ -448,7 +448,7 @@ public class ScheduleSettingsRepositorySQLite
 
     @Override
     public List<AppCalendar> findAllCalendars() {
-        String sql = "SELECT id, name FROM calendars ORDER BY name";
+        String sql = "SELECT id, name, directory_path FROM calendars ORDER BY directory_path, name";
         List<AppCalendar> calendars = new ArrayList<>();
         try (
             Connection conn = provider.getConnection();
@@ -456,7 +456,13 @@ public class ScheduleSettingsRepositorySQLite
             ResultSet rs = ps.executeQuery()
         ) {
             while (rs.next()) {
-                calendars.add(new AppCalendar(rs.getString("id"), rs.getString("name")));
+                calendars.add(
+                    new AppCalendar(
+                        rs.getString("id"),
+                        rs.getString("name"),
+                        rs.getString("directory_path")
+                    )
+                );
             }
             return calendars;
         } catch (Exception e) {
@@ -466,17 +472,23 @@ public class ScheduleSettingsRepositorySQLite
 
     @Override
     public AppCalendar createCalendar(String name) {
+        return createCalendar(name, "");
+    }
+
+    @Override
+    public AppCalendar createCalendar(String name, String directoryPath) {
         if (name == null || name.trim().isEmpty()) {
             throw new IllegalArgumentException("Название календаря не может быть пустым");
         }
 
         String id = UUID.randomUUID().toString();
         String normalizedName = name.trim();
+        String normalizedDirectoryPath = normalizeDirectoryPath(directoryPath);
         try (Connection conn = provider.getConnection()) {
             conn.setAutoCommit(false);
             try (
                 PreparedStatement insertCalendar = conn.prepareStatement(
-                    "INSERT INTO calendars (id, name) VALUES (?, ?)"
+                    "INSERT INTO calendars (id, name, directory_path) VALUES (?, ?, ?)"
                 );
                 PreparedStatement insertSettings = conn.prepareStatement(
                     "INSERT INTO schedule_settings (calendar_id, day_of_week, max_hours) VALUES (?, ?, ?)"
@@ -484,6 +496,7 @@ public class ScheduleSettingsRepositorySQLite
             ) {
                 insertCalendar.setString(1, id);
                 insertCalendar.setString(2, normalizedName);
+                insertCalendar.setString(3, normalizedDirectoryPath);
                 insertCalendar.executeUpdate();
 
                 for (DayOfWeek day : DayOfWeek.values()) {
@@ -504,10 +517,15 @@ public class ScheduleSettingsRepositorySQLite
                 conn.setAutoCommit(true);
             }
         } catch (Exception e) {
+            if (isCalendarNameConflict(e)) {
+                throw new IllegalArgumentException(
+                    "Календарь с таким именем уже есть в этой директории"
+                );
+            }
             throw new RuntimeException("Ошибка при создании календаря", e);
         }
 
-        return new AppCalendar(id, normalizedName);
+        return new AppCalendar(id, normalizedName, normalizedDirectoryPath);
     }
 
     @Override
@@ -530,7 +548,56 @@ public class ScheduleSettingsRepositorySQLite
                 throw new IllegalArgumentException("Календарь не найден");
             }
         } catch (Exception e) {
+            if (isCalendarNameConflict(e)) {
+                throw new IllegalArgumentException(
+                    "Календарь с таким именем уже есть в этой директории"
+                );
+            }
             throw new RuntimeException("Ошибка при переименовании календаря", e);
+        }
+    }
+
+    @Override
+    public void moveCalendarToDirectory(String calendarId, String directoryPath) {
+        if (calendarId == null || calendarId.isBlank()) {
+            throw new IllegalArgumentException("ID календаря не может быть пустым");
+        }
+        String sql = "UPDATE calendars SET directory_path = ? WHERE id = ?";
+        try (
+            Connection conn = provider.getConnection();
+            PreparedStatement ps = conn.prepareStatement(sql)
+        ) {
+            ps.setString(1, normalizeDirectoryPath(directoryPath));
+            ps.setString(2, calendarId);
+            if (ps.executeUpdate() == 0) {
+                throw new IllegalArgumentException("Календарь не найден");
+            }
+        } catch (Exception e) {
+            if (isCalendarNameConflict(e)) {
+                throw new IllegalArgumentException(
+                    "В этой директории уже есть календарь с таким именем"
+                );
+            }
+            throw new RuntimeException("Ошибка при переносе календаря", e);
+        }
+    }
+
+    @Override
+    public List<String> getCalendarDirectories() {
+        String sql =
+            "SELECT DISTINCT directory_path FROM calendars WHERE directory_path IS NOT NULL AND TRIM(directory_path) <> '' ORDER BY directory_path";
+        List<String> directories = new ArrayList<>();
+        try (
+            Connection conn = provider.getConnection();
+            PreparedStatement ps = conn.prepareStatement(sql);
+            ResultSet rs = ps.executeQuery()
+        ) {
+            while (rs.next()) {
+                directories.add(rs.getString("directory_path"));
+            }
+            return directories;
+        } catch (Exception e) {
+            throw new RuntimeException("Ошибка при чтении директорий", e);
         }
     }
 
@@ -664,5 +731,28 @@ public class ScheduleSettingsRepositorySQLite
             }
         }
         return days;
+    }
+
+    private String normalizeDirectoryPath(String directoryPath) {
+        if (directoryPath == null || directoryPath.isBlank()) {
+            return "";
+        }
+        String normalized = directoryPath
+            .trim()
+            .replace("\\", "/")
+            .replaceAll("/+", "/");
+        if (normalized.startsWith("/")) {
+            normalized = normalized.substring(1);
+        }
+        if (normalized.endsWith("/")) {
+            normalized = normalized.substring(0, normalized.length() - 1);
+        }
+        return normalized;
+    }
+
+    private boolean isCalendarNameConflict(Exception exception) {
+        String message = exception == null ? "" : String.valueOf(exception.getMessage());
+        return message.contains("UNIQUE constraint failed") &&
+        message.contains("calendars");
     }
 }

@@ -10,7 +10,9 @@ public class SchemaInitializer {
         String calendarsSql =
             "CREATE TABLE IF NOT EXISTS calendars (\n" +
             "    id TEXT PRIMARY KEY,\n" +
-            "    name TEXT NOT NULL UNIQUE\n" +
+            "    name TEXT NOT NULL,\n" +
+            "    directory_path TEXT NOT NULL DEFAULT '',\n" +
+            "    UNIQUE(directory_path, name)\n" +
             ");";
 
         String appSettingsSql =
@@ -117,6 +119,10 @@ public class SchemaInitializer {
             s.execute(scheduleHistorySql);
             ensureColumnExists(
                 s,
+                "ALTER TABLE calendars ADD COLUMN directory_path TEXT NOT NULL DEFAULT ''"
+            );
+            ensureColumnExists(
+                s,
                 "ALTER TABLE lessons ADD COLUMN calendar_id TEXT NOT NULL DEFAULT 'default'"
             );
             ensureColumnExists(
@@ -169,6 +175,7 @@ public class SchemaInitializer {
             );
             normalizeScheduleSettingsTable(s);
             normalizeScheduleSubjectRulesTable(s);
+            normalizeCalendarsTable(s);
             s.execute(
                 "INSERT OR IGNORE INTO calendars (id, name) VALUES ('default', 'Основной')"
             );
@@ -249,5 +256,23 @@ public class SchemaInitializer {
         s.execute(
             "ALTER TABLE schedule_subject_rules_new RENAME TO schedule_subject_rules"
         );
+    }
+
+    private static void normalizeCalendarsTable(Statement s) throws Exception {
+        s.execute("DROP TABLE IF EXISTS calendars_new");
+        s.execute(
+            "CREATE TABLE calendars_new (\n" +
+            "    id TEXT PRIMARY KEY,\n" +
+            "    name TEXT NOT NULL,\n" +
+            "    directory_path TEXT NOT NULL DEFAULT '',\n" +
+            "    UNIQUE(directory_path, name)\n" +
+            ");"
+        );
+        s.execute(
+            "INSERT OR IGNORE INTO calendars_new (id, name, directory_path) " +
+            "SELECT id, name, COALESCE(directory_path, '') FROM calendars"
+        );
+        s.execute("DROP TABLE calendars");
+        s.execute("ALTER TABLE calendars_new RENAME TO calendars");
     }
 }

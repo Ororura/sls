@@ -91,8 +91,23 @@ public class ScheduleUseCase {
         return scheduleSettingsRepository.createCalendar(name);
     }
 
+    public AppCalendar createCalendar(String name, String directoryPath) {
+        return scheduleSettingsRepository.createCalendar(name, directoryPath);
+    }
+
     public void renameCalendar(String calendarId, String newName) {
         scheduleSettingsRepository.renameCalendar(calendarId, newName);
+    }
+
+    public void moveCalendarToDirectory(String calendarId, String directoryPath) {
+        scheduleSettingsRepository.moveCalendarToDirectory(
+            calendarId,
+            directoryPath
+        );
+    }
+
+    public List<String> getCalendarDirectories() {
+        return scheduleSettingsRepository.getCalendarDirectories();
     }
 
     public void deleteCalendar(String calendarId) {
