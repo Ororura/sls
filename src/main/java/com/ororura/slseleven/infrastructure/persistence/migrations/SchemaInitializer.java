@@ -64,7 +64,31 @@ public class SchemaInitializer {
             "    allowed_days INTEGER NOT NULL,\n" +
             "    exclusive_days INTEGER NOT NULL,\n" +
             "    consecutive_hours INTEGER NOT NULL DEFAULT 1,\n" +
+            "    fixed_room TEXT NOT NULL DEFAULT '',\n" +
             "    PRIMARY KEY (calendar_id, subject)\n" +
+            ");";
+
+        String instructorsSql =
+            "CREATE TABLE IF NOT EXISTS instructors (\n" +
+            "    id TEXT PRIMARY KEY,\n" +
+            "    calendar_id TEXT NOT NULL DEFAULT 'default',\n" +
+            "    name TEXT NOT NULL,\n" +
+            "    allowed_days INTEGER NOT NULL DEFAULT 127\n" +
+            ");";
+
+        String roomsSql =
+            "CREATE TABLE IF NOT EXISTS rooms (\n" +
+            "    id TEXT PRIMARY KEY,\n" +
+            "    calendar_id TEXT NOT NULL DEFAULT 'default',\n" +
+            "    name TEXT NOT NULL\n" +
+            ");";
+
+        String instructorDutiesSql =
+            "CREATE TABLE IF NOT EXISTS instructor_duties (\n" +
+            "    calendar_id TEXT NOT NULL DEFAULT 'default',\n" +
+            "    instructor_id TEXT NOT NULL,\n" +
+            "    duty_date TEXT NOT NULL,\n" +
+            "    PRIMARY KEY (calendar_id, instructor_id, duty_date)\n" +
             ");";
 
         String scheduleHistorySql =
@@ -87,6 +111,9 @@ public class SchemaInitializer {
             s.execute(scheduleItemsSql);
             s.execute(scheduleSettingsSql);
             s.execute(scheduleSubjectRulesSql);
+            s.execute(instructorsSql);
+            s.execute(roomsSql);
+            s.execute(instructorDutiesSql);
             s.execute(scheduleHistorySql);
             ensureColumnExists(
                 s,
@@ -131,6 +158,10 @@ public class SchemaInitializer {
             ensureColumnExists(
                 s,
                 "ALTER TABLE schedule_subject_rules ADD COLUMN consecutive_hours INTEGER NOT NULL DEFAULT 1"
+            );
+            ensureColumnExists(
+                s,
+                "ALTER TABLE schedule_subject_rules ADD COLUMN fixed_room TEXT NOT NULL DEFAULT ''"
             );
             ensureColumnExists(
                 s,
@@ -206,12 +237,13 @@ public class SchemaInitializer {
             "    allowed_days INTEGER NOT NULL,\n" +
             "    exclusive_days INTEGER NOT NULL,\n" +
             "    consecutive_hours INTEGER NOT NULL DEFAULT 1,\n" +
+            "    fixed_room TEXT NOT NULL DEFAULT '',\n" +
             "    PRIMARY KEY (calendar_id, subject)\n" +
             ");"
         );
         s.execute(
-            "INSERT OR IGNORE INTO schedule_subject_rules_new (calendar_id, subject, allowed_days, exclusive_days, consecutive_hours) " +
-            "SELECT COALESCE(calendar_id, 'default'), subject, allowed_days, exclusive_days, COALESCE(consecutive_hours, 1) FROM schedule_subject_rules"
+            "INSERT OR IGNORE INTO schedule_subject_rules_new (calendar_id, subject, allowed_days, exclusive_days, consecutive_hours, fixed_room) " +
+            "SELECT COALESCE(calendar_id, 'default'), subject, allowed_days, exclusive_days, COALESCE(consecutive_hours, 1), COALESCE(fixed_room, '') FROM schedule_subject_rules"
         );
         s.execute("DROP TABLE schedule_subject_rules");
         s.execute(

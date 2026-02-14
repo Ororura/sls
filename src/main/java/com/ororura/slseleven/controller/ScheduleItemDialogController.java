@@ -109,24 +109,6 @@ public class ScheduleItemDialogController {
             }
             if (
                 !UiValidation.requireNotBlank(
-                    locationField,
-                    "Место не может быть пустым",
-                    onError
-                )
-            ) {
-                return false;
-            }
-            if (
-                !UiValidation.requireNotBlank(
-                    instructorField,
-                    "Преподаватель не может быть пустым",
-                    onError
-                )
-            ) {
-                return false;
-            }
-            if (
-                !UiValidation.requireNotBlank(
                     hoursField,
                     "Часы не могут быть пустыми",
                     onError

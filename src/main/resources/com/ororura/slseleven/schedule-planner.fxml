@@ -42,11 +42,6 @@
                         styleClass="button-secondary"
                     />
                     <Button
-                        text="Быстрый экспорт"
-                        onAction="#onQuickExport"
-                        styleClass="button-secondary"
-                    />
-                    <Button
                         text="Экспорт XLSX"
                         onAction="#onExportXlsx"
                         styleClass="button-secondary"
@@ -186,6 +181,21 @@
                 <Button
                     text="Правила предметов"
                     onAction="#onSubjectRules"
+                    styleClass="button-secondary"
+                />
+                <Button
+                    text="Преподаватели"
+                    onAction="#onManageInstructors"
+                    styleClass="button-secondary"
+                />
+                <Button
+                    text="Кабинеты"
+                    onAction="#onManageRooms"
+                    styleClass="button-secondary"
+                />
+                <Button
+                    text="Наряды"
+                    onAction="#onInstructorDuties"
                     styleClass="button-secondary"
                 />
                 <Button

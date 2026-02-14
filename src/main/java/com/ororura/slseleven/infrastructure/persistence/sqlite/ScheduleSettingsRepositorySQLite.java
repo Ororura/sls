@@ -2,12 +2,16 @@ package com.ororura.slseleven.infrastructure.persistence.sqlite;
 
 import com.ororura.slseleven.domain.model.AppCalendar;
 import com.ororura.slseleven.domain.model.CalendarDefaults;
+import com.ororura.slseleven.domain.model.InstructorDuty;
+import com.ororura.slseleven.domain.model.InstructorProfile;
+import com.ororura.slseleven.domain.model.RoomProfile;
 import com.ororura.slseleven.domain.model.SubjectScheduleRule;
 import com.ororura.slseleven.domain.repository.ScheduleSettingsRepository;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.time.DayOfWeek;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.EnumSet;
@@ -97,7 +101,7 @@ public class ScheduleSettingsRepositorySQLite
     @Override
     public List<SubjectScheduleRule> getSubjectRules() {
         String sql =
-            "SELECT subject, allowed_days, exclusive_days, consecutive_hours FROM schedule_subject_rules WHERE calendar_id = ? ORDER BY subject";
+            "SELECT subject, allowed_days, exclusive_days, consecutive_hours, fixed_room FROM schedule_subject_rules WHERE calendar_id = ? ORDER BY subject";
         List<SubjectScheduleRule> rules = new ArrayList<>();
         try (
             Connection conn = provider.getConnection();
@@ -113,12 +117,14 @@ public class ScheduleSettingsRepositorySQLite
                     1,
                     rs.getInt("consecutive_hours")
                 );
+                String fixedRoom = rs.getString("fixed_room");
                 rules.add(
                     new SubjectScheduleRule(
                         subject,
                         fromMask(allowedMask),
                         fromMask(exclusiveMask),
-                        consecutiveHours
+                        consecutiveHours,
+                        fixedRoom
                     )
                 );
             }
@@ -133,7 +139,7 @@ public class ScheduleSettingsRepositorySQLite
         String deleteSql =
             "DELETE FROM schedule_subject_rules WHERE calendar_id = ?";
         String insertSql =
-            "INSERT INTO schedule_subject_rules (calendar_id, subject, allowed_days, exclusive_days, consecutive_hours) VALUES (?, ?, ?, ?, ?)";
+            "INSERT INTO schedule_subject_rules (calendar_id, subject, allowed_days, exclusive_days, consecutive_hours, fixed_room) VALUES (?, ?, ?, ?, ?, ?)";
         try (
             Connection conn = provider.getConnection();
             PreparedStatement delete = conn.prepareStatement(deleteSql);
@@ -154,6 +160,7 @@ public class ScheduleSettingsRepositorySQLite
                 insert.setInt(3, toMask(rule.getAllowedDays()));
                 insert.setInt(4, toMask(rule.getExclusiveDays()));
                 insert.setInt(5, Math.max(1, rule.getConsecutiveHours()));
+                insert.setString(6, rule.getFixedRoom());
                 insert.addBatch();
             }
             insert.executeBatch();
@@ -162,6 +169,280 @@ public class ScheduleSettingsRepositorySQLite
                 "Ошибка при сохранении правил предметов",
                 e
             );
+        }
+    }
+
+    @Override
+    public List<InstructorProfile> getInstructors() {
+        String sql =
+            "SELECT id, name, allowed_days FROM instructors WHERE calendar_id = ? ORDER BY name";
+        List<InstructorProfile> instructors = new ArrayList<>();
+        try (
+            Connection conn = provider.getConnection();
+            PreparedStatement ps = conn.prepareStatement(sql)
+        ) {
+            ps.setString(1, getActiveCalendarId());
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                instructors.add(
+                    new InstructorProfile(
+                        rs.getString("id"),
+                        rs.getString("name"),
+                        fromMask(rs.getInt("allowed_days"))
+                    )
+                );
+            }
+            return instructors;
+        } catch (Exception e) {
+            throw new RuntimeException("Ошибка при чтении преподавателей", e);
+        }
+    }
+
+    @Override
+    public InstructorProfile createInstructor(String name) {
+        if (name == null || name.trim().isEmpty()) {
+            throw new IllegalArgumentException(
+                "Имя преподавателя не может быть пустым"
+            );
+        }
+        String id = UUID.randomUUID().toString();
+        String sql =
+            "INSERT INTO instructors (id, calendar_id, name, allowed_days) VALUES (?, ?, ?, ?)";
+        try (
+            Connection conn = provider.getConnection();
+            PreparedStatement ps = conn.prepareStatement(sql)
+        ) {
+            ps.setString(1, id);
+            ps.setString(2, getActiveCalendarId());
+            ps.setString(3, name.trim());
+            ps.setInt(4, toMask(EnumSet.allOf(DayOfWeek.class)));
+            ps.executeUpdate();
+            return new InstructorProfile(
+                id,
+                name.trim(),
+                EnumSet.allOf(DayOfWeek.class)
+            );
+        } catch (Exception e) {
+            throw new RuntimeException("Ошибка при создании преподавателя", e);
+        }
+    }
+
+    @Override
+    public void updateInstructor(InstructorProfile instructor) {
+        if (
+            instructor == null ||
+            instructor.getId() == null ||
+            instructor.getId().isBlank()
+        ) {
+            throw new IllegalArgumentException("Некорректный преподаватель");
+        }
+        String sql =
+            "UPDATE instructors SET name = ?, allowed_days = ? WHERE id = ? AND calendar_id = ?";
+        try (
+            Connection conn = provider.getConnection();
+            PreparedStatement ps = conn.prepareStatement(sql)
+        ) {
+            ps.setString(1, instructor.getName().trim());
+            ps.setInt(2, toMask(instructor.getAllowedDays()));
+            ps.setString(3, instructor.getId());
+            ps.setString(4, getActiveCalendarId());
+            if (ps.executeUpdate() == 0) {
+                throw new IllegalArgumentException("Преподаватель не найден");
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("Ошибка при сохранении преподавателя", e);
+        }
+    }
+
+    @Override
+    public void deleteInstructor(String instructorId) {
+        if (instructorId == null || instructorId.isBlank()) {
+            throw new IllegalArgumentException("ID преподавателя не может быть пустым");
+        }
+        try (Connection conn = provider.getConnection()) {
+            conn.setAutoCommit(false);
+            try (
+                PreparedStatement deleteDuties = conn.prepareStatement(
+                    "DELETE FROM instructor_duties WHERE instructor_id = ? AND calendar_id = ?"
+                );
+                PreparedStatement deleteInstructor = conn.prepareStatement(
+                    "DELETE FROM instructors WHERE id = ? AND calendar_id = ?"
+                )
+            ) {
+                String calendarId = getActiveCalendarId();
+                deleteDuties.setString(1, instructorId);
+                deleteDuties.setString(2, calendarId);
+                deleteDuties.executeUpdate();
+
+                deleteInstructor.setString(1, instructorId);
+                deleteInstructor.setString(2, calendarId);
+                deleteInstructor.executeUpdate();
+                conn.commit();
+            } catch (Exception e) {
+                conn.rollback();
+                throw e;
+            } finally {
+                conn.setAutoCommit(true);
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("Ошибка при удалении преподавателя", e);
+        }
+    }
+
+    @Override
+    public List<RoomProfile> getRooms() {
+        String sql = "SELECT id, name FROM rooms WHERE calendar_id = ? ORDER BY name";
+        List<RoomProfile> rooms = new ArrayList<>();
+        try (
+            Connection conn = provider.getConnection();
+            PreparedStatement ps = conn.prepareStatement(sql)
+        ) {
+            ps.setString(1, getActiveCalendarId());
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                rooms.add(new RoomProfile(rs.getString("id"), rs.getString("name")));
+            }
+            return rooms;
+        } catch (Exception e) {
+            throw new RuntimeException("Ошибка при чтении кабинетов", e);
+        }
+    }
+
+    @Override
+    public RoomProfile createRoom(String name) {
+        if (name == null || name.trim().isEmpty()) {
+            throw new IllegalArgumentException("Название кабинета не может быть пустым");
+        }
+        String id = UUID.randomUUID().toString();
+        String sql = "INSERT INTO rooms (id, calendar_id, name) VALUES (?, ?, ?)";
+        try (
+            Connection conn = provider.getConnection();
+            PreparedStatement ps = conn.prepareStatement(sql)
+        ) {
+            ps.setString(1, id);
+            ps.setString(2, getActiveCalendarId());
+            ps.setString(3, name.trim());
+            ps.executeUpdate();
+            return new RoomProfile(id, name.trim());
+        } catch (Exception e) {
+            throw new RuntimeException("Ошибка при создании кабинета", e);
+        }
+    }
+
+    @Override
+    public void renameRoom(String roomId, String newName) {
+        if (roomId == null || roomId.isBlank()) {
+            throw new IllegalArgumentException("ID кабинета не может быть пустым");
+        }
+        if (newName == null || newName.trim().isEmpty()) {
+            throw new IllegalArgumentException(
+                "Название кабинета не может быть пустым"
+            );
+        }
+        String sql = "UPDATE rooms SET name = ? WHERE id = ? AND calendar_id = ?";
+        try (
+            Connection conn = provider.getConnection();
+            PreparedStatement ps = conn.prepareStatement(sql)
+        ) {
+            ps.setString(1, newName.trim());
+            ps.setString(2, roomId);
+            ps.setString(3, getActiveCalendarId());
+            if (ps.executeUpdate() == 0) {
+                throw new IllegalArgumentException("Кабинет не найден");
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("Ошибка при переименовании кабинета", e);
+        }
+    }
+
+    @Override
+    public void deleteRoom(String roomId) {
+        if (roomId == null || roomId.isBlank()) {
+            throw new IllegalArgumentException("ID кабинета не может быть пустым");
+        }
+        String sql = "DELETE FROM rooms WHERE id = ? AND calendar_id = ?";
+        try (
+            Connection conn = provider.getConnection();
+            PreparedStatement ps = conn.prepareStatement(sql)
+        ) {
+            ps.setString(1, roomId);
+            ps.setString(2, getActiveCalendarId());
+            ps.executeUpdate();
+        } catch (Exception e) {
+            throw new RuntimeException("Ошибка при удалении кабинета", e);
+        }
+    }
+
+    @Override
+    public List<InstructorDuty> getInstructorDuties() {
+        String sql =
+            "SELECT instructor_id, duty_date FROM instructor_duties WHERE calendar_id = ?";
+        List<InstructorDuty> duties = new ArrayList<>();
+        try (
+            Connection conn = provider.getConnection();
+            PreparedStatement ps = conn.prepareStatement(sql)
+        ) {
+            ps.setString(1, getActiveCalendarId());
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                duties.add(
+                    new InstructorDuty(
+                        rs.getString("instructor_id"),
+                        LocalDate.parse(rs.getString("duty_date"))
+                    )
+                );
+            }
+            return duties;
+        } catch (Exception e) {
+            throw new RuntimeException("Ошибка при чтении нарядов", e);
+        }
+    }
+
+    @Override
+    public void addInstructorDuty(String instructorId, LocalDate dutyDate) {
+        if (
+            instructorId == null ||
+            instructorId.isBlank() ||
+            dutyDate == null
+        ) {
+            throw new IllegalArgumentException("Некорректный наряд");
+        }
+        String sql =
+            "INSERT OR REPLACE INTO instructor_duties (calendar_id, instructor_id, duty_date) VALUES (?, ?, ?)";
+        try (
+            Connection conn = provider.getConnection();
+            PreparedStatement ps = conn.prepareStatement(sql)
+        ) {
+            ps.setString(1, getActiveCalendarId());
+            ps.setString(2, instructorId);
+            ps.setString(3, dutyDate.toString());
+            ps.executeUpdate();
+        } catch (Exception e) {
+            throw new RuntimeException("Ошибка при добавлении наряда", e);
+        }
+    }
+
+    @Override
+    public void removeInstructorDuty(String instructorId, LocalDate dutyDate) {
+        if (
+            instructorId == null ||
+            instructorId.isBlank() ||
+            dutyDate == null
+        ) {
+            throw new IllegalArgumentException("Некорректный наряд");
+        }
+        String sql =
+            "DELETE FROM instructor_duties WHERE calendar_id = ? AND instructor_id = ? AND duty_date = ?";
+        try (
+            Connection conn = provider.getConnection();
+            PreparedStatement ps = conn.prepareStatement(sql)
+        ) {
+            ps.setString(1, getActiveCalendarId());
+            ps.setString(2, instructorId);
+            ps.setString(3, dutyDate.toString());
+            ps.executeUpdate();
+        } catch (Exception e) {
+            throw new RuntimeException("Ошибка при удалении наряда", e);
         }
     }
 
@@ -279,6 +560,9 @@ public class ScheduleSettingsRepositorySQLite
                 deleteByCalendar(conn, "DELETE FROM schedule_items WHERE calendar_id = ?", calendarId);
                 deleteByCalendar(conn, "DELETE FROM schedule_settings WHERE calendar_id = ?", calendarId);
                 deleteByCalendar(conn, "DELETE FROM schedule_subject_rules WHERE calendar_id = ?", calendarId);
+                deleteByCalendar(conn, "DELETE FROM instructor_duties WHERE calendar_id = ?", calendarId);
+                deleteByCalendar(conn, "DELETE FROM instructors WHERE calendar_id = ?", calendarId);
+                deleteByCalendar(conn, "DELETE FROM rooms WHERE calendar_id = ?", calendarId);
                 deleteByCalendar(conn, "DELETE FROM schedule_history WHERE calendar_id = ?", calendarId);
                 deleteByCalendar(conn, "DELETE FROM calendars WHERE id = ?", calendarId);
 

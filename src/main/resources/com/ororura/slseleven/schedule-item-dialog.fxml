@@ -20,10 +20,10 @@
     <Label text="Занятие:" GridPane.columnIndex="0" GridPane.rowIndex="2" styleClass="form-label"/>
     <TextField fx:id="classNameField" GridPane.columnIndex="1" GridPane.rowIndex="2" styleClass="form-field"/>
 
-    <Label text="Расположение:" GridPane.columnIndex="0" GridPane.rowIndex="3" styleClass="form-label"/>
+    <Label text="Расположение (необязательно):" GridPane.columnIndex="0" GridPane.rowIndex="3" styleClass="form-label"/>
     <TextField fx:id="locationField" GridPane.columnIndex="1" GridPane.rowIndex="3" styleClass="form-field"/>
 
-    <Label text="Преподаватель:" GridPane.columnIndex="0" GridPane.rowIndex="4" styleClass="form-label"/>
+    <Label text="Преподаватель (необязательно):" GridPane.columnIndex="0" GridPane.rowIndex="4" styleClass="form-label"/>
     <TextField fx:id="instructorField" GridPane.columnIndex="1" GridPane.rowIndex="4" styleClass="form-field"/>
 
     <Label text="Часы всего:" GridPane.columnIndex="0" GridPane.rowIndex="5" styleClass="form-label"/>

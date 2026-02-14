@@ -3,6 +3,9 @@ package com.ororura.slseleven.usecase;
 import com.ororura.slseleven.domain.model.CalendarDefaults;
 import com.ororura.slseleven.domain.model.Lesson;
 import com.ororura.slseleven.domain.model.AppCalendar;
+import com.ororura.slseleven.domain.model.InstructorDuty;
+import com.ororura.slseleven.domain.model.InstructorProfile;
+import com.ororura.slseleven.domain.model.RoomProfile;
 import com.ororura.slseleven.domain.model.ScheduleHistorySnapshot;
 import com.ororura.slseleven.domain.model.ScheduleItem;
 import com.ororura.slseleven.domain.model.SubjectScheduleRule;
@@ -16,6 +19,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Base64;
 import java.util.EnumMap;
 import java.util.HashMap;
@@ -188,6 +192,50 @@ public class ScheduleUseCase {
             item.setConsecutiveHours(subjectConsecutive);
             scheduleItemRepository.save(item);
         }
+    }
+
+    public List<InstructorProfile> getInstructors() {
+        return scheduleSettingsRepository.getInstructors();
+    }
+
+    public InstructorProfile createInstructor(String name) {
+        return scheduleSettingsRepository.createInstructor(name);
+    }
+
+    public void updateInstructor(InstructorProfile instructor) {
+        scheduleSettingsRepository.updateInstructor(instructor);
+    }
+
+    public void deleteInstructor(String instructorId) {
+        scheduleSettingsRepository.deleteInstructor(instructorId);
+    }
+
+    public List<RoomProfile> getRooms() {
+        return scheduleSettingsRepository.getRooms();
+    }
+
+    public RoomProfile createRoom(String name) {
+        return scheduleSettingsRepository.createRoom(name);
+    }
+
+    public void renameRoom(String roomId, String newName) {
+        scheduleSettingsRepository.renameRoom(roomId, newName);
+    }
+
+    public void deleteRoom(String roomId) {
+        scheduleSettingsRepository.deleteRoom(roomId);
+    }
+
+    public List<InstructorDuty> getInstructorDuties() {
+        return scheduleSettingsRepository.getInstructorDuties();
+    }
+
+    public void addInstructorDuty(String instructorId, LocalDate dutyDate) {
+        scheduleSettingsRepository.addInstructorDuty(instructorId, dutyDate);
+    }
+
+    public void removeInstructorDuty(String instructorId, LocalDate dutyDate) {
+        scheduleSettingsRepository.removeInstructorDuty(instructorId, dutyDate);
     }
 
     public List<HistoryEntry> getHistoryEntries() {
@@ -542,6 +590,15 @@ public class ScheduleUseCase {
         Map<String, SubjectScheduleRule> rulesBySubject = toRuleMap(
             scheduleSettingsRepository.getSubjectRules()
         );
+        List<InstructorProfile> instructors = new ArrayList<>(
+            scheduleSettingsRepository.getInstructors()
+        );
+        instructors.sort(Comparator.comparing(InstructorProfile::getName, String.CASE_INSENSITIVE_ORDER));
+        List<RoomProfile> rooms = new ArrayList<>(scheduleSettingsRepository.getRooms());
+        rooms.sort(Comparator.comparing(RoomProfile::getName, String.CASE_INSENSITIVE_ORDER));
+        Map<String, Set<LocalDate>> dutyDatesByInstructor = buildDutyDatesByInstructor(
+            scheduleSettingsRepository.getInstructorDuties()
+        );
         boolean hasCapacity = maxHoursByDay
             .values()
             .stream()
@@ -630,29 +687,27 @@ public class ScheduleUseCase {
                     continue;
                 }
 
-                int itemIndex = findNextSchedulableItemIndex(
+                AssignmentCandidate candidate = findNextSchedulableItem(
                     items,
                     remainingByItem,
+                    currentDate,
                     dayOfWeek,
                     dayExclusiveSubjects,
                     subjectConsecutiveHours,
                     rulesBySubject,
+                    instructors,
+                    rooms,
+                    dutyDatesByInstructor,
                     occupiedSlotIndexes,
                     candidateSlotIndex,
                     availableSlots
                 );
-                if (itemIndex < 0) {
+                if (candidate == null) {
                     continue;
                 }
+                int itemIndex = candidate.itemIndex;
                 ScheduleItem currentItem = items.get(itemIndex);
-                int subjectBlockHours = subjectConsecutiveHours.getOrDefault(
-                    normalizeSubject(currentItem.getTopic()),
-                    1
-                );
-                int blockHours = Math.min(
-                    subjectBlockHours,
-                    remainingByItem[itemIndex]
-                );
+                int blockHours = candidate.blockHours;
 
                 if (
                     !canPlaceConsecutiveBlock(
@@ -671,8 +726,8 @@ public class ScheduleUseCase {
                     currentItem.getClassName(),
                     true,
                     candidateTime,
-                    currentItem.getLocation(),
-                    currentItem.getInstructor(),
+                    candidate.roomName,
+                    candidate.instructorName,
                     currentDate
                 );
                 lesson.setCalendarId(currentCalendarId);
@@ -765,13 +820,17 @@ public class ScheduleUseCase {
         return value == null ? "" : value.trim().toLowerCase();
     }
 
-    private int findNextSchedulableItemIndex(
+    private AssignmentCandidate findNextSchedulableItem(
         List<ScheduleItem> items,
         int[] remainingByItem,
+        LocalDate date,
         DayOfWeek day,
         Set<String> dayExclusiveSubjects,
         Map<String, Integer> subjectConsecutiveHours,
         Map<String, SubjectScheduleRule> rulesBySubject,
+        List<InstructorProfile> instructors,
+        List<RoomProfile> rooms,
+        Map<String, Set<LocalDate>> dutyDatesByInstructor,
         Set<Integer> occupiedSlotIndexes,
         int candidateSlotIndex,
         int availableSlots
@@ -810,9 +869,98 @@ public class ScheduleUseCase {
             if (rule != null && !rule.isAllowedOn(day)) {
                 continue;
             }
-            return i;
+            String roomName = resolveRoomForSubject(rule, rooms);
+            if (roomName == null) {
+                continue;
+            }
+            String instructorName = pickAvailableInstructor(
+                date,
+                day,
+                candidateSlotIndex,
+                blockHours,
+                instructors,
+                dutyDatesByInstructor
+            );
+            if (instructorName == null) {
+                continue;
+            }
+            return new AssignmentCandidate(i, blockHours, instructorName, roomName);
         }
-        return -1;
+        return null;
+    }
+
+    private String resolveRoomForSubject(
+        SubjectScheduleRule rule,
+        List<RoomProfile> rooms
+    ) {
+        if (rule != null && rule.getFixedRoom() != null && !rule.getFixedRoom().isBlank()) {
+            for (RoomProfile room : rooms) {
+                if (rule.getFixedRoom().equalsIgnoreCase(room.getName())) {
+                    return room.getName();
+                }
+            }
+            return null;
+        }
+        if (rooms.isEmpty()) {
+            return "Без кабинета";
+        }
+        return rooms.get(0).getName();
+    }
+
+    private String pickAvailableInstructor(
+        LocalDate date,
+        DayOfWeek day,
+        int slotIndex,
+        int blockHours,
+        List<InstructorProfile> instructors,
+        Map<String, Set<LocalDate>> dutyDatesByInstructor
+    ) {
+        if (instructors.isEmpty()) {
+            return "Без преподавателя";
+        }
+        for (InstructorProfile instructor : instructors) {
+            if (instructor == null || instructor.getName().isBlank()) {
+                continue;
+            }
+            if (!instructor.isAllowedOn(day)) {
+                continue;
+            }
+            Set<LocalDate> dutyDates = dutyDatesByInstructor.getOrDefault(
+                instructor.getId(),
+                Set.of()
+            );
+            if (dutyDates.contains(date.plusDays(-1))) {
+                continue;
+            }
+            if (dutyDates.contains(date) && slotIndex + blockHours > 4) {
+                continue;
+            }
+            return instructor.getName();
+        }
+        return null;
+    }
+
+    private Map<String, Set<LocalDate>> buildDutyDatesByInstructor(
+        List<InstructorDuty> duties
+    ) {
+        Map<String, Set<LocalDate>> result = new HashMap<>();
+        if (duties == null) {
+            return result;
+        }
+        for (InstructorDuty duty : duties) {
+            if (
+                duty == null ||
+                duty.getInstructorId() == null ||
+                duty.getInstructorId().isBlank() ||
+                duty.getDutyDate() == null
+            ) {
+                continue;
+            }
+            result
+                .computeIfAbsent(duty.getInstructorId(), key -> new HashSet<>())
+                .add(duty.getDutyDate());
+        }
+        return result;
     }
 
     private Map<String, Integer> buildSubjectConsecutiveHours(
@@ -974,17 +1122,6 @@ public class ScheduleUseCase {
         ) {
             throw new IllegalArgumentException("Занятие не может быть пустым");
         }
-        if (item.getLocation() == null || item.getLocation().trim().isEmpty()) {
-            throw new IllegalArgumentException("Место не может быть пустым");
-        }
-        if (
-            item.getInstructor() == null ||
-            item.getInstructor().trim().isEmpty()
-        ) {
-            throw new IllegalArgumentException(
-                "Преподаватель не может быть пустым"
-            );
-        }
         if (item.getHours() <= 0) {
             throw new IllegalArgumentException("Часы должны быть больше 0");
         }
@@ -1040,6 +1177,25 @@ public class ScheduleUseCase {
             result = 31 * result + location.hashCode();
             result = 31 * result + instructor.hashCode();
             return result;
+        }
+    }
+
+    private static final class AssignmentCandidate {
+        private final int itemIndex;
+        private final int blockHours;
+        private final String instructorName;
+        private final String roomName;
+
+        private AssignmentCandidate(
+            int itemIndex,
+            int blockHours,
+            String instructorName,
+            String roomName
+        ) {
+            this.itemIndex = itemIndex;
+            this.blockHours = blockHours;
+            this.instructorName = instructorName;
+            this.roomName = roomName;
         }
     }
 

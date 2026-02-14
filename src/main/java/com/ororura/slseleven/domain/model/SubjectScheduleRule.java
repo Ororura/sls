@@ -9,13 +9,14 @@ public class SubjectScheduleRule {
     private final Set<DayOfWeek> allowedDays;
     private final Set<DayOfWeek> exclusiveDays;
     private final int consecutiveHours;
+    private final String fixedRoom;
 
     public SubjectScheduleRule(
         String subject,
         Set<DayOfWeek> allowedDays,
         Set<DayOfWeek> exclusiveDays
     ) {
-        this(subject, allowedDays, exclusiveDays, 1);
+        this(subject, allowedDays, exclusiveDays, 1, "");
     }
 
     public SubjectScheduleRule(
@@ -23,6 +24,16 @@ public class SubjectScheduleRule {
         Set<DayOfWeek> allowedDays,
         Set<DayOfWeek> exclusiveDays,
         int consecutiveHours
+    ) {
+        this(subject, allowedDays, exclusiveDays, consecutiveHours, "");
+    }
+
+    public SubjectScheduleRule(
+        String subject,
+        Set<DayOfWeek> allowedDays,
+        Set<DayOfWeek> exclusiveDays,
+        int consecutiveHours,
+        String fixedRoom
     ) {
         this.subject = subject == null ? "" : subject.trim();
         this.allowedDays = allowedDays == null
@@ -32,6 +43,7 @@ public class SubjectScheduleRule {
             ? EnumSet.noneOf(DayOfWeek.class)
             : EnumSet.copyOf(exclusiveDays);
         this.consecutiveHours = Math.max(1, consecutiveHours);
+        this.fixedRoom = fixedRoom == null ? "" : fixedRoom.trim();
     }
 
     public String getSubject() {
@@ -56,5 +68,9 @@ public class SubjectScheduleRule {
 
     public int getConsecutiveHours() {
         return consecutiveHours;
+    }
+
+    public String getFixedRoom() {
+        return fixedRoom;
     }
 }

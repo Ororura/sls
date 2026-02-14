@@ -1,6 +1,9 @@
 package com.ororura.slseleven.controller;
 
 import com.ororura.slseleven.domain.model.ScheduleItem;
+import com.ororura.slseleven.domain.model.InstructorDuty;
+import com.ororura.slseleven.domain.model.InstructorProfile;
+import com.ororura.slseleven.domain.model.RoomProfile;
 import com.ororura.slseleven.domain.model.SubjectScheduleRule;
 import com.ororura.slseleven.ui.UiAlerts;
 import com.ororura.slseleven.ui.UiStyles;
@@ -239,7 +242,7 @@ public class SchedulePlannerController {
         textArea.setPrefRowCount(18);
 
         Label hint = new Label(
-            "Ожидаемые колонки: Предмет, Тема, Занятие, Место, Преподаватель, Часы."
+            "Ожидаемые колонки: Предмет, Тема, Часы. Поля Занятие/Место/Преподаватель можно не передавать."
         );
         Label hint2 = new Label(
             "Поддерживаются табуляции (TSV) и CSV с ';' или ','. Заголовок необязателен."
@@ -397,7 +400,7 @@ public class SchedulePlannerController {
         textArea.setPrefRowCount(18);
 
         Label hint = new Label(
-            "Ожидаемые колонки: Предмет, Тема, Занятие, Место, Преподаватель, Часы."
+            "Ожидаемые колонки: Предмет, Тема, Часы. Поля Занятие/Место/Преподаватель можно не передавать."
         );
         Label hint2 = new Label(
             "Поддерживаются табуляции (TSV) и CSV с ';' или ','. Заголовок необязателен."
@@ -526,6 +529,13 @@ public class SchedulePlannerController {
         for (SubjectScheduleRule rule : scheduleUseCase.getSubjectRules()) {
             existingBySubject.put(normalizeSubjectKey(rule.getSubject()), rule);
         }
+        List<String> roomNames = scheduleUseCase
+            .getRooms()
+            .stream()
+            .map(RoomProfile::getName)
+            .filter(name -> name != null && !name.isBlank())
+            .sorted(String.CASE_INSENSITIVE_ORDER)
+            .collect(Collectors.toList());
 
         List<SubjectRuleEditModel> models = new ArrayList<>();
         for (String subject : poolSubjects) {
@@ -541,12 +551,14 @@ public class SchedulePlannerController {
             int consecutiveHours = current == null
                 ? detectSubjectConsecutiveHours(subject)
                 : current.getConsecutiveHours();
+            String fixedRoom = current == null ? "" : current.getFixedRoom();
             models.add(
                 new SubjectRuleEditModel(
                     subject,
                     allowed,
                     exclusive,
-                    consecutiveHours
+                    consecutiveHours,
+                    fixedRoom
                 )
             );
         }
@@ -574,6 +586,12 @@ public class SchedulePlannerController {
             new SpinnerValueFactory.IntegerSpinnerValueFactory(1, 8, 1)
         );
         consecutiveHoursSpinner.setEditable(true);
+        ComboBox<String> fixedRoomComboBox = new ComboBox<>();
+        fixedRoomComboBox
+            .getItems()
+            .addAll(roomNames);
+        fixedRoomComboBox.getItems().add(0, "Без фиксации");
+        fixedRoomComboBox.setValue("Без фиксации");
 
         FlowPane allowedPane = new FlowPane(8, 8);
         FlowPane exclusivePane = new FlowPane(8, 8);
@@ -601,6 +619,8 @@ public class SchedulePlannerController {
             selectedSubjectLabel,
             new Label("Часы подряд (для предмета):"),
             consecutiveHoursSpinner,
+            new Label("Фиксированный кабинет:"),
+            fixedRoomComboBox,
             new Label("Разрешенные дни:"),
             allowedPane,
             new Label("Эксклюзивные дни:"),
@@ -631,6 +651,12 @@ public class SchedulePlannerController {
             consecutiveHoursSpinner
                 .getValueFactory()
                 .setValue(hasSubject ? Math.max(1, model.consecutiveHours) : 1);
+            fixedRoomComboBox.setDisable(!hasSubject);
+            if (hasSubject && model.fixedRoom != null && !model.fixedRoom.isBlank()) {
+                fixedRoomComboBox.setValue(model.fixedRoom);
+            } else {
+                fixedRoomComboBox.setValue("Без фиксации");
+            }
             for (DayOfWeek day : DayOfWeek.values()) {
                 CheckBox allow = allowedBoxes.get(day);
                 CheckBox exclusive = exclusiveBoxes.get(day);
@@ -651,6 +677,17 @@ public class SchedulePlannerController {
                 return;
             }
             model.consecutiveHours = Math.max(1, newV);
+        });
+        fixedRoomComboBox.valueProperty().addListener((obs, oldV, newV) -> {
+            SubjectRuleEditModel model = currentModel[0];
+            if (model == null) {
+                return;
+            }
+            if (newV == null || "Без фиксации".equals(newV)) {
+                model.fixedRoom = "";
+            } else {
+                model.fixedRoom = newV;
+            }
         });
 
         for (DayOfWeek day : DayOfWeek.values()) {
@@ -736,7 +773,8 @@ public class SchedulePlannerController {
                                 model.subject,
                                 model.allowedDays,
                                 model.exclusiveDays,
-                                model.consecutiveHours
+                                model.consecutiveHours,
+                                model.fixedRoom
                             )
                         );
                     }
@@ -748,6 +786,267 @@ public class SchedulePlannerController {
                 scheduleUseCase.saveSubjectRules(toSave);
                 showInfo("Правила предметов сохранены.");
             });
+    }
+
+    @FXML
+    private void onManageInstructors() {
+        if (scheduleUseCase == null) {
+            showError("Ошибка: Use case не инициализирован");
+            return;
+        }
+        while (true) {
+            List<InstructorProfile> instructors = scheduleUseCase.getInstructors();
+            List<String> options = new ArrayList<>();
+            options.add("Добавить преподавателя");
+            options.add("Изменить рабочие дни");
+            options.add("Переименовать преподавателя");
+            options.add("Удалить преподавателя");
+            options.add("Закрыть");
+
+            ChoiceDialog<String> dialog = new ChoiceDialog<>(options.get(0), options);
+            dialog.setTitle("Преподаватели");
+            dialog.setHeaderText(
+                "Преподаватели: " +
+                (instructors.isEmpty()
+                        ? "нет"
+                        : instructors
+                            .stream()
+                            .map(InstructorProfile::getName)
+                            .collect(Collectors.joining(", ")))
+            );
+            dialog.setContentText("Действие:");
+            UiStyles.apply(dialog.getDialogPane());
+            String action = dialog.showAndWait().orElse("Закрыть");
+            if ("Закрыть".equals(action)) {
+                return;
+            }
+            try {
+                if ("Добавить преподавателя".equals(action)) {
+                    TextInputDialog input = new TextInputDialog();
+                    input.setTitle("Преподаватели");
+                    input.setHeaderText("Добавить преподавателя");
+                    input.setContentText("ФИО:");
+                    UiStyles.apply(input.getDialogPane());
+                    String value = input.showAndWait().orElse("").trim();
+                    if (!value.isEmpty()) {
+                        scheduleUseCase.createInstructor(value);
+                    }
+                } else if ("Переименовать преподавателя".equals(action)) {
+                    InstructorProfile selected = selectInstructor(instructors, "Переименовать преподавателя");
+                    if (selected == null) {
+                        continue;
+                    }
+                    TextInputDialog input = new TextInputDialog(selected.getName());
+                    input.setTitle("Преподаватели");
+                    input.setHeaderText("Переименовать преподавателя");
+                    input.setContentText("Новое имя:");
+                    UiStyles.apply(input.getDialogPane());
+                    String value = input.showAndWait().orElse("").trim();
+                    if (!value.isEmpty()) {
+                        selected.setName(value);
+                        scheduleUseCase.updateInstructor(selected);
+                    }
+                } else if ("Удалить преподавателя".equals(action)) {
+                    InstructorProfile selected = selectInstructor(instructors, "Удалить преподавателя");
+                    if (selected == null) {
+                        continue;
+                    }
+                    Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+                    confirm.setTitle("Преподаватели");
+                    confirm.setHeaderText("Удалить \"" + selected.getName() + "\"?");
+                    confirm.setContentText("Связанные наряды будут удалены.");
+                    UiStyles.apply(confirm.getDialogPane());
+                    if (confirm.showAndWait().orElse(ButtonType.CANCEL) == ButtonType.OK) {
+                        scheduleUseCase.deleteInstructor(selected.getId());
+                    }
+                } else if ("Изменить рабочие дни".equals(action)) {
+                    InstructorProfile selected = selectInstructor(instructors, "Рабочие дни преподавателя");
+                    if (selected == null) {
+                        continue;
+                    }
+                    Dialog<ButtonType> daysDialog = new Dialog<>();
+                    daysDialog.setTitle("Рабочие дни");
+                    daysDialog.setHeaderText(selected.getName());
+                    FlowPane pane = new FlowPane(8, 8);
+                    Map<DayOfWeek, CheckBox> boxes = new EnumMap<>(DayOfWeek.class);
+                    for (DayOfWeek day : DayOfWeek.values()) {
+                        CheckBox box = new CheckBox(dayToShort(day));
+                        box.setSelected(selected.getAllowedDays().contains(day));
+                        boxes.put(day, box);
+                        pane.getChildren().add(box);
+                    }
+                    daysDialog.getDialogPane().setContent(pane);
+                    daysDialog
+                        .getDialogPane()
+                        .getButtonTypes()
+                        .addAll(ButtonType.OK, ButtonType.CANCEL);
+                    UiStyles.apply(daysDialog.getDialogPane());
+                    if (daysDialog.showAndWait().orElse(ButtonType.CANCEL) == ButtonType.OK) {
+                        Set<DayOfWeek> allowed = EnumSet.noneOf(DayOfWeek.class);
+                        for (Map.Entry<DayOfWeek, CheckBox> entry : boxes.entrySet()) {
+                            if (entry.getValue().isSelected()) {
+                                allowed.add(entry.getKey());
+                            }
+                        }
+                        if (allowed.isEmpty()) {
+                            showError("Выберите хотя бы один рабочий день.");
+                            continue;
+                        }
+                        selected.setAllowedDays(allowed);
+                        scheduleUseCase.updateInstructor(selected);
+                    }
+                }
+            } catch (Exception e) {
+                showError("Ошибка: " + e.getMessage());
+            }
+        }
+    }
+
+    @FXML
+    private void onManageRooms() {
+        if (scheduleUseCase == null) {
+            showError("Ошибка: Use case не инициализирован");
+            return;
+        }
+        while (true) {
+            List<RoomProfile> rooms = scheduleUseCase.getRooms();
+            List<String> options = List.of(
+                "Добавить кабинет",
+                "Переименовать кабинет",
+                "Удалить кабинет",
+                "Закрыть"
+            );
+            ChoiceDialog<String> dialog = new ChoiceDialog<>(options.get(0), options);
+            dialog.setTitle("Кабинеты");
+            dialog.setHeaderText(
+                "Кабинеты: " +
+                (rooms.isEmpty()
+                        ? "нет"
+                        : rooms.stream().map(RoomProfile::getName).collect(Collectors.joining(", ")))
+            );
+            dialog.setContentText("Действие:");
+            UiStyles.apply(dialog.getDialogPane());
+            String action = dialog.showAndWait().orElse("Закрыть");
+            if ("Закрыть".equals(action)) {
+                return;
+            }
+            try {
+                if ("Добавить кабинет".equals(action)) {
+                    TextInputDialog input = new TextInputDialog();
+                    input.setTitle("Кабинеты");
+                    input.setHeaderText("Добавить кабинет");
+                    input.setContentText("Название:");
+                    UiStyles.apply(input.getDialogPane());
+                    String value = input.showAndWait().orElse("").trim();
+                    if (!value.isEmpty()) {
+                        scheduleUseCase.createRoom(value);
+                    }
+                } else if ("Переименовать кабинет".equals(action)) {
+                    RoomProfile selected = selectRoom(rooms, "Переименовать кабинет");
+                    if (selected == null) {
+                        continue;
+                    }
+                    TextInputDialog input = new TextInputDialog(selected.getName());
+                    input.setTitle("Кабинеты");
+                    input.setHeaderText("Переименовать кабинет");
+                    input.setContentText("Новое название:");
+                    UiStyles.apply(input.getDialogPane());
+                    String value = input.showAndWait().orElse("").trim();
+                    if (!value.isEmpty()) {
+                        scheduleUseCase.renameRoom(selected.getId(), value);
+                    }
+                } else if ("Удалить кабинет".equals(action)) {
+                    RoomProfile selected = selectRoom(rooms, "Удалить кабинет");
+                    if (selected == null) {
+                        continue;
+                    }
+                    Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+                    confirm.setTitle("Кабинеты");
+                    confirm.setHeaderText("Удалить \"" + selected.getName() + "\"?");
+                    confirm.setContentText("Фиксации кабинетов в правилах предметов стоит проверить вручную.");
+                    UiStyles.apply(confirm.getDialogPane());
+                    if (confirm.showAndWait().orElse(ButtonType.CANCEL) == ButtonType.OK) {
+                        scheduleUseCase.deleteRoom(selected.getId());
+                    }
+                }
+            } catch (Exception e) {
+                showError("Ошибка: " + e.getMessage());
+            }
+        }
+    }
+
+    @FXML
+    private void onInstructorDuties() {
+        if (scheduleUseCase == null) {
+            showError("Ошибка: Use case не инициализирован");
+            return;
+        }
+        List<InstructorProfile> instructors = scheduleUseCase.getInstructors();
+        InstructorProfile selectedInstructor = selectInstructor(instructors, "Наряды преподавателей");
+        if (selectedInstructor == null) {
+            return;
+        }
+
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("Наряды");
+        dialog.setHeaderText(selectedInstructor.getName());
+        DatePicker datePicker = new DatePicker(LocalDate.now());
+        ListView<String> list = new ListView<>();
+        Runnable reloadList = () -> {
+            List<String> dutyDates = scheduleUseCase
+                .getInstructorDuties()
+                .stream()
+                .filter(duty -> selectedInstructor.getId().equals(duty.getInstructorId()))
+                .map(duty -> duty.getDutyDate().toString())
+                .sorted()
+                .collect(Collectors.toList());
+            list.setItems(FXCollections.observableArrayList(dutyDates));
+        };
+        reloadList.run();
+
+        Button addButton = new Button("Добавить наряд");
+        addButton.setOnAction(event -> {
+            try {
+                if (datePicker.getValue() == null) {
+                    showError("Выберите дату наряда.");
+                    return;
+                }
+                scheduleUseCase.addInstructorDuty(selectedInstructor.getId(), datePicker.getValue());
+                reloadList.run();
+            } catch (Exception e) {
+                showError("Ошибка: " + e.getMessage());
+            }
+        });
+        Button removeButton = new Button("Удалить наряд");
+        removeButton.setOnAction(event -> {
+            String selectedDate = list.getSelectionModel().getSelectedItem();
+            if (selectedDate == null) {
+                showError("Выберите наряд из списка.");
+                return;
+            }
+            try {
+                scheduleUseCase.removeInstructorDuty(
+                    selectedInstructor.getId(),
+                    LocalDate.parse(selectedDate)
+                );
+                reloadList.run();
+            } catch (Exception e) {
+                showError("Ошибка: " + e.getMessage());
+            }
+        });
+
+        VBox content = new VBox(
+            10,
+            new Label("Дата заступления в 17:00:"),
+            datePicker,
+            new HBox(8, addButton, removeButton),
+            new Label("Текущие наряды:"),
+            list
+        );
+        dialog.getDialogPane().setContent(content);
+        dialog.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);
+        UiStyles.apply(dialog.getDialogPane());
+        dialog.showAndWait();
     }
 
     @FXML
@@ -958,6 +1257,51 @@ public class SchedulePlannerController {
         }
     }
 
+    private InstructorProfile selectInstructor(
+        List<InstructorProfile> instructors,
+        String title
+    ) {
+        if (instructors == null || instructors.isEmpty()) {
+            showInfo("Список преподавателей пуст.");
+            return null;
+        }
+        Map<String, InstructorProfile> byLabel = new LinkedHashMap<>();
+        for (InstructorProfile instructor : instructors) {
+            byLabel.put(instructor.getName(), instructor);
+        }
+        ChoiceDialog<String> dialog = new ChoiceDialog<>(
+            byLabel.keySet().iterator().next(),
+            byLabel.keySet()
+        );
+        dialog.setTitle("Преподаватели");
+        dialog.setHeaderText(title);
+        dialog.setContentText("Преподаватель:");
+        UiStyles.apply(dialog.getDialogPane());
+        String selected = dialog.showAndWait().orElse(null);
+        return selected == null ? null : byLabel.get(selected);
+    }
+
+    private RoomProfile selectRoom(List<RoomProfile> rooms, String title) {
+        if (rooms == null || rooms.isEmpty()) {
+            showInfo("Список кабинетов пуст.");
+            return null;
+        }
+        Map<String, RoomProfile> byLabel = new LinkedHashMap<>();
+        for (RoomProfile room : rooms) {
+            byLabel.put(room.getName(), room);
+        }
+        ChoiceDialog<String> dialog = new ChoiceDialog<>(
+            byLabel.keySet().iterator().next(),
+            byLabel.keySet()
+        );
+        dialog.setTitle("Кабинеты");
+        dialog.setHeaderText(title);
+        dialog.setContentText("Кабинет:");
+        UiStyles.apply(dialog.getDialogPane());
+        String selected = dialog.showAndWait().orElse(null);
+        return selected == null ? null : byLabel.get(selected);
+    }
+
     private String normalizeSubjectKey(String value) {
         return value == null ? "" : value.trim().toLowerCase();
     }
@@ -1014,12 +1358,14 @@ public class SchedulePlannerController {
         private final EnumSet<DayOfWeek> allowedDays;
         private final EnumSet<DayOfWeek> exclusiveDays;
         private int consecutiveHours;
+        private String fixedRoom;
 
         private SubjectRuleEditModel(
             String subject,
             Set<DayOfWeek> allowedDays,
             Set<DayOfWeek> exclusiveDays,
-            int consecutiveHours
+            int consecutiveHours,
+            String fixedRoom
         ) {
             this.subject = subject;
             this.allowedDays = allowedDays == null || allowedDays.isEmpty()
@@ -1029,13 +1375,15 @@ public class SchedulePlannerController {
                 ? EnumSet.noneOf(DayOfWeek.class)
                 : EnumSet.copyOf(exclusiveDays);
             this.consecutiveHours = Math.max(1, consecutiveHours);
+            this.fixedRoom = fixedRoom == null ? "" : fixedRoom.trim();
         }
 
         private boolean isDefaultRule() {
             return (
                 allowedDays.size() == DayOfWeek.values().length &&
                 exclusiveDays.isEmpty() &&
-                consecutiveHours == 1
+                consecutiveHours == 1 &&
+                fixedRoom.isBlank()
             );
         }
     }
@@ -1183,8 +1531,6 @@ public class SchedulePlannerController {
                 if (
                     isBlank(topic) ||
                     isBlank(lessonName) ||
-                    isBlank(location) ||
-                    isBlank(instructor) ||
                     isBlank(hoursRaw)
                 ) {
                     errors.add(
@@ -1606,8 +1952,6 @@ public class SchedulePlannerController {
             List<String> required = List.of(
                 "topic",
                 "lesson",
-                "location",
-                "instructor",
                 "hours"
             );
             Map<String, Integer> headerMap = resolveHeaderMap(
@@ -1650,13 +1994,30 @@ public class SchedulePlannerController {
                 defaultMap.put("hours", 5 + offset);
                 return defaultMap;
             }
+            if (row.size() - offset == 5) {
+                defaultMap.put("topic", 0 + offset);
+                defaultMap.put("lesson", 1 + offset);
+                defaultMap.put("class", 2 + offset);
+                defaultMap.put("location", 3 + offset);
+                defaultMap.put("instructor", -1);
+                defaultMap.put("hours", 4 + offset);
+                return defaultMap;
+            }
+            if (row.size() - offset == 4) {
+                defaultMap.put("topic", 0 + offset);
+                defaultMap.put("lesson", 1 + offset);
+                defaultMap.put("class", 2 + offset);
+                defaultMap.put("location", -1);
+                defaultMap.put("instructor", -1);
+                defaultMap.put("hours", 3 + offset);
+                return defaultMap;
+            }
             defaultMap.put("topic", 0 + offset);
             defaultMap.put("lesson", 1 + offset);
             defaultMap.put("class", -1);
-            defaultMap.put("location", 2 + offset);
-            defaultMap.put("instructor", 3 + offset);
-            defaultMap.put("hours", 4 + offset);
-            defaultMap.put("consecutive", -1);
+            defaultMap.put("location", -1);
+            defaultMap.put("instructor", -1);
+            defaultMap.put("hours", 2 + offset);
             return defaultMap;
         }
 
