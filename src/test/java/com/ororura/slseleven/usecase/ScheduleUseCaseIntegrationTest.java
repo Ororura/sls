@@ -251,6 +251,28 @@ class ScheduleUseCaseIntegrationTest {
         assertEquals(1, mondayLessons.get(1).getDurationHours());
     }
 
+    @Test
+    void autoSchedule_shouldAlternateSubjectsWhenPossible() {
+        LocalDate monday = LocalDate.of(2026, 2, 2);
+        scheduleUseCase.saveMaxHoursByDay(onlyDayCapacity(DayOfWeek.MONDAY, 4));
+
+        scheduleUseCase.createItem(new ScheduleItem("Math", "Algebra", "A1", "Ivanov", 2));
+        scheduleUseCase.createItem(new ScheduleItem("Physics", "Mechanics", "B1", "Petrov", 2));
+
+        AutoScheduleResult result = scheduleUseCase.autoSchedule(monday, monday);
+
+        assertEquals(4, result.getCreatedLessons());
+        List<Lesson> mondayLessons = lessonRepository.findByDate(
+            monday,
+            DEFAULT_CALENDAR_ID
+        );
+        assertEquals(4, mondayLessons.size());
+        assertEquals("Math", mondayLessons.get(0).getTopic());
+        assertEquals("Physics", mondayLessons.get(1).getTopic());
+        assertEquals("Math", mondayLessons.get(2).getTopic());
+        assertEquals("Physics", mondayLessons.get(3).getTopic());
+    }
+
     private Map<DayOfWeek, Integer> onlyDayCapacity(DayOfWeek day, int capacity) {
         Map<DayOfWeek, Integer> map = new EnumMap<>(DayOfWeek.class);
         for (DayOfWeek value : DayOfWeek.values()) {

@@ -640,6 +640,9 @@ public class ScheduleUseCase {
             remainingByItem[i] = items.get(i).getHours();
         }
         Set<String> completedItemIds = new HashSet<>();
+        String lastScheduledSubject = "";
+        int lastSubjectStreakHours = 0;
+        int candidateStartIndex = 0;
         int daysWithoutProgress = 0;
 
         while (
@@ -715,7 +718,10 @@ public class ScheduleUseCase {
                     dutyDatesByInstructor,
                     occupiedSlotIndexes,
                     candidateSlotIndex,
-                    availableSlots
+                    availableSlots,
+                    lastScheduledSubject,
+                    lastSubjectStreakHours,
+                    candidateStartIndex
                 );
                 if (candidate == null) {
                     continue;
@@ -723,6 +729,7 @@ public class ScheduleUseCase {
                 int itemIndex = candidate.itemIndex;
                 ScheduleItem currentItem = items.get(itemIndex);
                 int blockHours = candidate.blockHours;
+                String normalizedSubject = normalizeSubject(currentItem.getTopic());
 
                 if (
                     !canPlaceConsecutiveBlock(
@@ -764,6 +771,14 @@ public class ScheduleUseCase {
                     Integer::sum
                 );
                 createdToday++;
+                candidateStartIndex = (itemIndex + 1) % items.size();
+
+                if (normalizedSubject.equals(lastScheduledSubject)) {
+                    lastSubjectStreakHours += blockHours;
+                } else {
+                    lastScheduledSubject = normalizedSubject;
+                    lastSubjectStreakHours = blockHours;
+                }
 
                 remainingByItem[itemIndex] -= blockHours;
                 if (remainingByItem[itemIndex] <= 0) {
@@ -848,32 +863,42 @@ public class ScheduleUseCase {
         Map<String, Set<LocalDate>> dutyDatesByInstructor,
         Set<Integer> occupiedSlotIndexes,
         int candidateSlotIndex,
-        int availableSlots
+        int availableSlots,
+        String lastScheduledSubject,
+        int lastSubjectStreakHours,
+        int candidateStartIndex
     ) {
-        for (int i = 0; i < items.size(); i++) {
+        if (items.isEmpty()) {
+            return null;
+        }
+
+        int normalizedStartIndex = Math.floorMod(candidateStartIndex, items.size());
+        AssignmentCandidate preferDifferentSubject = null;
+        AssignmentCandidate preferTwoHourMix = null;
+        AssignmentCandidate fallbackCandidate = null;
+
+        for (int offset = 0; offset < items.size(); offset++) {
+            int i = (normalizedStartIndex + offset) % items.size();
             if (remainingByItem[i] <= 0) {
                 continue;
             }
             ScheduleItem item = items.get(i);
+            String normalizedSubject = normalizeSubject(item.getTopic());
             int subjectBlockHours = subjectConsecutiveHours.getOrDefault(
-                normalizeSubject(item.getTopic()),
+                normalizedSubject,
                 1
             );
-            int blockHours = Math.min(
-                subjectBlockHours,
-                remainingByItem[i]
-            );
+            int baseBlockHours = Math.min(subjectBlockHours, remainingByItem[i]);
             if (
-                blockHours > availableSlots ||
+                baseBlockHours > availableSlots ||
                 !canPlaceConsecutiveBlock(
                     occupiedSlotIndexes,
                     candidateSlotIndex,
-                    blockHours
+                    baseBlockHours
                 )
             ) {
                 continue;
             }
-            String normalizedSubject = normalizeSubject(item.getTopic());
             if (
                 !dayExclusiveSubjects.isEmpty() &&
                 !dayExclusiveSubjects.contains(normalizedSubject)
@@ -888,20 +913,90 @@ public class ScheduleUseCase {
             if (roomName == null) {
                 continue;
             }
-            String instructorName = pickAvailableInstructor(
+
+            AssignmentCandidate fullCandidate = buildCandidate(
+                i,
+                baseBlockHours,
                 date,
                 day,
                 candidateSlotIndex,
-                blockHours,
                 instructors,
-                dutyDatesByInstructor
+                dutyDatesByInstructor,
+                roomName
             );
-            if (instructorName == null) {
+            if (fullCandidate == null) {
                 continue;
             }
-            return new AssignmentCandidate(i, blockHours, instructorName, roomName);
+            if (fallbackCandidate == null) {
+                fallbackCandidate = fullCandidate;
+            }
+
+            if (!normalizedSubject.equals(lastScheduledSubject)) {
+                if (preferDifferentSubject == null) {
+                    preferDifferentSubject = fullCandidate;
+                }
+                continue;
+            }
+
+            int roomForMix = Math.max(0, 2 - lastSubjectStreakHours);
+            int mixedBlockHours = Math.min(baseBlockHours, roomForMix);
+            if (mixedBlockHours <= 0) {
+                continue;
+            }
+            AssignmentCandidate mixedCandidate = buildCandidate(
+                i,
+                mixedBlockHours,
+                date,
+                day,
+                candidateSlotIndex,
+                instructors,
+                dutyDatesByInstructor,
+                roomName
+            );
+            if (mixedCandidate != null && preferTwoHourMix == null) {
+                preferTwoHourMix = mixedCandidate;
+            }
         }
-        return null;
+
+        if (preferDifferentSubject != null) {
+            return preferDifferentSubject;
+        }
+        if (preferTwoHourMix != null) {
+            return preferTwoHourMix;
+        }
+        return fallbackCandidate;
+    }
+
+    private AssignmentCandidate buildCandidate(
+        int itemIndex,
+        int blockHours,
+        LocalDate date,
+        DayOfWeek day,
+        int candidateSlotIndex,
+        List<InstructorProfile> instructors,
+        Map<String, Set<LocalDate>> dutyDatesByInstructor,
+        String roomName
+    ) {
+        if (blockHours <= 0) {
+            return null;
+        }
+        String instructorName = pickAvailableInstructor(
+            date,
+            day,
+            candidateSlotIndex,
+            blockHours,
+            instructors,
+            dutyDatesByInstructor
+        );
+        if (instructorName == null) {
+            return null;
+        }
+        return new AssignmentCandidate(
+            itemIndex,
+            blockHours,
+            instructorName,
+            roomName
+        );
     }
 
     private String resolveRoomForSubject(
