@@ -15,8 +15,10 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.EnumSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 public class ScheduleSettingsRepositorySQLite
@@ -101,7 +103,7 @@ public class ScheduleSettingsRepositorySQLite
     @Override
     public List<SubjectScheduleRule> getSubjectRules() {
         String sql =
-            "SELECT subject, allowed_days, exclusive_days, consecutive_hours, fixed_room FROM schedule_subject_rules WHERE calendar_id = ? ORDER BY subject";
+            "SELECT subject, allowed_days, exclusive_days, consecutive_hours, max_lessons_per_day, fixed_room, avoid_consecutive_with, avoid_same_day_with FROM schedule_subject_rules WHERE calendar_id = ? ORDER BY subject";
         List<SubjectScheduleRule> rules = new ArrayList<>();
         try (
             Connection conn = provider.getConnection();
@@ -117,14 +119,27 @@ public class ScheduleSettingsRepositorySQLite
                     1,
                     rs.getInt("consecutive_hours")
                 );
+                int maxLessonsPerDay = Math.max(
+                    0,
+                    rs.getInt("max_lessons_per_day")
+                );
                 String fixedRoom = rs.getString("fixed_room");
+                Set<String> avoidConsecutiveWith = decodeSubjectList(
+                    rs.getString("avoid_consecutive_with")
+                );
+                Set<String> avoidSameDayWith = decodeSubjectList(
+                    rs.getString("avoid_same_day_with")
+                );
                 rules.add(
                     new SubjectScheduleRule(
                         subject,
                         fromMask(allowedMask),
                         fromMask(exclusiveMask),
                         consecutiveHours,
-                        fixedRoom
+                        maxLessonsPerDay,
+                        fixedRoom,
+                        avoidConsecutiveWith,
+                        avoidSameDayWith
                     )
                 );
             }
@@ -139,7 +154,7 @@ public class ScheduleSettingsRepositorySQLite
         String deleteSql =
             "DELETE FROM schedule_subject_rules WHERE calendar_id = ?";
         String insertSql =
-            "INSERT INTO schedule_subject_rules (calendar_id, subject, allowed_days, exclusive_days, consecutive_hours, fixed_room) VALUES (?, ?, ?, ?, ?, ?)";
+            "INSERT INTO schedule_subject_rules (calendar_id, subject, allowed_days, exclusive_days, consecutive_hours, max_lessons_per_day, fixed_room, avoid_consecutive_with, avoid_same_day_with) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (
             Connection conn = provider.getConnection();
             PreparedStatement delete = conn.prepareStatement(deleteSql);
@@ -160,7 +175,16 @@ public class ScheduleSettingsRepositorySQLite
                 insert.setInt(3, toMask(rule.getAllowedDays()));
                 insert.setInt(4, toMask(rule.getExclusiveDays()));
                 insert.setInt(5, Math.max(1, rule.getConsecutiveHours()));
-                insert.setString(6, rule.getFixedRoom());
+                insert.setInt(6, Math.max(0, rule.getMaxLessonsPerDay()));
+                insert.setString(7, rule.getFixedRoom());
+                insert.setString(
+                    8,
+                    encodeSubjectList(rule.getNoConsecutiveWithSubjects())
+                );
+                insert.setString(
+                    9,
+                    encodeSubjectList(rule.getNoSameDayWithSubjects())
+                );
                 insert.addBatch();
             }
             insert.executeBatch();
@@ -731,6 +755,28 @@ public class ScheduleSettingsRepositorySQLite
             }
         }
         return days;
+    }
+
+    private String encodeSubjectList(Set<String> subjects) {
+        if (subjects == null || subjects.isEmpty()) {
+            return "";
+        }
+        return String.join("\n", subjects);
+    }
+
+    private Set<String> decodeSubjectList(String value) {
+        if (value == null || value.isBlank()) {
+            return Set.of();
+        }
+        Set<String> result = new LinkedHashSet<>();
+        String[] parts = value.split("\\n");
+        for (String part : parts) {
+            String normalized = part == null ? "" : part.trim().toLowerCase();
+            if (!normalized.isEmpty()) {
+                result.add(normalized);
+            }
+        }
+        return result.isEmpty() ? Set.of() : result;
     }
 
     private String normalizeDirectoryPath(String directoryPath) {

@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.ororura.slseleven.domain.model.Lesson;
 import com.ororura.slseleven.domain.model.ScheduleItem;
+import com.ororura.slseleven.domain.model.SubjectScheduleRule;
 import com.ororura.slseleven.domain.repository.LessonRepository;
 import com.ororura.slseleven.domain.repository.ScheduleHistoryRepository;
 import com.ororura.slseleven.domain.repository.ScheduleItemRepository;
@@ -20,9 +21,13 @@ import java.nio.file.Path;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.EnumMap;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -273,6 +278,184 @@ class ScheduleUseCaseIntegrationTest {
         assertEquals("Physics", mondayLessons.get(3).getTopic());
     }
 
+    @Test
+    void autoSchedule_shouldAvoidForbiddenConsecutiveSubjects() {
+        LocalDate monday = LocalDate.of(2026, 2, 2);
+        scheduleUseCase.saveMaxHoursByDay(
+            dayCapacities(Map.of(DayOfWeek.MONDAY, 4, DayOfWeek.TUESDAY, 4))
+        );
+
+        scheduleUseCase.createItem(new ScheduleItem("Строевые занятия", "S1", "A1", "Ivanov", 2));
+        scheduleUseCase.createItem(new ScheduleItem("Физическая подготовка", "P1", "A1", "Petrov", 2));
+
+        scheduleUseCase.saveSubjectRules(
+            List.of(
+                new SubjectScheduleRule(
+                    "Строевые занятия",
+                    EnumSet.allOf(DayOfWeek.class),
+                    EnumSet.noneOf(DayOfWeek.class),
+                    1,
+                    "",
+                    Set.of("физическая подготовка"),
+                    Set.of()
+                )
+            )
+        );
+
+        AutoScheduleResult result = scheduleUseCase.autoSchedule(monday, monday.plusDays(1));
+
+        assertEquals(4, result.getCreatedLessons());
+        List<Lesson> mondayLessons = lessonRepository.findByDate(
+            monday,
+            DEFAULT_CALENDAR_ID
+        );
+        List<Lesson> tuesdayLessons = lessonRepository.findByDate(
+            monday.plusDays(1),
+            DEFAULT_CALENDAR_ID
+        );
+        assertNoForbiddenNeighbors(
+            mondayLessons,
+            "Строевые занятия",
+            "Физическая подготовка"
+        );
+        assertNoForbiddenNeighbors(
+            tuesdayLessons,
+            "Строевые занятия",
+            "Физическая подготовка"
+        );
+    }
+
+    @Test
+    void autoSchedule_shouldAvoidForbiddenSameDaySubjects() {
+        LocalDate monday = LocalDate.of(2026, 2, 2);
+        scheduleUseCase.saveMaxHoursByDay(
+            dayCapacities(Map.of(DayOfWeek.MONDAY, 4, DayOfWeek.TUESDAY, 4))
+        );
+
+        scheduleUseCase.createItem(new ScheduleItem("Строевые занятия", "S1", "A1", "Ivanov", 2));
+        scheduleUseCase.createItem(new ScheduleItem("Физическая подготовка", "P1", "A1", "Petrov", 2));
+
+        scheduleUseCase.saveSubjectRules(
+            List.of(
+                new SubjectScheduleRule(
+                    "Строевые занятия",
+                    EnumSet.allOf(DayOfWeek.class),
+                    EnumSet.noneOf(DayOfWeek.class),
+                    1,
+                    "",
+                    Set.of(),
+                    Set.of("физическая подготовка")
+                )
+            )
+        );
+
+        AutoScheduleResult result = scheduleUseCase.autoSchedule(monday, monday.plusDays(1));
+
+        assertEquals(4, result.getCreatedLessons());
+        List<Lesson> mondayLessons = lessonRepository.findByDate(
+            monday,
+            DEFAULT_CALENDAR_ID
+        );
+        assertEquals(2, mondayLessons.size());
+        assertEquals("Строевые занятия", mondayLessons.get(0).getTopic());
+        assertEquals("Строевые занятия", mondayLessons.get(1).getTopic());
+
+        List<Lesson> tuesdayLessons = lessonRepository.findByDate(
+            monday.plusDays(1),
+            DEFAULT_CALENDAR_ID
+        );
+        assertEquals(2, tuesdayLessons.size());
+        assertEquals("Физическая подготовка", tuesdayLessons.get(0).getTopic());
+        assertEquals("Физическая подготовка", tuesdayLessons.get(1).getTopic());
+    }
+
+    @Test
+    void autoSchedule_shouldRespectMaxLessonsPerDayBySubjectRule() {
+        LocalDate monday = LocalDate.of(2026, 2, 2);
+        scheduleUseCase.saveMaxHoursByDay(
+            dayCapacities(Map.of(DayOfWeek.MONDAY, 4, DayOfWeek.TUESDAY, 4))
+        );
+
+        scheduleUseCase.createItem(new ScheduleItem("Строевые занятия", "S1", "A1", "Ivanov", 4));
+
+        scheduleUseCase.saveSubjectRules(
+            List.of(
+                new SubjectScheduleRule(
+                    "Строевые занятия",
+                    EnumSet.allOf(DayOfWeek.class),
+                    EnumSet.noneOf(DayOfWeek.class),
+                    1,
+                    1,
+                    "",
+                    Set.of(),
+                    Set.of()
+                )
+            )
+        );
+
+        AutoScheduleResult result = scheduleUseCase.autoSchedule(
+            monday,
+            monday.plusDays(1)
+        );
+
+        assertEquals(2, result.getCreatedLessons());
+        assertEquals(2, result.getRemainingHours());
+        List<Lesson> mondayLessons = lessonRepository.findByDate(
+            monday,
+            DEFAULT_CALENDAR_ID
+        );
+        List<Lesson> tuesdayLessons = lessonRepository.findByDate(
+            monday.plusDays(1),
+            DEFAULT_CALENDAR_ID
+        );
+        assertEquals(1, mondayLessons.size());
+        assertEquals(1, tuesdayLessons.size());
+        assertEquals("Строевые занятия", mondayLessons.get(0).getTopic());
+        assertEquals("Строевые занятия", tuesdayLessons.get(0).getTopic());
+    }
+
+    @Test
+    void autoSchedule_maxLessonsPerDayShouldLimitOnlyTargetSubject() {
+        LocalDate monday = LocalDate.of(2026, 2, 2);
+        scheduleUseCase.saveMaxHoursByDay(onlyDayCapacity(DayOfWeek.MONDAY, 4));
+
+        scheduleUseCase.createItem(new ScheduleItem("Строевые занятия", "S1", "A1", "Ivanov", 3));
+        scheduleUseCase.createItem(new ScheduleItem("Огневая подготовка", "F1", "A1", "Petrov", 2));
+
+        scheduleUseCase.saveSubjectRules(
+            List.of(
+                new SubjectScheduleRule(
+                    "Строевые занятия",
+                    EnumSet.allOf(DayOfWeek.class),
+                    EnumSet.noneOf(DayOfWeek.class),
+                    1,
+                    1,
+                    "",
+                    Set.of(),
+                    Set.of()
+                )
+            )
+        );
+
+        AutoScheduleResult result = scheduleUseCase.autoSchedule(monday, monday);
+
+        assertEquals(3, result.getCreatedLessons());
+        List<Lesson> mondayLessons = lessonRepository.findByDate(
+            monday,
+            DEFAULT_CALENDAR_ID
+        );
+        long drillsCount = mondayLessons
+            .stream()
+            .filter(lesson -> "Строевые занятия".equals(lesson.getTopic()))
+            .count();
+        long fireCount = mondayLessons
+            .stream()
+            .filter(lesson -> "Огневая подготовка".equals(lesson.getTopic()))
+            .count();
+        assertEquals(1, drillsCount);
+        assertEquals(2, fireCount);
+    }
+
     private Map<DayOfWeek, Integer> onlyDayCapacity(DayOfWeek day, int capacity) {
         Map<DayOfWeek, Integer> map = new EnumMap<>(DayOfWeek.class);
         for (DayOfWeek value : DayOfWeek.values()) {
@@ -280,5 +463,55 @@ class ScheduleUseCaseIntegrationTest {
         }
         map.put(day, capacity);
         return map;
+    }
+
+    private Map<DayOfWeek, Integer> dayCapacities(
+        Map<DayOfWeek, Integer> capacities
+    ) {
+        Map<DayOfWeek, Integer> map = new EnumMap<>(DayOfWeek.class);
+        for (DayOfWeek value : DayOfWeek.values()) {
+            map.put(value, 0);
+        }
+        map.putAll(capacities);
+        return map;
+    }
+
+    private void assertNoForbiddenNeighbors(
+        List<Lesson> lessons,
+        String firstSubject,
+        String secondSubject
+    ) {
+        List<Lesson> sorted = new ArrayList<>(lessons);
+        sorted.sort(Comparator.comparing(Lesson::getTime));
+        for (int i = 0; i < sorted.size() - 1; i++) {
+            Lesson current = sorted.get(i);
+            Lesson next = sorted.get(i + 1);
+            if (!areNeighborSlots(current.getTime(), next.getTime())) {
+                continue;
+            }
+            String pair = current.getTopic() + "|" + next.getTopic();
+            boolean forbiddenForward = pair.equals(firstSubject + "|" + secondSubject);
+            boolean forbiddenBackward = pair.equals(secondSubject + "|" + firstSubject);
+            assertTrue(
+                !forbiddenForward && !forbiddenBackward,
+                "forbidden consecutive subjects found: " + pair
+            );
+        }
+    }
+
+    private boolean areNeighborSlots(LocalTime first, LocalTime second) {
+        List<LocalTime> slots = List.of(
+            LocalTime.of(9, 0),
+            LocalTime.of(9, 50),
+            LocalTime.of(10, 50),
+            LocalTime.of(11, 40),
+            LocalTime.of(12, 40),
+            LocalTime.of(13, 30),
+            LocalTime.of(16, 0),
+            LocalTime.of(16, 50)
+        );
+        int firstIndex = slots.indexOf(first);
+        int secondIndex = slots.indexOf(second);
+        return firstIndex >= 0 && secondIndex == firstIndex + 1;
     }
 }

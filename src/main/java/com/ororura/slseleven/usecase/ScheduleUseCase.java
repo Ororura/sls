@@ -665,10 +665,22 @@ public class ScheduleUseCase {
                 dayOfWeek,
                 rulesBySubject
             );
+            Set<String> subjectsScheduledToday = new HashSet<>();
+            Map<String, Integer> lessonsCountBySubjectToday = new HashMap<>();
+            Map<Integer, String> subjectBySlotIndex = new HashMap<>();
             Set<Integer> occupiedSlotIndexes = new HashSet<>();
             int occupiedByCustomTime = 0;
             for (Lesson lesson : existingLessons) {
                 int duration = Math.max(1, lesson.getDurationHours());
+                String normalizedSubject = normalizeSubject(lesson.getTopic());
+                if (!normalizedSubject.isEmpty()) {
+                    subjectsScheduledToday.add(normalizedSubject);
+                    lessonsCountBySubjectToday.merge(
+                        normalizedSubject,
+                        1,
+                        Integer::sum
+                    );
+                }
                 Integer startIndex = SLOT_INDEX_BY_START_TIME.get(lesson.getTime());
                 if (startIndex == null) {
                     occupiedByCustomTime += duration;
@@ -680,6 +692,9 @@ public class ScheduleUseCase {
                         break;
                     }
                     occupiedSlotIndexes.add(slotIndex);
+                    if (!normalizedSubject.isEmpty()) {
+                        subjectBySlotIndex.put(slotIndex, normalizedSubject);
+                    }
                 }
             }
 
@@ -711,12 +726,15 @@ public class ScheduleUseCase {
                     currentDate,
                     dayOfWeek,
                     dayExclusiveSubjects,
+                    subjectsScheduledToday,
+                    lessonsCountBySubjectToday,
                     subjectConsecutiveHours,
                     rulesBySubject,
                     instructors,
                     rooms,
                     dutyDatesByInstructor,
                     occupiedSlotIndexes,
+                    subjectBySlotIndex,
                     candidateSlotIndex,
                     availableSlots,
                     lastScheduledSubject,
@@ -764,6 +782,20 @@ public class ScheduleUseCase {
                     candidateSlotIndex,
                     blockHours
                 );
+                markSubjectBlock(
+                    subjectBySlotIndex,
+                    candidateSlotIndex,
+                    blockHours,
+                    normalizedSubject
+                );
+                if (!normalizedSubject.isEmpty()) {
+                    subjectsScheduledToday.add(normalizedSubject);
+                    lessonsCountBySubjectToday.merge(
+                        normalizedSubject,
+                        1,
+                        Integer::sum
+                    );
+                }
                 lastDate = currentDate;
                 remainingHoursByItemId.merge(
                     currentItem.getId(),
@@ -856,12 +888,15 @@ public class ScheduleUseCase {
         LocalDate date,
         DayOfWeek day,
         Set<String> dayExclusiveSubjects,
+        Set<String> subjectsScheduledToday,
+        Map<String, Integer> lessonsCountBySubjectToday,
         Map<String, Integer> subjectConsecutiveHours,
         Map<String, SubjectScheduleRule> rulesBySubject,
         List<InstructorProfile> instructors,
         List<RoomProfile> rooms,
         Map<String, Set<LocalDate>> dutyDatesByInstructor,
         Set<Integer> occupiedSlotIndexes,
+        Map<Integer, String> subjectBySlotIndex,
         int candidateSlotIndex,
         int availableSlots,
         String lastScheduledSubject,
@@ -909,8 +944,37 @@ public class ScheduleUseCase {
             if (rule != null && !rule.isAllowedOn(day)) {
                 continue;
             }
+            if (
+                exceedsDailyLessonsLimit(
+                    normalizedSubject,
+                    rule,
+                    lessonsCountBySubjectToday
+                )
+            ) {
+                continue;
+            }
+            if (
+                violatesSameDayCompatibility(
+                    normalizedSubject,
+                    subjectsScheduledToday,
+                    rulesBySubject
+                )
+            ) {
+                continue;
+            }
             String roomName = resolveRoomForSubject(rule, rooms);
             if (roomName == null) {
+                continue;
+            }
+            if (
+                violatesAdjacentCompatibility(
+                    normalizedSubject,
+                    candidateSlotIndex,
+                    baseBlockHours,
+                    subjectBySlotIndex,
+                    rulesBySubject
+                )
+            ) {
                 continue;
             }
 
@@ -941,6 +1005,17 @@ public class ScheduleUseCase {
             int roomForMix = Math.max(0, 2 - lastSubjectStreakHours);
             int mixedBlockHours = Math.min(baseBlockHours, roomForMix);
             if (mixedBlockHours <= 0) {
+                continue;
+            }
+            if (
+                violatesAdjacentCompatibility(
+                    normalizedSubject,
+                    candidateSlotIndex,
+                    mixedBlockHours,
+                    subjectBySlotIndex,
+                    rulesBySubject
+                )
+            ) {
                 continue;
             }
             AssignmentCandidate mixedCandidate = buildCandidate(
@@ -1015,6 +1090,137 @@ public class ScheduleUseCase {
             return "Без кабинета";
         }
         return rooms.get(0).getName();
+    }
+
+    private boolean violatesSameDayCompatibility(
+        String candidateSubject,
+        Set<String> subjectsScheduledToday,
+        Map<String, SubjectScheduleRule> rulesBySubject
+    ) {
+        if (
+            candidateSubject == null ||
+            candidateSubject.isBlank() ||
+            subjectsScheduledToday == null ||
+            subjectsScheduledToday.isEmpty()
+        ) {
+            return false;
+        }
+        for (String placedSubject : subjectsScheduledToday) {
+            if (
+                hasMutualConflictForSameDay(
+                    candidateSubject,
+                    placedSubject,
+                    rulesBySubject
+                )
+            ) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean exceedsDailyLessonsLimit(
+        String candidateSubject,
+        SubjectScheduleRule rule,
+        Map<String, Integer> lessonsCountBySubjectToday
+    ) {
+        if (
+            rule == null ||
+            candidateSubject == null ||
+            candidateSubject.isBlank()
+        ) {
+            return false;
+        }
+        int maxLessonsPerDay = Math.max(0, rule.getMaxLessonsPerDay());
+        if (maxLessonsPerDay <= 0) {
+            return false;
+        }
+        int currentCount = lessonsCountBySubjectToday.getOrDefault(
+            candidateSubject,
+            0
+        );
+        return currentCount >= maxLessonsPerDay;
+    }
+
+    private boolean violatesAdjacentCompatibility(
+        String candidateSubject,
+        int startSlotIndex,
+        int blockHours,
+        Map<Integer, String> subjectBySlotIndex,
+        Map<String, SubjectScheduleRule> rulesBySubject
+    ) {
+        if (
+            candidateSubject == null ||
+            candidateSubject.isBlank() ||
+            subjectBySlotIndex == null ||
+            subjectBySlotIndex.isEmpty()
+        ) {
+            return false;
+        }
+        String leftNeighbor = subjectBySlotIndex.get(startSlotIndex - 1);
+        if (
+            leftNeighbor != null &&
+            hasMutualConflictForConsecutive(
+                candidateSubject,
+                leftNeighbor,
+                rulesBySubject
+            )
+        ) {
+            return true;
+        }
+        String rightNeighbor = subjectBySlotIndex.get(startSlotIndex + blockHours);
+        return rightNeighbor != null &&
+        hasMutualConflictForConsecutive(
+            candidateSubject,
+            rightNeighbor,
+            rulesBySubject
+        );
+    }
+
+    private boolean hasMutualConflictForConsecutive(
+        String subjectA,
+        String subjectB,
+        Map<String, SubjectScheduleRule> rulesBySubject
+    ) {
+        if (subjectA == null || subjectB == null) {
+            return false;
+        }
+        SubjectScheduleRule ruleA = rulesBySubject.get(subjectA);
+        SubjectScheduleRule ruleB = rulesBySubject.get(subjectB);
+        return (ruleA != null && ruleA.getNoConsecutiveWithSubjects().contains(subjectB)) ||
+        (ruleB != null && ruleB.getNoConsecutiveWithSubjects().contains(subjectA));
+    }
+
+    private boolean hasMutualConflictForSameDay(
+        String subjectA,
+        String subjectB,
+        Map<String, SubjectScheduleRule> rulesBySubject
+    ) {
+        if (subjectA == null || subjectB == null) {
+            return false;
+        }
+        SubjectScheduleRule ruleA = rulesBySubject.get(subjectA);
+        SubjectScheduleRule ruleB = rulesBySubject.get(subjectB);
+        return (ruleA != null && ruleA.getNoSameDayWithSubjects().contains(subjectB)) ||
+        (ruleB != null && ruleB.getNoSameDayWithSubjects().contains(subjectA));
+    }
+
+    private void markSubjectBlock(
+        Map<Integer, String> subjectBySlotIndex,
+        int startSlotIndex,
+        int durationHours,
+        String normalizedSubject
+    ) {
+        if (
+            normalizedSubject == null ||
+            normalizedSubject.isBlank() ||
+            durationHours <= 0
+        ) {
+            return;
+        }
+        for (int i = 0; i < durationHours; i++) {
+            subjectBySlotIndex.put(startSlotIndex + i, normalizedSubject);
+        }
     }
 
     private String pickAvailableInstructor(

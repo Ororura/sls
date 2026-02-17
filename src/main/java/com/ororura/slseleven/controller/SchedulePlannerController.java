@@ -29,6 +29,7 @@ import java.util.Set;
 import java.util.StringJoiner;
 import java.util.stream.Collectors;
 import javafx.collections.FXCollections;
+import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
 import javafx.fxml.FXML;
@@ -551,14 +552,26 @@ public class SchedulePlannerController {
             int consecutiveHours = current == null
                 ? detectSubjectConsecutiveHours(subject)
                 : current.getConsecutiveHours();
+            int maxLessonsPerDay = current == null
+                ? 0
+                : current.getMaxLessonsPerDay();
             String fixedRoom = current == null ? "" : current.getFixedRoom();
+            Set<String> noConsecutiveWith = current == null
+                ? Set.of()
+                : current.getNoConsecutiveWithSubjects();
+            Set<String> noSameDayWith = current == null
+                ? Set.of()
+                : current.getNoSameDayWithSubjects();
             models.add(
                 new SubjectRuleEditModel(
                     subject,
                     allowed,
                     exclusive,
                     consecutiveHours,
-                    fixedRoom
+                    maxLessonsPerDay,
+                    fixedRoom,
+                    noConsecutiveWith,
+                    noSameDayWith
                 )
             );
         }
@@ -586,12 +599,33 @@ public class SchedulePlannerController {
             new SpinnerValueFactory.IntegerSpinnerValueFactory(1, 8, 1)
         );
         consecutiveHoursSpinner.setEditable(true);
+        Spinner<Integer> maxLessonsPerDaySpinner = new Spinner<>();
+        maxLessonsPerDaySpinner.setValueFactory(
+            new SpinnerValueFactory.IntegerSpinnerValueFactory(0, 8, 0)
+        );
+        maxLessonsPerDaySpinner.setEditable(true);
         ComboBox<String> fixedRoomComboBox = new ComboBox<>();
         fixedRoomComboBox
             .getItems()
             .addAll(roomNames);
         fixedRoomComboBox.getItems().add(0, "Без фиксации");
         fixedRoomComboBox.setValue("Без фиксации");
+        ListView<String> avoidConsecutiveList = new ListView<>();
+        avoidConsecutiveList.setPrefHeight(120);
+        avoidConsecutiveList
+            .getSelectionModel()
+            .setSelectionMode(SelectionMode.MULTIPLE);
+        ListView<String> avoidSameDayList = new ListView<>();
+        avoidSameDayList.setPrefHeight(120);
+        avoidSameDayList
+            .getSelectionModel()
+            .setSelectionMode(SelectionMode.MULTIPLE);
+        Button clearConsecutiveSubjectsButton = new Button(
+            "Сбросить \"подряд\""
+        );
+        Button clearSameDaySubjectsButton = new Button(
+            "Сбросить \"в один день\""
+        );
 
         FlowPane allowedPane = new FlowPane(8, 8);
         FlowPane exclusivePane = new FlowPane(8, 8);
@@ -619,8 +653,16 @@ public class SchedulePlannerController {
             selectedSubjectLabel,
             new Label("Часы подряд (для предмета):"),
             consecutiveHoursSpinner,
+            new Label("Макс. занятий в день только для этого предмета (0 = без лимита):"),
+            maxLessonsPerDaySpinner,
             new Label("Фиксированный кабинет:"),
             fixedRoomComboBox,
+            new Label("Нельзя подряд с предметами:"),
+            avoidConsecutiveList,
+            clearConsecutiveSubjectsButton,
+            new Label("Нельзя в один день с предметами:"),
+            avoidSameDayList,
+            clearSameDaySubjectsButton,
             new Label("Разрешенные дни:"),
             allowedPane,
             new Label("Эксклюзивные дни:"),
@@ -640,6 +682,7 @@ public class SchedulePlannerController {
         final SubjectRuleEditModel[] currentModel = new SubjectRuleEditModel[] {
             null,
         };
+        final boolean[] ignoreCompatibilitySelection = new boolean[] { false };
 
         Runnable refreshEditor = () -> {
             SubjectRuleEditModel model = currentModel[0];
@@ -651,12 +694,51 @@ public class SchedulePlannerController {
             consecutiveHoursSpinner
                 .getValueFactory()
                 .setValue(hasSubject ? Math.max(1, model.consecutiveHours) : 1);
+            maxLessonsPerDaySpinner.setDisable(!hasSubject);
+            maxLessonsPerDaySpinner
+                .getValueFactory()
+                .setValue(hasSubject ? Math.max(0, model.maxLessonsPerDay) : 0);
             fixedRoomComboBox.setDisable(!hasSubject);
             if (hasSubject && model.fixedRoom != null && !model.fixedRoom.isBlank()) {
                 fixedRoomComboBox.setValue(model.fixedRoom);
             } else {
                 fixedRoomComboBox.setValue("Без фиксации");
             }
+            avoidConsecutiveList.setDisable(!hasSubject);
+            avoidSameDayList.setDisable(!hasSubject);
+            clearConsecutiveSubjectsButton.setDisable(!hasSubject);
+            clearSameDaySubjectsButton.setDisable(!hasSubject);
+            ignoreCompatibilitySelection[0] = true;
+            if (!hasSubject) {
+                avoidConsecutiveList.getItems().clear();
+                avoidSameDayList.getItems().clear();
+            } else {
+                String selectedSubject = normalizeSubjectKey(model.subject);
+                List<String> options = poolSubjects
+                    .stream()
+                    .filter(subject -> !selectedSubject.equals(normalizeSubjectKey(subject)))
+                    .sorted(String.CASE_INSENSITIVE_ORDER)
+                    .collect(Collectors.toList());
+                avoidConsecutiveList.setItems(FXCollections.observableArrayList(options));
+                avoidSameDayList.setItems(FXCollections.observableArrayList(options));
+
+                avoidConsecutiveList.getSelectionModel().clearSelection();
+                avoidSameDayList.getSelectionModel().clearSelection();
+                for (String subject : options) {
+                    String normalizedSubject = normalizeSubjectKey(subject);
+                    if (model.noConsecutiveWithSubjects.contains(normalizedSubject)) {
+                        avoidConsecutiveList
+                            .getSelectionModel()
+                            .select(subject);
+                    }
+                    if (model.noSameDayWithSubjects.contains(normalizedSubject)) {
+                        avoidSameDayList
+                            .getSelectionModel()
+                            .select(subject);
+                    }
+                }
+            }
+            ignoreCompatibilitySelection[0] = false;
             for (DayOfWeek day : DayOfWeek.values()) {
                 CheckBox allow = allowedBoxes.get(day);
                 CheckBox exclusive = exclusiveBoxes.get(day);
@@ -678,6 +760,13 @@ public class SchedulePlannerController {
             }
             model.consecutiveHours = Math.max(1, newV);
         });
+        maxLessonsPerDaySpinner.valueProperty().addListener((obs, oldV, newV) -> {
+            SubjectRuleEditModel model = currentModel[0];
+            if (model == null || newV == null) {
+                return;
+            }
+            model.maxLessonsPerDay = Math.max(0, newV);
+        });
         fixedRoomComboBox.valueProperty().addListener((obs, oldV, newV) -> {
             SubjectRuleEditModel model = currentModel[0];
             if (model == null) {
@@ -688,6 +777,52 @@ public class SchedulePlannerController {
             } else {
                 model.fixedRoom = newV;
             }
+        });
+        avoidConsecutiveList
+            .getSelectionModel()
+            .getSelectedItems()
+            .addListener((ListChangeListener<String>) change -> {
+            SubjectRuleEditModel model = currentModel[0];
+            if (model == null || ignoreCompatibilitySelection[0]) {
+                return;
+            }
+            model.noConsecutiveWithSubjects = avoidConsecutiveList
+                .getSelectionModel()
+                .getSelectedItems()
+                .stream()
+                .map(this::normalizeSubjectKey)
+                .collect(Collectors.toCollection(java.util.LinkedHashSet::new));
+        });
+        avoidSameDayList
+            .getSelectionModel()
+            .getSelectedItems()
+            .addListener((ListChangeListener<String>) change -> {
+            SubjectRuleEditModel model = currentModel[0];
+            if (model == null || ignoreCompatibilitySelection[0]) {
+                return;
+            }
+            model.noSameDayWithSubjects = avoidSameDayList
+                .getSelectionModel()
+                .getSelectedItems()
+                .stream()
+                .map(this::normalizeSubjectKey)
+                .collect(Collectors.toCollection(java.util.LinkedHashSet::new));
+        });
+        clearConsecutiveSubjectsButton.setOnAction(event -> {
+            SubjectRuleEditModel model = currentModel[0];
+            if (model == null) {
+                return;
+            }
+            model.noConsecutiveWithSubjects.clear();
+            avoidConsecutiveList.getSelectionModel().clearSelection();
+        });
+        clearSameDaySubjectsButton.setOnAction(event -> {
+            SubjectRuleEditModel model = currentModel[0];
+            if (model == null) {
+                return;
+            }
+            model.noSameDayWithSubjects.clear();
+            avoidSameDayList.getSelectionModel().clearSelection();
         });
 
         for (DayOfWeek day : DayOfWeek.values()) {
@@ -774,7 +909,10 @@ public class SchedulePlannerController {
                                 model.allowedDays,
                                 model.exclusiveDays,
                                 model.consecutiveHours,
-                                model.fixedRoom
+                                model.maxLessonsPerDay,
+                                model.fixedRoom,
+                                model.noConsecutiveWithSubjects,
+                                model.noSameDayWithSubjects
                             )
                         );
                     }
@@ -1358,14 +1496,20 @@ public class SchedulePlannerController {
         private final EnumSet<DayOfWeek> allowedDays;
         private final EnumSet<DayOfWeek> exclusiveDays;
         private int consecutiveHours;
+        private int maxLessonsPerDay;
         private String fixedRoom;
+        private Set<String> noConsecutiveWithSubjects;
+        private Set<String> noSameDayWithSubjects;
 
         private SubjectRuleEditModel(
             String subject,
             Set<DayOfWeek> allowedDays,
             Set<DayOfWeek> exclusiveDays,
             int consecutiveHours,
-            String fixedRoom
+            int maxLessonsPerDay,
+            String fixedRoom,
+            Set<String> noConsecutiveWithSubjects,
+            Set<String> noSameDayWithSubjects
         ) {
             this.subject = subject;
             this.allowedDays = allowedDays == null || allowedDays.isEmpty()
@@ -1375,7 +1519,12 @@ public class SchedulePlannerController {
                 ? EnumSet.noneOf(DayOfWeek.class)
                 : EnumSet.copyOf(exclusiveDays);
             this.consecutiveHours = Math.max(1, consecutiveHours);
+            this.maxLessonsPerDay = Math.max(0, maxLessonsPerDay);
             this.fixedRoom = fixedRoom == null ? "" : fixedRoom.trim();
+            this.noConsecutiveWithSubjects = sanitizeSubjects(
+                noConsecutiveWithSubjects
+            );
+            this.noSameDayWithSubjects = sanitizeSubjects(noSameDayWithSubjects);
         }
 
         private boolean isDefaultRule() {
@@ -1383,8 +1532,22 @@ public class SchedulePlannerController {
                 allowedDays.size() == DayOfWeek.values().length &&
                 exclusiveDays.isEmpty() &&
                 consecutiveHours == 1 &&
-                fixedRoom.isBlank()
+                maxLessonsPerDay == 0 &&
+                fixedRoom.isBlank() &&
+                noConsecutiveWithSubjects.isEmpty() &&
+                noSameDayWithSubjects.isEmpty()
             );
+        }
+
+        private Set<String> sanitizeSubjects(Set<String> values) {
+            if (values == null || values.isEmpty()) {
+                return new java.util.LinkedHashSet<>();
+            }
+            return values
+                .stream()
+                .filter(value -> value != null && !value.isBlank())
+                .map(value -> value.trim().toLowerCase())
+                .collect(Collectors.toCollection(java.util.LinkedHashSet::new));
         }
     }
 

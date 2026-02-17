@@ -30,6 +30,16 @@
                         onAction="#onCurrentMonth"
                         styleClass="button-secondary"
                     />
+                    <Button
+                        text="Печать A4 (PNG)"
+                        onAction="#onExportPrintImage"
+                        styleClass="button-secondary"
+                    />
+                    <Button
+                        text="Печать A4 (Excel)"
+                        onAction="#onExportPrintExcel"
+                        styleClass="button-secondary"
+                    />
                     <Pane HBox.hgrow="ALWAYS" />
                     <Button
                         text="Авторасписание"

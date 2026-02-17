@@ -66,7 +66,10 @@ public class SchemaInitializer {
             "    allowed_days INTEGER NOT NULL,\n" +
             "    exclusive_days INTEGER NOT NULL,\n" +
             "    consecutive_hours INTEGER NOT NULL DEFAULT 1,\n" +
+            "    max_lessons_per_day INTEGER NOT NULL DEFAULT 0,\n" +
             "    fixed_room TEXT NOT NULL DEFAULT '',\n" +
+            "    avoid_consecutive_with TEXT NOT NULL DEFAULT '',\n" +
+            "    avoid_same_day_with TEXT NOT NULL DEFAULT '',\n" +
             "    PRIMARY KEY (calendar_id, subject)\n" +
             ");";
 
@@ -171,6 +174,18 @@ public class SchemaInitializer {
             );
             ensureColumnExists(
                 s,
+                "ALTER TABLE schedule_subject_rules ADD COLUMN max_lessons_per_day INTEGER NOT NULL DEFAULT 0"
+            );
+            ensureColumnExists(
+                s,
+                "ALTER TABLE schedule_subject_rules ADD COLUMN avoid_consecutive_with TEXT NOT NULL DEFAULT ''"
+            );
+            ensureColumnExists(
+                s,
+                "ALTER TABLE schedule_subject_rules ADD COLUMN avoid_same_day_with TEXT NOT NULL DEFAULT ''"
+            );
+            ensureColumnExists(
+                s,
                 "ALTER TABLE schedule_history ADD COLUMN calendar_id TEXT NOT NULL DEFAULT 'default'"
             );
             normalizeScheduleSettingsTable(s);
@@ -244,13 +259,16 @@ public class SchemaInitializer {
             "    allowed_days INTEGER NOT NULL,\n" +
             "    exclusive_days INTEGER NOT NULL,\n" +
             "    consecutive_hours INTEGER NOT NULL DEFAULT 1,\n" +
+            "    max_lessons_per_day INTEGER NOT NULL DEFAULT 0,\n" +
             "    fixed_room TEXT NOT NULL DEFAULT '',\n" +
+            "    avoid_consecutive_with TEXT NOT NULL DEFAULT '',\n" +
+            "    avoid_same_day_with TEXT NOT NULL DEFAULT '',\n" +
             "    PRIMARY KEY (calendar_id, subject)\n" +
             ");"
         );
         s.execute(
-            "INSERT OR IGNORE INTO schedule_subject_rules_new (calendar_id, subject, allowed_days, exclusive_days, consecutive_hours, fixed_room) " +
-            "SELECT COALESCE(calendar_id, 'default'), subject, allowed_days, exclusive_days, COALESCE(consecutive_hours, 1), COALESCE(fixed_room, '') FROM schedule_subject_rules"
+            "INSERT OR IGNORE INTO schedule_subject_rules_new (calendar_id, subject, allowed_days, exclusive_days, consecutive_hours, max_lessons_per_day, fixed_room, avoid_consecutive_with, avoid_same_day_with) " +
+            "SELECT COALESCE(calendar_id, 'default'), subject, allowed_days, exclusive_days, COALESCE(consecutive_hours, 1), COALESCE(max_lessons_per_day, 0), COALESCE(fixed_room, ''), COALESCE(avoid_consecutive_with, ''), COALESCE(avoid_same_day_with, '') FROM schedule_subject_rules"
         );
         s.execute("DROP TABLE schedule_subject_rules");
         s.execute(

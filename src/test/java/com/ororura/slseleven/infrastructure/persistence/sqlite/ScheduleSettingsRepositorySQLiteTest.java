@@ -2,11 +2,15 @@ package com.ororura.slseleven.infrastructure.persistence.sqlite;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import com.ororura.slseleven.domain.model.SubjectScheduleRule;
 import com.ororura.slseleven.infrastructure.persistence.migrations.SchemaInitializer;
 import java.nio.file.Path;
 import java.time.DayOfWeek;
 import java.util.EnumMap;
+import java.util.EnumSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -43,5 +47,31 @@ class ScheduleSettingsRepositorySQLiteTest {
 
         assertEquals(1, reloaded.get(DayOfWeek.MONDAY));
         assertEquals(4, reloaded.get(DayOfWeek.SUNDAY));
+    }
+
+    @Test
+    void shouldPersistSubjectCompatibilityRules() {
+        repository.saveSubjectRules(
+            List.of(
+                new SubjectScheduleRule(
+                    "Строевые занятия",
+                    EnumSet.allOf(DayOfWeek.class),
+                    EnumSet.noneOf(DayOfWeek.class),
+                    1,
+                    2,
+                    "",
+                    Set.of("физическая подготовка"),
+                    Set.of("огневая подготовка")
+                )
+            )
+        );
+
+        List<SubjectScheduleRule> rules = repository.getSubjectRules();
+
+        assertEquals(1, rules.size());
+        SubjectScheduleRule rule = rules.get(0);
+        assertEquals(2, rule.getMaxLessonsPerDay());
+        assertEquals(Set.of("физическая подготовка"), rule.getNoConsecutiveWithSubjects());
+        assertEquals(Set.of("огневая подготовка"), rule.getNoSameDayWithSubjects());
     }
 }

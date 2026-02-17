@@ -3,6 +3,7 @@ module com.ororura.slseleven {
     requires javafx.fxml;
     requires javafx.base;
     requires java.sql;
+    requires java.desktop;
     requires org.apache.poi.ooxml;
     requires org.apache.poi.poi;
 
