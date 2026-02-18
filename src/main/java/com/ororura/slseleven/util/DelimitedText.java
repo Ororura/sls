@@ -6,8 +6,14 @@ import java.util.Locale;
 
 public final class DelimitedText {
 
+    /**
+     * Метод DelimitedText.
+     */
     private DelimitedText() {}
 
+    /**
+     * Метод parse.
+     */
     public static List<List<String>> parse(String text, List<String> errors) {
         String normalized = text == null ? "" : text.trim();
         if (normalized.isEmpty()) {
@@ -32,6 +38,9 @@ public final class DelimitedText {
         return rows;
     }
 
+    /**
+     * Метод detectDelimiter.
+     */
     private static char detectDelimiter(String[] lines) {
         for (String line : lines) {
             if (line == null || line.trim().isEmpty()) {
@@ -50,6 +59,9 @@ public final class DelimitedText {
         return 0;
     }
 
+    /**
+     * Метод parseLine.
+     */
     private static List<String> parseLine(String line, char delimiter) {
         List<String> values = new ArrayList<>();
         StringBuilder current = new StringBuilder();
@@ -80,6 +92,9 @@ public final class DelimitedText {
         return values;
     }
 
+    /**
+     * Метод normalizeHeader.
+     */
     public static String normalizeHeader(String value) {
         if (value == null) {
             return "";

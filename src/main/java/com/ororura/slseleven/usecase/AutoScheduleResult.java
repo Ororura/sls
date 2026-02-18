@@ -9,6 +9,9 @@ public class AutoScheduleResult {
     private final int remainingHours;
     private final List<RemainingScheduleItem> remainingItems;
 
+    /**
+     * Метод AutoScheduleResult.
+     */
     public AutoScheduleResult(
         int createdLessons,
         LocalDate lastScheduledDate,
@@ -23,18 +26,30 @@ public class AutoScheduleResult {
             : List.copyOf(remainingItems);
     }
 
+    /**
+     * Метод getCreatedLessons.
+     */
     public int getCreatedLessons() {
         return createdLessons;
     }
 
+    /**
+     * Метод getLastScheduledDate.
+     */
     public LocalDate getLastScheduledDate() {
         return lastScheduledDate;
     }
 
+    /**
+     * Метод getRemainingHours.
+     */
     public int getRemainingHours() {
         return remainingHours;
     }
 
+    /**
+     * Метод getRemainingItems.
+     */
     public List<RemainingScheduleItem> getRemainingItems() {
         return remainingItems;
     }
@@ -45,6 +60,9 @@ public class AutoScheduleResult {
         private final String className;
         private final int hours;
 
+        /**
+         * Метод RemainingScheduleItem.
+         */
         public RemainingScheduleItem(
             String topic,
             String lessonName,
@@ -57,18 +75,30 @@ public class AutoScheduleResult {
             this.hours = hours;
         }
 
+        /**
+         * Метод getTopic.
+         */
         public String getTopic() {
             return topic;
         }
 
+        /**
+         * Метод getLessonName.
+         */
         public String getLessonName() {
             return lessonName;
         }
 
+        /**
+         * Метод getClassName.
+         */
         public String getClassName() {
             return className;
         }
 
+        /**
+         * Метод getHours.
+         */
         public int getHours() {
             return hours;
         }

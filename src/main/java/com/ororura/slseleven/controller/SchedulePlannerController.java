@@ -116,6 +116,9 @@ public class SchedulePlannerController {
 
     private ScheduleUseCase scheduleUseCase;
 
+    /**
+     * Метод initialize.
+     */
     @FXML
     public void initialize() {
         filteredData = new FilteredList<>(data, item -> true);
@@ -160,17 +163,26 @@ public class SchedulePlannerController {
         });
     }
 
+    /**
+     * Метод setScheduleUseCase.
+     */
     public void setScheduleUseCase(ScheduleUseCase scheduleUseCase) {
         this.scheduleUseCase = scheduleUseCase;
         reload();
         loadSettings();
     }
 
+    /**
+     * Метод onAddItem.
+     */
     @FXML
     private void onAddItem() {
         showItemDialog(null);
     }
 
+    /**
+     * Метод onEditItem.
+     */
     @FXML
     private void onEditItem() {
         ScheduleItem selected = scheduleTable
@@ -183,6 +195,9 @@ public class SchedulePlannerController {
         showItemDialog(selected);
     }
 
+    /**
+     * Метод onDeleteItem.
+     */
     @FXML
     private void onDeleteItem() {
         List<ScheduleItem> selected = List.copyOf(
@@ -211,6 +226,9 @@ public class SchedulePlannerController {
             });
     }
 
+    /**
+     * Метод onQuickImport.
+     */
     @FXML
     private void onQuickImport() {
         if (scheduleUseCase == null) {
@@ -227,6 +245,9 @@ public class SchedulePlannerController {
         showImportResult(result);
     }
 
+    /**
+     * Метод onImport.
+     */
     @FXML
     private void onImport() {
         if (scheduleUseCase == null) {
@@ -292,6 +313,9 @@ public class SchedulePlannerController {
         dialog.showAndWait();
     }
 
+    /**
+     * Метод onImportXlsx.
+     */
     @FXML
     private void onImportXlsx() {
         if (scheduleUseCase == null) {
@@ -317,6 +341,9 @@ public class SchedulePlannerController {
         showImportResult(result);
     }
 
+    /**
+     * Метод onExportXlsx.
+     */
     @FXML
     private void onExportXlsx() {
         if (data.isEmpty()) {
@@ -339,6 +366,9 @@ public class SchedulePlannerController {
             return;
         }
 
+        /**
+         * Метод try.
+         */
         try (Workbook workbook = new XSSFWorkbook()) {
             Sheet sheet = workbook.createSheet("Авторасписание");
             Row header = sheet.createRow(0);
@@ -367,6 +397,9 @@ public class SchedulePlannerController {
                 row.createCell(6).setCellValue(item.getConsecutiveHours());
             }
 
+            /**
+             * Метод try.
+             */
             try (FileOutputStream out = new FileOutputStream(file)) {
                 workbook.write(out);
             }
@@ -377,6 +410,9 @@ public class SchedulePlannerController {
         }
     }
 
+    /**
+     * Метод onImportAndSchedule.
+     */
     @FXML
     private void onImportAndSchedule() {
         if (scheduleUseCase == null) {
@@ -470,6 +506,9 @@ public class SchedulePlannerController {
         dialog.showAndWait();
     }
 
+    /**
+     * Метод onQuickExport.
+     */
     @FXML
     private void onQuickExport() {
         if (data.isEmpty()) {
@@ -484,6 +523,9 @@ public class SchedulePlannerController {
         showInfo("Экспорт скопирован в буфер обмена (TSV).");
     }
 
+    /**
+     * Метод onDeleteAll.
+     */
     @FXML
     private void onDeleteAll() {
         if (data.isEmpty()) {
@@ -499,12 +541,18 @@ public class SchedulePlannerController {
         reload();
     }
 
+    /**
+     * Метод onSaveSettings.
+     */
     @FXML
     private void onSaveSettings() {
         saveSettings();
         showInfo("Настройки сохранены.");
     }
 
+    /**
+     * Метод onSubjectRules.
+     */
     @FXML
     private void onSubjectRules() {
         if (scheduleUseCase == null) {
@@ -550,6 +598,9 @@ public class SchedulePlannerController {
                 ? EnumSet.noneOf(DayOfWeek.class)
                 : current.getExclusiveDays();
             int consecutiveHours = current == null
+                /**
+                 * Метод detectSubjectConsecutiveHours.
+                 */
                 ? detectSubjectConsecutiveHours(subject)
                 : current.getConsecutiveHours();
             int maxLessonsPerDay = current == null
@@ -585,6 +636,9 @@ public class SchedulePlannerController {
         );
         subjectList.setPrefWidth(280);
         subjectList.setCellFactory(list -> new ListCell<>() {
+            /**
+             * Метод updateItem.
+             */
             @Override
             protected void updateItem(SubjectRuleEditModel item, boolean empty) {
                 super.updateItem(item, empty);
@@ -926,6 +980,9 @@ public class SchedulePlannerController {
             });
     }
 
+    /**
+     * Метод onManageInstructors.
+     */
     @FXML
     private void onManageInstructors() {
         if (scheduleUseCase == null) {
@@ -1040,6 +1097,9 @@ public class SchedulePlannerController {
         }
     }
 
+    /**
+     * Метод onManageRooms.
+     */
     @FXML
     private void onManageRooms() {
         if (scheduleUseCase == null) {
@@ -1113,6 +1173,9 @@ public class SchedulePlannerController {
         }
     }
 
+    /**
+     * Метод onInstructorDuties.
+     */
     @FXML
     private void onInstructorDuties() {
         if (scheduleUseCase == null) {
@@ -1187,6 +1250,9 @@ public class SchedulePlannerController {
         dialog.showAndWait();
     }
 
+    /**
+     * Метод onHistory.
+     */
     @FXML
     private void onHistory() {
         if (scheduleUseCase == null) {
@@ -1235,6 +1301,9 @@ public class SchedulePlannerController {
         showInfo("Снимок успешно восстановлен.");
     }
 
+    /**
+     * Метод onLoadArchiveToPool.
+     */
     @FXML
     private void onLoadArchiveToPool() {
         if (scheduleUseCase == null) {
@@ -1261,6 +1330,9 @@ public class SchedulePlannerController {
         showInfo("Перенесено из архива: " + moved + " занятий.");
     }
 
+    /**
+     * Метод onAutoSchedule.
+     */
     @FXML
     private void onAutoSchedule() {
         if (scheduleUseCase == null) {
@@ -1325,6 +1397,9 @@ public class SchedulePlannerController {
         }
     }
 
+    /**
+     * Метод onReschedule.
+     */
     @FXML
     private void onReschedule() {
         if (scheduleUseCase == null) {
@@ -1382,6 +1457,9 @@ public class SchedulePlannerController {
         }
     }
 
+    /**
+     * Метод setupSpinner.
+     */
     private void setupSpinner(Spinner<Integer> spinner) {
         SpinnerValueFactory<Integer> factory =
             new SpinnerValueFactory.IntegerSpinnerValueFactory(0, 8, 0);
@@ -1389,12 +1467,18 @@ public class SchedulePlannerController {
         spinner.setEditable(true);
     }
 
+    /**
+     * Метод saveHistorySnapshot.
+     */
     private void saveHistorySnapshot(String label) {
         if (scheduleUseCase != null) {
             scheduleUseCase.createHistorySnapshot(label);
         }
     }
 
+    /**
+     * Метод selectInstructor.
+     */
     private InstructorProfile selectInstructor(
         List<InstructorProfile> instructors,
         String title
@@ -1419,6 +1503,9 @@ public class SchedulePlannerController {
         return selected == null ? null : byLabel.get(selected);
     }
 
+    /**
+     * Метод selectRoom.
+     */
     private RoomProfile selectRoom(List<RoomProfile> rooms, String title) {
         if (rooms == null || rooms.isEmpty()) {
             showInfo("Список кабинетов пуст.");
@@ -1440,10 +1527,16 @@ public class SchedulePlannerController {
         return selected == null ? null : byLabel.get(selected);
     }
 
+    /**
+     * Метод normalizeSubjectKey.
+     */
     private String normalizeSubjectKey(String value) {
         return value == null ? "" : value.trim().toLowerCase();
     }
 
+    /**
+     * Метод resolveConsecutiveHoursForImportedSubject.
+     */
     private int resolveConsecutiveHoursForImportedSubject(
         String topic,
         Map<String, Integer> subjectConsecutiveByRule
@@ -1458,6 +1551,9 @@ public class SchedulePlannerController {
         return detectSubjectConsecutiveHours(topic);
     }
 
+    /**
+     * Метод detectSubjectConsecutiveHours.
+     */
     private int detectSubjectConsecutiveHours(String subject) {
         String key = normalizeSubjectKey(subject);
         int result = 1;
@@ -1470,6 +1566,9 @@ public class SchedulePlannerController {
         return result;
     }
 
+    /**
+     * Метод dayToShort.
+     */
     private String dayToShort(DayOfWeek day) {
         switch (day) {
             case MONDAY:
@@ -1501,6 +1600,9 @@ public class SchedulePlannerController {
         private Set<String> noConsecutiveWithSubjects;
         private Set<String> noSameDayWithSubjects;
 
+        /**
+         * Метод SubjectRuleEditModel.
+         */
         private SubjectRuleEditModel(
             String subject,
             Set<DayOfWeek> allowedDays,
@@ -1527,6 +1629,9 @@ public class SchedulePlannerController {
             this.noSameDayWithSubjects = sanitizeSubjects(noSameDayWithSubjects);
         }
 
+        /**
+         * Метод isDefaultRule.
+         */
         private boolean isDefaultRule() {
             return (
                 allowedDays.size() == DayOfWeek.values().length &&
@@ -1539,6 +1644,9 @@ public class SchedulePlannerController {
             );
         }
 
+        /**
+         * Метод sanitizeSubjects.
+         */
         private Set<String> sanitizeSubjects(Set<String> values) {
             if (values == null || values.isEmpty()) {
                 return new java.util.LinkedHashSet<>();
@@ -1551,6 +1659,9 @@ public class SchedulePlannerController {
         }
     }
 
+    /**
+     * Метод reload.
+     */
     private void reload() {
         if (scheduleUseCase == null) {
             return;
@@ -1561,6 +1672,9 @@ public class SchedulePlannerController {
         updateTotalLabel();
     }
 
+    /**
+     * Метод loadSettings.
+     */
     private void loadSettings() {
         if (scheduleUseCase == null) {
             return;
@@ -1589,6 +1703,9 @@ public class SchedulePlannerController {
             .setValue(settings.getOrDefault(DayOfWeek.SUNDAY, 0));
     }
 
+    /**
+     * Метод saveSettings.
+     */
     private void saveSettings() {
         Map<DayOfWeek, Integer> maxHours = new EnumMap<>(DayOfWeek.class);
         maxHours.put(DayOfWeek.MONDAY, mondayHours.getValue());
@@ -1601,6 +1718,9 @@ public class SchedulePlannerController {
         scheduleUseCase.saveMaxHoursByDay(maxHours);
     }
 
+    /**
+     * Метод showItemDialog.
+     */
     private void showItemDialog(ScheduleItem item) {
         try {
             FXMLLoader loader = new FXMLLoader(
@@ -1636,20 +1756,32 @@ public class SchedulePlannerController {
         }
     }
 
+    /**
+     * Метод showError.
+     */
     private void showError(String message) {
         UiAlerts.showError("Ошибка", message);
     }
 
+    /**
+     * Метод showInfo.
+     */
     private void showInfo(String message) {
         UiAlerts.showInfo("Сообщение", message);
     }
 
+    /**
+     * Метод importItemsFromText.
+     */
     private ImportResult importItemsFromText(String text) {
         List<String> errors = new ArrayList<>();
         List<List<String>> rows = DelimitedText.parse(text, errors);
         return importItemsFromRows(rows, errors);
     }
 
+    /**
+     * Метод importItemsFromRows.
+     */
     private ImportResult importItemsFromRows(
         List<List<String>> rows,
         List<String> errors
@@ -1692,6 +1824,9 @@ public class SchedulePlannerController {
                 }
 
                 if (
+                    /**
+                     * Метод isBlank.
+                     */
                     isBlank(topic) ||
                     isBlank(lessonName) ||
                     isBlank(hoursRaw)
@@ -1736,6 +1871,9 @@ public class SchedulePlannerController {
         return new ImportResult(added, errors);
     }
 
+    /**
+     * Метод showImportResult.
+     */
     private void showImportResult(ImportResult result) {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle("Импорт");
@@ -1757,6 +1895,9 @@ public class SchedulePlannerController {
         alert.showAndWait();
     }
 
+    /**
+     * Метод showImportAndScheduleResult.
+     */
     private void showImportAndScheduleResult(
         ImportResult importResult,
         AutoScheduleResult scheduleResult
@@ -1791,14 +1932,23 @@ public class SchedulePlannerController {
         alert.showAndWait();
     }
 
+    /**
+     * Метод isBlank.
+     */
     private boolean isBlank(String value) {
         return value == null || value.trim().isEmpty();
     }
 
+    /**
+     * Метод safeValue.
+     */
     private String safeValue(String value) {
         return value == null ? "" : value;
     }
 
+    /**
+     * Метод applySearchFilter.
+     */
     private void applySearchFilter(String query) {
         if (filteredData == null) {
             return;
@@ -1819,6 +1969,9 @@ public class SchedulePlannerController {
         );
     }
 
+    /**
+     * Метод updateTotalLabel.
+     */
     private void updateTotalLabel() {
         int total = data.stream().mapToInt(ScheduleItem::getHours).sum();
         int visible = filteredData == null
@@ -1833,6 +1986,9 @@ public class SchedulePlannerController {
         );
     }
 
+    /**
+     * Метод readXlsxRows.
+     */
     private List<List<String>> readXlsxRows(
         java.io.File file,
         List<String> errors
@@ -1884,6 +2040,9 @@ public class SchedulePlannerController {
         }
     }
 
+    /**
+     * Метод loadDelimitedFromFile.
+     */
     private void loadDelimitedFromFile(Window owner, TextArea target) {
         FileChooser chooser = new FileChooser();
         chooser.setTitle("Загрузить TSV/CSV");
@@ -1910,6 +2069,9 @@ public class SchedulePlannerController {
         }
     }
 
+    /**
+     * Метод buildTsvExport.
+     */
     private String buildTsvExport(List<ScheduleItem> items) {
         StringJoiner joiner = new StringJoiner(System.lineSeparator());
         joiner.add(
@@ -1935,12 +2097,18 @@ public class SchedulePlannerController {
         return joiner.toString();
     }
 
+    /**
+     * Метод safe.
+     */
     private String safe(String value) {
         return value == null
             ? ""
             : value.replace('\t', ' ').replace('\n', ' ').replace('\r', ' ');
     }
 
+    /**
+     * Метод confirmDoubleDelete.
+     */
     private boolean confirmDoubleDelete(String headerText) {
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
         alert.setTitle("Подтверждение");
@@ -1957,6 +2125,9 @@ public class SchedulePlannerController {
         return second.showAndWait().orElse(ButtonType.CANCEL) == ButtonType.OK;
     }
 
+    /**
+     * Метод confirmReschedule.
+     */
     private boolean confirmReschedule(int lessonsInRange) {
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
         alert.setTitle("Переформировать расписание");
@@ -1980,6 +2151,9 @@ public class SchedulePlannerController {
         return alert.showAndWait().orElse(cancelButton) == reformButton;
     }
 
+    /**
+     * Метод validateDateRange.
+     */
     private boolean validateDateRange() {
         LocalDate startDate = startDatePicker.getValue();
         LocalDate endDate = endDatePicker.getValue();
@@ -1990,6 +2164,9 @@ public class SchedulePlannerController {
         return true;
     }
 
+    /**
+     * Метод appendRemainingHours.
+     */
     private void appendRemainingHours(
         StringBuilder builder,
         AutoScheduleResult result
@@ -2023,6 +2200,9 @@ public class SchedulePlannerController {
         }
     }
 
+    /**
+     * Метод appendRemainingHours.
+     */
     private void appendRemainingHours(
         StringJoiner joiner,
         AutoScheduleResult result
@@ -2060,6 +2240,9 @@ public class SchedulePlannerController {
         private final int added;
         private final List<String> errors;
 
+        /**
+         * Метод ImportResult.
+         */
         private ImportResult(int added, List<String> errors) {
             this.added = added;
             this.errors = errors;
@@ -2071,6 +2254,9 @@ public class SchedulePlannerController {
         private final Map<String, Integer> indexByKey;
         private final int startRowIndex;
 
+        /**
+         * Метод HeaderMapping.
+         */
         private HeaderMapping(
             Map<String, Integer> indexByKey,
             int startRowIndex
@@ -2079,6 +2265,9 @@ public class SchedulePlannerController {
             this.startRowIndex = startRowIndex;
         }
 
+        /**
+         * Метод get.
+         */
         private String get(List<String> row, String key) {
             Integer index = indexByKey.get(key);
             if (index == null || index < 0 || index >= row.size()) {
@@ -2087,6 +2276,9 @@ public class SchedulePlannerController {
             return row.get(index);
         }
 
+        /**
+         * Метод forItems.
+         */
         private static HeaderMapping forItems(List<List<String>> rows) {
             if (rows.isEmpty()) {
                 return null;

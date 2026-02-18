@@ -19,10 +19,16 @@ public class ScheduleHistoryRepositorySQLite implements ScheduleHistoryRepositor
     private static final String SNAPSHOT_SELECT =
         "SELECT " + SNAPSHOT_COLUMNS + " FROM schedule_history";
 
+    /**
+     * Метод ScheduleHistoryRepositorySQLite.
+     */
     public ScheduleHistoryRepositorySQLite(SQLiteConnectionProvider provider) {
         this.provider = provider;
     }
 
+    /**
+     * Метод save.
+     */
     @Override
     public void save(ScheduleHistorySnapshot snapshot) {
         String sql =
@@ -50,6 +56,9 @@ public class ScheduleHistoryRepositorySQLite implements ScheduleHistoryRepositor
         }
     }
 
+    /**
+     * Метод findAll.
+     */
     @Override
     public List<ScheduleHistorySnapshot> findAll(String calendarId) {
         String sql =
@@ -72,6 +81,9 @@ public class ScheduleHistoryRepositorySQLite implements ScheduleHistoryRepositor
         }
     }
 
+    /**
+     * Метод findById.
+     */
     @Override
     public Optional<ScheduleHistorySnapshot> findById(
         String id,
@@ -94,6 +106,9 @@ public class ScheduleHistoryRepositorySQLite implements ScheduleHistoryRepositor
         }
     }
 
+    /**
+     * Метод deleteById.
+     */
     @Override
     public void deleteById(String id) {
         String sql = "DELETE FROM schedule_history WHERE id = ?";
@@ -108,6 +123,9 @@ public class ScheduleHistoryRepositorySQLite implements ScheduleHistoryRepositor
         }
     }
 
+    /**
+     * Метод map.
+     */
     private ScheduleHistorySnapshot map(ResultSet rs) throws Exception {
         return new ScheduleHistorySnapshot(
             rs.getString("id"),

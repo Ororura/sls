@@ -43,11 +43,17 @@ public class LessonDialogController {
     private Lesson lesson;
     private LessonUseCase lessonUseCase;
 
+    /**
+     * Метод initialize.
+     */
     @FXML
     public void initialize() {
         // Инициализация при загрузке FXML
     }
 
+    /**
+     * Метод setLesson.
+     */
     public void setLesson(
         Lesson lesson,
         LocalDate date,
@@ -88,6 +94,9 @@ public class LessonDialogController {
         }
     }
 
+    /**
+     * Метод saveLesson.
+     */
     private boolean saveLesson() {
         try {
             if (lessonUseCase == null) {

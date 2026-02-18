@@ -166,6 +166,9 @@ public class CalendarController {
     private static final int PRINT_A4_WIDTH = 2480;
     private static final int PRINT_A4_HEIGHT = 3508;
 
+    /**
+     * Создаёт контроллер календаря и инициализирует текущий отображаемый месяц.
+     */
     public CalendarController() {
         this.currentYearMonth = YearMonth.now();
     }
@@ -180,11 +183,17 @@ public class CalendarController {
         updateHeaderStatus();
     }
 
+    /**
+     * Подключает use-case планировщика и загружает доступные календари.
+     */
     public void setScheduleUseCase(ScheduleUseCase scheduleUseCase) {
         this.scheduleUseCase = scheduleUseCase;
         loadCalendars();
     }
 
+    /**
+     * Открывает окно списка занятий для выбранного календаря.
+     */
     @FXML
     private void onOpenLessonsList() {
         if (allCalendarsMode) {
@@ -216,6 +225,9 @@ public class CalendarController {
         }
     }
 
+    /**
+     * Открывает окно авторасписания для выбранного календаря.
+     */
     @FXML
     private void onOpenSchedulePlanner() {
         if (allCalendarsMode) {
@@ -246,6 +258,9 @@ public class CalendarController {
         }
     }
 
+    /**
+     * Показывает диалог с информацией об авторах приложения.
+     */
     @FXML
     private void onAboutApp() {
         Dialog<ButtonType> dialog = new Dialog<>();
@@ -282,6 +297,9 @@ public class CalendarController {
         dialog.showAndWait();
     }
 
+    /**
+     * Инициализирует обработчики UI, выпадающие списки и первичную отрисовку календаря.
+     */
     @FXML
     public void initialize() {
         previousMonthButton.setOnAction(e -> previousMonth());
@@ -312,8 +330,14 @@ public class CalendarController {
         buildCalendar();
     }
 
+    /**
+     * Настраивает отрисовку элементов списка календарей.
+     */
     private void configureCalendarComboCells() {
         calendarComboBox.setCellFactory(list -> new ListCell<>() {
+            /**
+     * Обновляет отображение элемента в ячейке списка/комбобокса.
+     */
             @Override
             protected void updateItem(AppCalendar item, boolean empty) {
                 super.updateItem(item, empty);
@@ -325,6 +349,9 @@ public class CalendarController {
             }
         });
         calendarComboBox.setButtonCell(new ListCell<>() {
+            /**
+     * Обновляет отображение элемента в ячейке списка/комбобокса.
+     */
             @Override
             protected void updateItem(AppCalendar item, boolean empty) {
                 super.updateItem(item, empty);
@@ -337,8 +364,14 @@ public class CalendarController {
         });
     }
 
+    /**
+     * Настраивает отрисовку элементов списка директорий.
+     */
     private void configureDirectoryComboCells() {
         directoryComboBox.setCellFactory(list -> new ListCell<>() {
+            /**
+     * Обновляет отображение элемента в ячейке списка/комбобокса.
+     */
             @Override
             protected void updateItem(String item, boolean empty) {
                 super.updateItem(item, empty);
@@ -346,6 +379,9 @@ public class CalendarController {
             }
         });
         directoryComboBox.setButtonCell(new ListCell<>() {
+            /**
+     * Обновляет отображение элемента в ячейке списка/комбобокса.
+     */
             @Override
             protected void updateItem(String item, boolean empty) {
                 super.updateItem(item, empty);
@@ -354,6 +390,9 @@ public class CalendarController {
         });
     }
 
+    /**
+     * Форматирует подпись директории для отображения в интерфейсе.
+     */
     private String formatDirectoryLabel(String directory) {
         if (directory == null || directory.isBlank()) {
             return DIR_ALL;
@@ -364,6 +403,9 @@ public class CalendarController {
         return directory.replace("/", " / ");
     }
 
+    /**
+     * Форматирует подпись календаря для комбобокса.
+     */
     private String formatCalendarForCombo(AppCalendar calendar) {
         if (calendar == null) {
             return "";
@@ -378,6 +420,9 @@ public class CalendarController {
         return calendar.getName() + "  [" + path.replace("/", " / ") + "]";
     }
 
+    /**
+     * Обрабатывает создание нового календаря через диалог.
+     */
     @FXML
     private void onCreateCalendar() {
         if (scheduleUseCase == null) {
@@ -425,6 +470,9 @@ public class CalendarController {
         }
     }
 
+    /**
+     * Перемещает выбранный календарь в другую директорию.
+     */
     @FXML
     private void onMoveCalendarToDirectory() {
         AppCalendar selected = calendarComboBox
@@ -478,6 +526,9 @@ public class CalendarController {
             });
     }
 
+    /**
+     * Переименовывает выбранный календарь.
+     */
     @FXML
     private void onRenameCalendar() {
         AppCalendar selected = calendarComboBox
@@ -512,6 +563,9 @@ public class CalendarController {
             });
     }
 
+    /**
+     * Удаляет выбранный календарь после подтверждения пользователя.
+     */
     @FXML
     private void onDeleteCalendar() {
         AppCalendar selected = calendarComboBox
@@ -546,22 +600,34 @@ public class CalendarController {
         }
     }
 
+    /**
+     * Переключает отображение на предыдущий месяц.
+     */
     private void previousMonth() {
         currentYearMonth = currentYearMonth.minusMonths(1);
         buildCalendar();
     }
 
+    /**
+     * Переключает отображение на следующий месяц.
+     */
     private void nextMonth() {
         currentYearMonth = currentYearMonth.plusMonths(1);
         buildCalendar();
     }
 
+    /**
+     * Возвращает отображение к текущему месяцу.
+     */
     @FXML
     private void onCurrentMonth() {
         currentYearMonth = YearMonth.now();
         buildCalendar();
     }
 
+    /**
+     * Экспортирует печатный макет календаря в PNG файл.
+     */
     @FXML
     private void onExportPrintImage() {
         if (lessonUseCase == null) {
@@ -600,6 +666,9 @@ public class CalendarController {
         }
     }
 
+    /**
+     * Экспортирует печатный макет календаря в Excel файл.
+     */
     @FXML
     private void onExportPrintExcel() {
         if (lessonUseCase == null) {
@@ -634,6 +703,9 @@ public class CalendarController {
         }
     }
 
+    /**
+     * Строит сетку календаря месяца и обновляет отображение дней/занятий.
+     */
     private void buildCalendar() {
         if (lessonUseCase != null && !allCalendarsMode) {
             lessonUseCase.archivePastLessons(LocalDate.now());
@@ -675,6 +747,9 @@ public class CalendarController {
         updateHeaderStatus();
     }
 
+    /**
+     * Формирует канвас печатного макета календаря для экспорта в изображение.
+     */
     private Canvas buildPrintCanvas(Set<LocalDate> selectedDates) {
         Canvas canvas = new Canvas(PRINT_A4_WIDTH, PRINT_A4_HEIGHT);
         GraphicsContext gc = canvas.getGraphicsContext2D();
@@ -875,6 +950,9 @@ public class CalendarController {
         return canvas;
     }
 
+    /**
+     * Открывает диалог выбора дат для PNG-экспорта.
+     */
     private Set<LocalDate> chooseDaysForPngPrint() {
         List<LocalDate> monthDates = new ArrayList<>();
         LocalDate first = currentYearMonth.atDay(1);
@@ -893,6 +971,9 @@ public class CalendarController {
         listView.setPrefHeight(420);
         DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("dd.MM.yyyy (EE)");
         listView.setCellFactory(list -> new ListCell<>() {
+            /**
+     * Обновляет отображение элемента в ячейке списка/комбобокса.
+     */
             @Override
             protected void updateItem(LocalDate item, boolean empty) {
                 super.updateItem(item, empty);
@@ -945,6 +1026,9 @@ public class CalendarController {
         return selected;
     }
 
+    /**
+     * Формирует Excel-лист печатного календаря.
+     */
     private void buildPrintSheet(Workbook workbook) {
         Sheet sheet = workbook.createSheet("Календарь " + currentYearMonth);
         sheet.setDisplayGridlines(true);
@@ -1145,6 +1229,9 @@ public class CalendarController {
         );
     }
 
+    /**
+     * Собирает текстовое представление занятия для печатной ячейки.
+     */
     private String buildLessonCellText(Lesson lesson) {
         if (lesson == null) {
             return "";
@@ -1158,6 +1245,9 @@ public class CalendarController {
         "\nПреподаватель: " + safe(lesson.getInstructor());
     }
 
+    /**
+     * Разбивает данные занятия на строки для печатного вывода.
+     */
     private List<String> buildLessonPrintLines(Lesson lesson) {
         List<String> lines = new ArrayList<>();
         String time = lesson.getTime() == null ? "--:--" : lesson.getTime().format(statusTimeFormatter);
@@ -1171,6 +1261,9 @@ public class CalendarController {
         return lines;
     }
 
+    /**
+     * Выполняет перенос текста на строки под заданную ширину.
+     */
     private List<String> wrapText(String text, Font font, double maxWidth) {
         List<String> result = new ArrayList<>();
         if (text == null || text.isBlank()) {
@@ -1208,6 +1301,9 @@ public class CalendarController {
         return result;
     }
 
+    /**
+     * Разбивает длинное слово на части, помещающиеся по ширине.
+     */
     private String chopWord(String word, Font font, double maxWidth) {
         if (word == null || word.isEmpty()) {
             return "";
@@ -1225,16 +1321,25 @@ public class CalendarController {
             : builder.toString();
     }
 
+    /**
+     * Измеряет визуальную ширину строки для выбранного шрифта.
+     */
     private double measureWidth(String value, Font font) {
         Text text = new Text(value);
         text.setFont(font);
         return text.getLayoutBounds().getWidth();
     }
 
+    /**
+     * Вычисляет X-координату для центрирования текста на канвасе.
+     */
     private double centerX(String value, Font font) {
         return (PRINT_A4_WIDTH - measureWidth(value, font)) / 2.0;
     }
 
+    /**
+     * Преобразует JavaFX-изображение в BufferedImage для сохранения файла.
+     */
     private BufferedImage toBufferedImage(WritableImage image) {
         int width = (int) image.getWidth();
         int height = (int) image.getHeight();
@@ -1252,6 +1357,9 @@ public class CalendarController {
         return buffered;
     }
 
+    /**
+     * Предзагружает занятия месяца в кэш для ускорения отрисовки.
+     */
     private void preloadMonthLessons() {
         monthLessons.clear();
         if (lessonUseCase == null) {
@@ -1270,6 +1378,9 @@ public class CalendarController {
         }
     }
 
+    /**
+     * Создаёт UI-ячейку одного дня календаря с кнопками и индикаторами.
+     */
     private VBox createDayCell(LocalDate date, int day, boolean isToday) {
         VBox cell = new VBox(2);
         cell.getStyleClass().add("day-cell");
@@ -1308,12 +1419,18 @@ public class CalendarController {
         return cell;
     }
 
+    /**
+     * Выбирает дату в календаре и обновляет панель занятий.
+     */
     private void selectDate(LocalDate date) {
         selectedDate = date;
         showLessonsForDate(date);
         buildCalendar(); // Перестроить для выделения
     }
 
+    /**
+     * Отображает список занятий для выбранной даты.
+     */
     private void showLessonsForDate(LocalDate date) {
         lessonsList.getChildren().clear();
 
@@ -1355,6 +1472,9 @@ public class CalendarController {
         }
     }
 
+    /**
+     * Создаёт карточку занятия для правой панели списка.
+     */
     private VBox createLessonCard(Lesson lesson) {
         VBox card = new VBox(5);
         card.getStyleClass().add("lesson-card");
@@ -1439,6 +1559,9 @@ public class CalendarController {
         return card;
     }
 
+    /**
+     * Применяет визуальные статусы занятия: текущее, прошедшее и т.д.
+     */
     private void applyLessonStateStyles(
         Lesson lesson,
         VBox card,
@@ -1479,6 +1602,9 @@ public class CalendarController {
         }
     }
 
+    /**
+     * Открывает диалог добавления нового занятия.
+     */
     private void showAddLessonDialog(LocalDate date) {
         if (allCalendarsMode) {
             showInfo("Добавление доступно только в конкретном календаре.");
@@ -1487,6 +1613,9 @@ public class CalendarController {
         showLessonDialog(null, date);
     }
 
+    /**
+     * Открывает диалог редактирования выбранного занятия.
+     */
     private void showEditLessonDialog(Lesson lesson) {
         if (allCalendarsMode) {
             showInfo("Редактирование доступно только в конкретном календаре.");
@@ -1495,6 +1624,9 @@ public class CalendarController {
         showLessonDialog(lesson, lesson.getDate());
     }
 
+    /**
+     * Открывает универсальный диалог создания/редактирования занятия.
+     */
     private void showLessonDialog(Lesson lesson, LocalDate date) {
         try {
             FXMLLoader loader = new FXMLLoader(
@@ -1537,6 +1669,9 @@ public class CalendarController {
         }
     }
 
+    /**
+     * Перестраивает календарь и обновляет список занятий для выбранной даты.
+     */
     private void refreshCalendar() {
         buildCalendar();
         if (selectedDate != null) {
@@ -1544,6 +1679,9 @@ public class CalendarController {
         }
     }
 
+    /**
+     * Загружает календари, директории и восстанавливает текущий выбор.
+     */
     private void loadCalendars() {
         if (scheduleUseCase == null) {
             return;
@@ -1575,6 +1713,9 @@ public class CalendarController {
         applyCalendarSelection();
     }
 
+    /**
+     * Пересобирает список директорий на основе доступных календарей.
+     */
     private void rebuildDirectoryOptions() {
         List<String> loaded = new ArrayList<>();
         loaded.add(DIR_ALL);
@@ -1592,6 +1733,9 @@ public class CalendarController {
         directories.setAll(loaded);
     }
 
+    /**
+     * Фильтрует список календарей по выбранной директории.
+     */
     private void applyDirectoryFilter() {
         String directory = directoryComboBox
             .getSelectionModel()
@@ -1633,6 +1777,9 @@ public class CalendarController {
         }
     }
 
+    /**
+     * Переключает активный календарь и обновляет состояние интерфейса.
+     */
     private void switchCalendar(AppCalendar calendar) {
         if (scheduleUseCase == null || calendar == null) {
             return;
@@ -1647,6 +1794,9 @@ public class CalendarController {
         updateHeaderStatus();
     }
 
+    /**
+     * Гарантирует корректную выбранную дату внутри текущего месяца.
+     */
     private void ensureSelectedDateForCurrentMonth() {
         if (selectedDate != null && YearMonth.from(selectedDate).equals(currentYearMonth)) {
             return;
@@ -1661,6 +1811,9 @@ public class CalendarController {
         selectedDate = currentYearMonth.atDay(1);
     }
 
+    /**
+     * Форматирует строку диапазона времени занятия с учётом длительности.
+     */
     private String formatLessonTimeRange(Lesson lesson) {
         LocalTime start = lesson.getTime();
         if (start == null) {
@@ -1677,6 +1830,9 @@ public class CalendarController {
         );
     }
 
+    /**
+     * Вычисляет время окончания занятия по стартовому слоту и длительности.
+     */
     private LocalTime calculateLessonEndTime(Lesson lesson) {
         if (lesson == null || lesson.getTime() == null) {
             return null;
@@ -1696,6 +1852,9 @@ public class CalendarController {
         return LESSON_END_BY_START.getOrDefault(endSlotStart, endSlotStart.plusMinutes(50));
     }
 
+    /**
+     * Возвращает индекс слота для времени начала занятия.
+     */
     private int lessonStartSlotIndex(LocalTime start) {
         for (int i = 0; i < LESSON_SLOT_START_TIMES_ORDERED.size(); i++) {
             if (LESSON_SLOT_START_TIMES_ORDERED.get(i).equals(start)) {
@@ -1705,6 +1864,9 @@ public class CalendarController {
         return -1;
     }
 
+    /**
+     * Синхронизирует активный календарь между use-case слоями.
+     */
     private void applyCalendarSelection() {
         if (allCalendarsMode) {
             return;
@@ -1715,6 +1877,9 @@ public class CalendarController {
         }
     }
 
+    /**
+     * Возвращает отображаемое имя календаря по его ID.
+     */
     private String resolveCalendarName(String calendarId) {
         if (calendarId == null || calendarId.isBlank()) {
             return "Неизвестно";
@@ -1727,14 +1892,23 @@ public class CalendarController {
         return calendarId;
     }
 
+    /**
+     * Показывает диалог ошибки.
+     */
     private void showError(String message) {
         UiAlerts.showError("Ошибка", message);
     }
 
+    /**
+     * Показывает информационный диалог.
+     */
     private void showInfo(String message) {
         UiAlerts.showInfo("Информация", message);
     }
 
+    /**
+     * Запускает таймер обновления даты/времени и статуса в шапке.
+     */
     private void startHeaderTicker() {
         if (headerTimeline != null) {
             headerTimeline.stop();
@@ -1747,6 +1921,9 @@ public class CalendarController {
         headerTimeline.play();
     }
 
+    /**
+     * Обновляет информацию о текущем/следующем занятии в шапке интерфейса.
+     */
     private void updateHeaderStatus() {
         LocalDate today = LocalDate.now();
         LocalTime now = LocalTime.now();
@@ -1818,6 +1995,9 @@ public class CalendarController {
         setLessonStatusStyle(STATUS_LESSON_NONE_CLASS);
     }
 
+    /**
+     * Переключает CSS-класс статуса для текста в шапке.
+     */
     private void setLessonStatusStyle(String statusClass) {
         currentLessonLabel
             .getStyleClass()
@@ -1831,6 +2011,9 @@ public class CalendarController {
         }
     }
 
+    /**
+     * Возвращает безопасное текстовое значение для отображения вместо null/пустого.
+     */
     private String safe(String value) {
         return value == null || value.isBlank() ? "-" : value;
     }

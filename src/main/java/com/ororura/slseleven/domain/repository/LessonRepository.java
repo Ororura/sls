@@ -24,6 +24,9 @@ public interface LessonRepository {
      */
     List<Lesson> findAll(String calendarId);
 
+    /**
+     * Метод findAllAcrossCalendars.
+     */
     List<Lesson> findAllAcrossCalendars();
 
     /**
@@ -31,6 +34,9 @@ public interface LessonRepository {
      */
     List<Lesson> findByDate(LocalDate date, String calendarId);
 
+    /**
+     * Метод findByDateAcrossCalendars.
+     */
     List<Lesson> findByDateAcrossCalendars(LocalDate date);
 
     /**
@@ -42,6 +48,9 @@ public interface LessonRepository {
         String calendarId
     );
 
+    /**
+     * Метод findByDateRangeAcrossCalendars.
+     */
     List<Lesson> findByDateRangeAcrossCalendars(
         LocalDate startDate,
         LocalDate endDate

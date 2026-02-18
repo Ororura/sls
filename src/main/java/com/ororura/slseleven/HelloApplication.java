@@ -24,9 +24,12 @@ import javafx.stage.Stage;
 
 public class HelloApplication extends Application {
 
+    /**
+     * Метод start.
+     */
     @Override
     public void start(Stage stage) throws IOException {
-        // Инициализация базы данных
+        // 1) Инициализация БД и схемы.
         Path dbDirectory = Path.of(
             System.getProperty("user.home"),
             ".slseleven"
@@ -40,7 +43,8 @@ public class HelloApplication extends Application {
             dbPath
         );
         SchemaInitializer.init(provider);
-        // Инициализация слоев архитектуры
+
+        // 2) Сборка слоёв приложения (Repository -> UseCase -> Controller).
         LessonRepository lessonRepository = new LessonRepositorySQLite(
             provider
         );
@@ -59,14 +63,14 @@ public class HelloApplication extends Application {
         );
         lessonUseCase.setCurrentCalendarId(scheduleUseCase.getCurrentCalendarId());
 
-        // Загрузка FXML и установка контроллера
+        // 3) Инициализация UI.
         FXMLLoader fxmlLoader = new FXMLLoader(
             HelloApplication.class.getResource("calendar-view.fxml")
         );
         Scene scene = new Scene(fxmlLoader.load(), 1200, 800);
         UiStyles.apply(scene);
 
-        // Передача зависимостей в контроллер
+        // 4) Внедрение use-case в главный контроллер.
         CalendarController controller = fxmlLoader.getController();
         controller.setLessonUseCase(lessonUseCase);
         controller.setScheduleUseCase(scheduleUseCase);

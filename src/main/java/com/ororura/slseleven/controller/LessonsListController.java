@@ -100,6 +100,9 @@ public class LessonsListController {
         "Преподаватель",
     };
 
+    /**
+     * Метод initialize.
+     */
     @FXML
     public void initialize() {
         filteredData = new FilteredList<>(data, lesson -> true);
@@ -129,6 +132,9 @@ public class LessonsListController {
         // Форматирование даты
         dateColumn.setCellFactory(col ->
             new TableCell<Lesson, LocalDate>() {
+                /**
+                 * Метод updateItem.
+                 */
                 @Override
                 protected void updateItem(LocalDate item, boolean empty) {
                     super.updateItem(item, empty);
@@ -144,6 +150,9 @@ public class LessonsListController {
         // Форматирование времени
         timeColumn.setCellFactory(col ->
             new TableCell<Lesson, LocalTime>() {
+                /**
+                 * Метод updateItem.
+                 */
                 @Override
                 protected void updateItem(LocalTime item, boolean empty) {
                     super.updateItem(item, empty);
@@ -161,15 +170,24 @@ public class LessonsListController {
         });
     }
 
+    /**
+     * Метод setLessonUseCase.
+     */
     public void setLessonUseCase(LessonUseCase lessonUseCase) {
         this.lessonUseCase = lessonUseCase;
         reload();
     }
 
+    /**
+     * Метод setScheduleUseCase.
+     */
     public void setScheduleUseCase(ScheduleUseCase scheduleUseCase) {
         this.scheduleUseCase = scheduleUseCase;
     }
 
+    /**
+     * Метод reload.
+     */
     private void reload() {
         lessonUseCase.archivePastLessons(LocalDate.now());
         List<Lesson> lessons = lessonUseCase.getAllLessons();
@@ -178,11 +196,17 @@ public class LessonsListController {
         updateCountLabel();
     }
 
+    /**
+     * Метод onRefresh.
+     */
     @FXML
     private void onRefresh() {
         reload();
     }
 
+    /**
+     * Метод onShowArchive.
+     */
     @FXML
     private void onShowArchive() {
         if (lessonUseCase == null) {
@@ -299,6 +323,9 @@ public class LessonsListController {
         dialog.showAndWait();
     }
 
+    /**
+     * Метод topicThemeKey.
+     */
     private String topicThemeKey(Lesson lesson) {
         return (
             safeValue(lesson.getTopic()).trim().toLowerCase(Locale.ROOT) +
@@ -307,6 +334,9 @@ public class LessonsListController {
         );
     }
 
+    /**
+     * Метод topicThemeLabel.
+     */
     private String topicThemeLabel(Lesson lesson) {
         return (
             safeValue(lesson.getTopic()).trim() +
@@ -315,11 +345,17 @@ public class LessonsListController {
         );
     }
 
+    /**
+     * Метод onSave.
+     */
     @FXML
     private void onSave() {
         showLessonDialog(null, LocalDate.now());
     }
 
+    /**
+     * Метод onDelete.
+     */
     @FXML
     private void onDelete() {
         List<Lesson> selected = List.copyOf(
@@ -352,6 +388,9 @@ public class LessonsListController {
             });
     }
 
+    /**
+     * Метод onReturnOneAutoToPool.
+     */
     @FXML
     private void onReturnOneAutoToPool() {
         Lesson selected = lessonTable.getSelectionModel().getSelectedItem();
@@ -393,6 +432,9 @@ public class LessonsListController {
         }
     }
 
+    /**
+     * Метод onReturnAllAutoToPool.
+     */
     @FXML
     private void onReturnAllAutoToPool() {
         if (scheduleUseCase == null) {
@@ -433,6 +475,9 @@ public class LessonsListController {
         }
     }
 
+    /**
+     * Метод onDeleteAll.
+     */
     @FXML
     private void onDeleteAll() {
         if (data.isEmpty()) {
@@ -452,6 +497,9 @@ public class LessonsListController {
         reload();
     }
 
+    /**
+     * Метод confirmDoubleDelete.
+     */
     private boolean confirmDoubleDelete(String headerText) {
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
         alert.setTitle("Подтверждение");
@@ -468,6 +516,9 @@ public class LessonsListController {
         return second.showAndWait().orElse(ButtonType.CANCEL) == ButtonType.OK;
     }
 
+    /**
+     * Метод onQuickImport.
+     */
     @FXML
     private void onQuickImport() {
         if (lessonUseCase == null) {
@@ -492,6 +543,9 @@ public class LessonsListController {
         showImportResult(result);
     }
 
+    /**
+     * Метод onImport.
+     */
     @FXML
     private void onImport() {
         if (lessonUseCase == null) {
@@ -561,6 +615,9 @@ public class LessonsListController {
         dialog.showAndWait();
     }
 
+    /**
+     * Метод onImportXlsx.
+     */
     @FXML
     private void onImportXlsx() {
         if (lessonUseCase == null) {
@@ -590,6 +647,9 @@ public class LessonsListController {
         showImportResult(result);
     }
 
+    /**
+     * Метод onExportXlsx.
+     */
     @FXML
     private void onExportXlsx() {
         if (data.isEmpty()) {
@@ -616,6 +676,9 @@ public class LessonsListController {
             return;
         }
 
+        /**
+         * Метод try.
+         */
         try (Workbook workbook = new XSSFWorkbook()) {
             Sheet sheet = workbook.createSheet("Занятия");
             Row header = sheet.createRow(0);
@@ -644,6 +707,9 @@ public class LessonsListController {
                     .setCellValue(safeValue(lesson.getInstructor()));
             }
 
+            /**
+             * Метод try.
+             */
             try (FileOutputStream out = new FileOutputStream(file)) {
                 workbook.write(out);
             }
@@ -664,6 +730,9 @@ public class LessonsListController {
         }
     }
 
+    /**
+     * Метод onQuickExport.
+     */
     @FXML
     private void onQuickExport() {
         if (data.isEmpty()) {
@@ -691,6 +760,9 @@ public class LessonsListController {
         alert.showAndWait();
     }
 
+    /**
+     * Метод onExport.
+     */
     @FXML
     private void onExport() {
         if (data.isEmpty()) {
@@ -716,6 +788,9 @@ public class LessonsListController {
         showExportDialog(format, exportText);
     }
 
+    /**
+     * Метод onWeeklyReport.
+     */
     @FXML
     private void onWeeklyReport() {
         if (lessonUseCase == null) {
@@ -754,6 +829,9 @@ public class LessonsListController {
             return;
         }
 
+        /**
+         * Метод try.
+         */
         try (Workbook workbook = new XSSFWorkbook()) {
             Sheet sheet = workbook.createSheet("Отчет по неделям");
 
@@ -799,6 +877,9 @@ public class LessonsListController {
                 sheet.setColumnWidth(i, Math.min(width + 800, 18000));
             }
 
+            /**
+             * Метод try.
+             */
             try (FileOutputStream out = new FileOutputStream(file)) {
                 workbook.write(out);
             }
@@ -819,6 +900,9 @@ public class LessonsListController {
         }
     }
 
+    /**
+     * Метод chooseExportFormat.
+     */
     private ExportFormat chooseExportFormat() {
         ChoiceDialog<ExportFormat> dialog = new ChoiceDialog<>(
             ExportFormat.TSV,
@@ -831,6 +915,9 @@ public class LessonsListController {
         return dialog.showAndWait().orElse(null);
     }
 
+    /**
+     * Метод showExportDialog.
+     */
     private void showExportDialog(ExportFormat format, String exportText) {
         Dialog<ButtonType> dialog = new Dialog<>();
         dialog.setTitle("Экспорт");
@@ -888,6 +975,9 @@ public class LessonsListController {
         dialog.showAndWait();
     }
 
+    /**
+     * Метод saveExportToFile.
+     */
     private void saveExportToFile(
         Window owner,
         ExportFormat format,
@@ -932,12 +1022,18 @@ public class LessonsListController {
         }
     }
 
+    /**
+     * Метод importLessonsFromText.
+     */
     private ImportResult importLessonsFromText(String text) {
         List<String> errors = new ArrayList<>();
         List<List<String>> rows = DelimitedText.parse(text, errors);
         return importLessonsFromRows(rows, errors);
     }
 
+    /**
+     * Метод importLessonsFromRows.
+     */
     private ImportResult importLessonsFromRows(
         List<List<String>> rows,
         List<String> errors
@@ -969,6 +1065,9 @@ public class LessonsListController {
                 }
 
                 if (
+                    /**
+                     * Метод isBlank.
+                     */
                     isBlank(timeRaw) ||
                     isBlank(topic) ||
                     isBlank(lessonName) ||
@@ -1014,6 +1113,9 @@ public class LessonsListController {
         return new ImportResult(added, errors);
     }
 
+    /**
+     * Метод showImportResult.
+     */
     private void showImportResult(ImportResult result) {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle("Импорт");
@@ -1035,6 +1137,9 @@ public class LessonsListController {
         alert.showAndWait();
     }
 
+    /**
+     * Метод parseDate.
+     */
     private LocalDate parseDate(String raw) {
         try {
             return LocalDate.parse(raw, dateFormatter);
@@ -1054,6 +1159,9 @@ public class LessonsListController {
         }
     }
 
+    /**
+     * Метод parseTime.
+     */
     private LocalTime parseTime(String raw) {
         try {
             return LocalTime.parse(raw, timeFormatter);
@@ -1066,22 +1174,37 @@ public class LessonsListController {
         }
     }
 
+    /**
+     * Метод isBlank.
+     */
     private boolean isBlank(String value) {
         return value == null || value.trim().isEmpty();
     }
 
+    /**
+     * Метод formatDateValue.
+     */
     private String formatDateValue(LocalDate date) {
         return date == null ? "" : dateFormatter.format(date);
     }
 
+    /**
+     * Метод formatTimeValue.
+     */
     private String formatTimeValue(LocalTime time) {
         return time == null ? "" : timeFormatter.format(time);
     }
 
+    /**
+     * Метод safeValue.
+     */
     private String safeValue(String value) {
         return value == null ? "" : value;
     }
 
+    /**
+     * Метод applySearchFilter.
+     */
     private void applySearchFilter(String query) {
         if (filteredData == null) {
             return;
@@ -1094,6 +1217,9 @@ public class LessonsListController {
         filteredData.setPredicate(lesson -> lessonMatchesQuery(lesson, normalized));
     }
 
+    /**
+     * Метод lessonMatchesQuery.
+     */
     private boolean lessonMatchesQuery(Lesson lesson, String query) {
         return (
             safeValue(lesson.getTopic()).toLowerCase(Locale.ROOT).contains(query) ||
@@ -1104,6 +1230,9 @@ public class LessonsListController {
         );
     }
 
+    /**
+     * Метод updateCountLabel.
+     */
     private void updateCountLabel() {
         if (filteredData == null) {
             countLabel.setText("Всего занятий: " + data.size());
@@ -1118,6 +1247,9 @@ public class LessonsListController {
         countLabel.setText("Показано: " + visible + " из " + total);
     }
 
+    /**
+     * Метод readXlsxRows.
+     */
     private List<List<String>> readXlsxRows(
         java.io.File file,
         List<String> errors
@@ -1169,6 +1301,9 @@ public class LessonsListController {
         }
     }
 
+    /**
+     * Метод loadDelimitedFromFile.
+     */
     private void loadDelimitedFromFile(Window owner, TextArea target) {
         FileChooser chooser = new FileChooser();
         chooser.setTitle("Загрузить TSV/CSV");
@@ -1201,6 +1336,9 @@ public class LessonsListController {
         }
     }
 
+    /**
+     * Метод showLessonDialog.
+     */
     private void showLessonDialog(Lesson lesson, LocalDate date) {
         try {
             FXMLLoader loader = new FXMLLoader(
@@ -1249,33 +1387,54 @@ public class LessonsListController {
         private final String delimiter;
         private final boolean csvQuote;
 
+        /**
+         * Метод ExportFormat.
+         */
         ExportFormat(String label, String delimiter, boolean csvQuote) {
             this.label = label;
             this.delimiter = delimiter;
             this.csvQuote = csvQuote;
         }
 
+        /**
+         * Метод getLabel.
+         */
         String getLabel() {
             return label;
         }
 
+        /**
+         * Метод getExtension.
+         */
         String getExtension() {
             return this == TSV ? ".tsv" : ".csv";
         }
 
+        /**
+         * Метод getExtensionLabel.
+         */
         String getExtensionLabel() {
             return this == TSV ? "TSV (*.tsv)" : "CSV (*.csv)";
         }
 
+        /**
+         * Метод buildDefaultFileName.
+         */
         String buildDefaultFileName() {
             return "schedule_export_" + LocalDate.now() + getExtension();
         }
 
+        /**
+         * Метод toString.
+         */
         @Override
         public String toString() {
             return label;
         }
 
+        /**
+         * Метод buildExport.
+         */
         String buildExport(
             List<Lesson> lessons,
             DateTimeFormatter dateFormatter,
@@ -1301,10 +1460,16 @@ public class LessonsListController {
             return joiner.toString();
         }
 
+        /**
+         * Метод buildHeader.
+         */
         private String buildHeader() {
             return formatRow(List.of(EXPORT_HEADERS));
         }
 
+        /**
+         * Метод formatRow.
+         */
         private String formatRow(List<String> values) {
             StringJoiner row = new StringJoiner(delimiter);
             for (String value : values) {
@@ -1317,10 +1482,16 @@ public class LessonsListController {
             return row.toString();
         }
 
+        /**
+         * Метод safe.
+         */
         private static String safe(String value) {
             return value == null ? "" : value;
         }
 
+        /**
+         * Метод formatDate.
+         */
         private static String formatDate(
             LocalDate date,
             DateTimeFormatter formatter
@@ -1328,6 +1499,9 @@ public class LessonsListController {
             return date == null ? "" : formatter.format(date);
         }
 
+        /**
+         * Метод formatTime.
+         */
         private static String formatTime(
             LocalTime time,
             DateTimeFormatter formatter
@@ -1335,6 +1509,9 @@ public class LessonsListController {
             return time == null ? "" : formatter.format(time);
         }
 
+        /**
+         * Метод escapeTsv.
+         */
         private String escapeTsv(String value) {
             return value
                 .replace('\t', ' ')
@@ -1342,6 +1519,9 @@ public class LessonsListController {
                 .replace('\r', ' ');
         }
 
+        /**
+         * Метод escapeCsv.
+         */
         private String escapeCsv(String value) {
             boolean needsQuotes =
                 value.indexOf('"') >= 0 ||
@@ -1353,6 +1533,9 @@ public class LessonsListController {
         }
     }
 
+    /**
+     * Метод buildWeeklyReportData.
+     */
     private WeeklyReportData buildWeeklyReportData(List<Lesson> sourceLessons) {
         List<Lesson> lessons = new ArrayList<>(sourceLessons);
         lessons.sort(
@@ -1432,6 +1615,9 @@ public class LessonsListController {
         private int archivedCount;
         private int activeCount;
 
+        /**
+         * Метод TopicSummary.
+         */
         private TopicSummary(String label) {
             this.label = label;
         }
@@ -1441,15 +1627,24 @@ public class LessonsListController {
         private final LocalDate start;
         private final LocalDate end;
 
+        /**
+         * Метод WeekRange.
+         */
         private WeekRange(LocalDate start, LocalDate end) {
             this.start = start;
             this.end = end;
         }
 
+        /**
+         * Метод contains.
+         */
         private boolean contains(LocalDate date) {
             return !date.isBefore(start) && !date.isAfter(end);
         }
 
+        /**
+         * Метод title.
+         */
         private String title() {
             YearMonth ym = YearMonth.from(start);
             int weekInMonth = ((start.getDayOfMonth() - 1) / 7) + 1;
@@ -1479,6 +1674,9 @@ public class LessonsListController {
         private final List<String> headers;
         private final List<List<String>> rows;
 
+        /**
+         * Метод WeeklyReportData.
+         */
         private WeeklyReportData(List<String> headers, List<List<String>> rows) {
             this.headers = headers;
             this.rows = rows;
@@ -1490,6 +1688,9 @@ public class LessonsListController {
         private final int added;
         private final List<String> errors;
 
+        /**
+         * Метод ImportResult.
+         */
         private ImportResult(int added, List<String> errors) {
             this.added = added;
             this.errors = errors;
@@ -1501,6 +1702,9 @@ public class LessonsListController {
         private final Map<String, Integer> indexByKey;
         private final int startRowIndex;
 
+        /**
+         * Метод HeaderMapping.
+         */
         private HeaderMapping(
             Map<String, Integer> indexByKey,
             int startRowIndex
@@ -1509,6 +1713,9 @@ public class LessonsListController {
             this.startRowIndex = startRowIndex;
         }
 
+        /**
+         * Метод get.
+         */
         private String get(List<String> row, String key) {
             Integer index = indexByKey.get(key);
             if (index == null || index < 0 || index >= row.size()) {
@@ -1517,6 +1724,9 @@ public class LessonsListController {
             return row.get(index);
         }
 
+        /**
+         * Метод forLessons.
+         */
         private static HeaderMapping forLessons(List<List<String>> rows) {
             if (rows.isEmpty()) {
                 return null;

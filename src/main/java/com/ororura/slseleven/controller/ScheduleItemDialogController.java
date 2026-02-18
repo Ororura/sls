@@ -36,6 +36,9 @@ public class ScheduleItemDialogController {
     private ScheduleItem item;
     private ScheduleUseCase scheduleUseCase;
 
+    /**
+     * Метод setItem.
+     */
     public void setItem(
         ScheduleItem item,
         ScheduleUseCase scheduleUseCase,
@@ -70,6 +73,9 @@ public class ScheduleItemDialogController {
         }
     }
 
+    /**
+     * Метод saveItem.
+     */
     private boolean saveItem() {
         try {
             if (scheduleUseCase == null) {

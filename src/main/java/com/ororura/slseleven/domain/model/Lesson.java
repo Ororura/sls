@@ -23,12 +23,18 @@ public class Lesson {
     private LocalDate date; // Дата занятия
     private int durationHours; // Длительность занятия в академических часах подряд
 
+    /**
+     * Метод Lesson.
+     */
     public Lesson() {
         this.id = java.util.UUID.randomUUID().toString();
         this.calendarId = DEFAULT_CALENDAR_ID;
         this.durationHours = 1;
     }
 
+    /**
+     * Метод Lesson.
+     */
     public Lesson(
         String topic,
         String lessonName,
@@ -51,6 +57,9 @@ public class Lesson {
         this.date = date;
     }
 
+    /**
+     * Метод Lesson.
+     */
     public Lesson(
         String topic,
         String lessonName,
@@ -65,6 +74,9 @@ public class Lesson {
         this.autoScheduled = autoScheduled;
     }
 
+    /**
+     * Метод Lesson.
+     */
     public Lesson(
         String topic,
         String lessonName,
@@ -81,98 +93,170 @@ public class Lesson {
         return id;
     }
 
+    /**
+     * Метод setId.
+     */
     public void setId(String id) {
         this.id = id;
     }
 
+    /**
+     * Метод getCalendarId.
+     */
     public String getCalendarId() {
         return calendarId;
     }
 
+    /**
+     * Метод setCalendarId.
+     */
     public void setCalendarId(String calendarId) {
         this.calendarId = calendarId;
     }
 
+    /**
+     * Метод getTopic.
+     */
     public String getTopic() {
         return topic;
     }
 
+    /**
+     * Метод setTopic.
+     */
     public void setTopic(String topic) {
         this.topic = topic;
     }
 
+    /**
+     * Метод getLessonName.
+     */
     public String getLessonName() {
         return lessonName;
     }
 
+    /**
+     * Метод setLessonName.
+     */
     public void setLessonName(String lessonName) {
         this.lessonName = lessonName;
     }
 
+    /**
+     * Метод getClassName.
+     */
     public String getClassName() {
         return className;
     }
 
+    /**
+     * Метод setClassName.
+     */
     public void setClassName(String className) {
         this.className = className;
     }
 
+    /**
+     * Метод isAutoScheduled.
+     */
     public boolean isAutoScheduled() {
         return autoScheduled;
     }
 
+    /**
+     * Метод setAutoScheduled.
+     */
     public void setAutoScheduled(boolean autoScheduled) {
         this.autoScheduled = autoScheduled;
     }
 
+    /**
+     * Метод isArchived.
+     */
     public boolean isArchived() {
         return archived;
     }
 
+    /**
+     * Метод setArchived.
+     */
     public void setArchived(boolean archived) {
         this.archived = archived;
     }
 
+    /**
+     * Метод getTime.
+     */
     public LocalTime getTime() {
         return time;
     }
 
+    /**
+     * Метод setTime.
+     */
     public void setTime(LocalTime time) {
         this.time = time;
     }
 
+    /**
+     * Метод getLocation.
+     */
     public String getLocation() {
         return location;
     }
 
+    /**
+     * Метод setLocation.
+     */
     public void setLocation(String location) {
         this.location = location;
     }
 
+    /**
+     * Метод getInstructor.
+     */
     public String getInstructor() {
         return instructor;
     }
 
+    /**
+     * Метод setInstructor.
+     */
     public void setInstructor(String instructor) {
         this.instructor = instructor;
     }
 
+    /**
+     * Метод getDate.
+     */
     public LocalDate getDate() {
         return date;
     }
 
+    /**
+     * Метод setDate.
+     */
     public void setDate(LocalDate date) {
         this.date = date;
     }
 
+    /**
+     * Метод getDurationHours.
+     */
     public int getDurationHours() {
         return durationHours;
     }
 
+    /**
+     * Метод setDurationHours.
+     */
     public void setDurationHours(int durationHours) {
         this.durationHours = durationHours;
     }
 
+    /**
+     * Метод equals.
+     */
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -181,11 +265,17 @@ public class Lesson {
         return Objects.equals(id, lesson.id);
     }
 
+    /**
+     * Метод hashCode.
+     */
     @Override
     public int hashCode() {
         return Objects.hash(id);
     }
 
+    /**
+     * Метод toString.
+     */
     @Override
     public String toString() {
         return String.format("%s - %s (%s)", time, lessonName, instructor);

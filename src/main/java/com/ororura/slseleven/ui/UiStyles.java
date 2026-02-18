@@ -15,8 +15,14 @@ public final class UiStyles {
     private static final String STYLESHEET =
         "/com/ororura/slseleven/styles.css";
 
+    /**
+     * Метод UiStyles.
+     */
     private UiStyles() {}
 
+    /**
+     * Метод apply.
+     */
     public static void apply(Scene scene) {
         if (scene == null) {
             return;
@@ -28,6 +34,9 @@ public final class UiStyles {
         applyAnimations(scene.getRoot());
     }
 
+    /**
+     * Метод apply.
+     */
     public static void apply(DialogPane pane) {
         if (pane == null) {
             return;
@@ -42,6 +51,9 @@ public final class UiStyles {
         applyAnimations(pane);
     }
 
+    /**
+     * Метод applyInteractiveAnimations.
+     */
     public static void applyInteractiveAnimations(Node node) {
         if (node == null) {
             return;
@@ -51,6 +63,9 @@ public final class UiStyles {
         }
 
         if (
+            /**
+             * Метод hasAnyStyleClass.
+             */
             hasAnyStyleClass(
                 node,
                 "button-primary",
@@ -69,6 +84,9 @@ public final class UiStyles {
         node.getProperties().put("ui-anim-applied", true);
     }
 
+    /**
+     * Метод applyAnimations.
+     */
     private static void applyAnimations(Parent root) {
         if (root == null) {
             return;
@@ -88,6 +106,9 @@ public final class UiStyles {
         walk(root);
     }
 
+    /**
+     * Метод walk.
+     */
     private static void walk(Parent parent) {
         for (Node node : parent.getChildrenUnmodifiable()) {
             applyInteractiveAnimations(node);
@@ -97,6 +118,9 @@ public final class UiStyles {
         }
     }
 
+    /**
+     * Метод attachHoverScale.
+     */
     private static void attachHoverScale(
         Node node,
         double scale,
@@ -126,6 +150,9 @@ public final class UiStyles {
         });
     }
 
+    /**
+     * Метод attachHoverLift.
+     */
     private static void attachHoverLift(
         Node node,
         double scale,
@@ -172,6 +199,9 @@ public final class UiStyles {
         });
     }
 
+    /**
+     * Метод hasAnyStyleClass.
+     */
     private static boolean hasAnyStyleClass(Node node, String... styles) {
         for (String style : styles) {
             if (node.getStyleClass().contains(style)) {

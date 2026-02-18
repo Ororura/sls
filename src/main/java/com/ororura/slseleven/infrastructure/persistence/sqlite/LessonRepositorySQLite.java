@@ -23,10 +23,16 @@ public class LessonRepositorySQLite implements LessonRepository {
     private static final String LESSON_SELECT =
         "SELECT " + LESSON_COLUMNS + " FROM lessons";
 
+    /**
+     * Метод LessonRepositorySQLite.
+     */
     public LessonRepositorySQLite(SQLiteConnectionProvider provider) {
         this.provider = provider;
     }
 
+    /**
+     * Метод save.
+     */
     @Override
     public void save(Lesson lesson) {
         String sql =
@@ -61,6 +67,9 @@ public class LessonRepositorySQLite implements LessonRepository {
         }
     }
 
+    /**
+     * Метод findById.
+     */
     @Override
     public Optional<Lesson> findById(String id) {
         String sql = LESSON_SELECT + " WHERE id = ?";
@@ -82,6 +91,9 @@ public class LessonRepositorySQLite implements LessonRepository {
         }
     }
 
+    /**
+     * Метод findAll.
+     */
     @Override
     public List<Lesson> findAll(String calendarId) {
         String sql =
@@ -103,6 +115,9 @@ public class LessonRepositorySQLite implements LessonRepository {
         return lessons;
     }
 
+    /**
+     * Метод findAllAcrossCalendars.
+     */
     @Override
     public List<Lesson> findAllAcrossCalendars() {
         String sql = LESSON_SELECT + " ORDER BY date, time";
@@ -121,6 +136,9 @@ public class LessonRepositorySQLite implements LessonRepository {
         return lessons;
     }
 
+    /**
+     * Метод findByDate.
+     */
     @Override
     public List<Lesson> findByDate(LocalDate date, String calendarId) {
         String sql =
@@ -144,6 +162,9 @@ public class LessonRepositorySQLite implements LessonRepository {
         return lessons;
     }
 
+    /**
+     * Метод findByDateAcrossCalendars.
+     */
     @Override
     public List<Lesson> findByDateAcrossCalendars(LocalDate date) {
         String sql = LESSON_SELECT + " WHERE date = ? ORDER BY time";
@@ -165,6 +186,9 @@ public class LessonRepositorySQLite implements LessonRepository {
         return lessons;
     }
 
+    /**
+     * Метод findByDateRange.
+     */
     @Override
     public List<Lesson> findByDateRange(
         LocalDate startDate,
@@ -197,6 +221,9 @@ public class LessonRepositorySQLite implements LessonRepository {
         return lessons;
     }
 
+    /**
+     * Метод findByDateRangeAcrossCalendars.
+     */
     @Override
     public List<Lesson> findByDateRangeAcrossCalendars(
         LocalDate startDate,
@@ -226,6 +253,9 @@ public class LessonRepositorySQLite implements LessonRepository {
         return lessons;
     }
 
+    /**
+     * Метод deleteById.
+     */
     @Override
     public void deleteById(String id) {
         String sql = "DELETE FROM lessons WHERE id = ?";
@@ -241,6 +271,9 @@ public class LessonRepositorySQLite implements LessonRepository {
         }
     }
 
+    /**
+     * Метод deleteAll.
+     */
     @Override
     public void deleteAll(String calendarId) {
         String sql = "DELETE FROM lessons WHERE calendar_id = ?";
@@ -256,6 +289,9 @@ public class LessonRepositorySQLite implements LessonRepository {
         }
     }
 
+    /**
+     * Метод existsById.
+     */
     @Override
     public boolean existsById(String id) {
         String sql = "SELECT 1 FROM lessons WHERE id = ? LIMIT 1";
@@ -275,6 +311,9 @@ public class LessonRepositorySQLite implements LessonRepository {
         }
     }
 
+    /**
+     * Метод mapResultSetToLesson.
+     */
     private Lesson mapResultSetToLesson(ResultSet rs) throws Exception {
         Lesson lesson = new Lesson();
         lesson.setId(rs.getString("id"));

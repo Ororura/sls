@@ -14,6 +14,9 @@ public final class UiFormatters {
     public static final DateTimeFormatter MONTH_YEAR_FORMATTER =
             DateTimeFormatter.ofPattern("LLLL yyyy", RU_LOCALE);
 
+    /**
+     * Метод UiFormatters.
+     */
     private UiFormatters() {
     }
 }

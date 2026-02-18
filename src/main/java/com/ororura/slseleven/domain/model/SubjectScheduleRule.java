@@ -16,6 +16,9 @@ public class SubjectScheduleRule {
     private final Set<String> noConsecutiveWithSubjects;
     private final Set<String> noSameDayWithSubjects;
 
+    /**
+     * Метод SubjectScheduleRule.
+     */
     public SubjectScheduleRule(
         String subject,
         Set<DayOfWeek> allowedDays,
@@ -24,6 +27,9 @@ public class SubjectScheduleRule {
         this(subject, allowedDays, exclusiveDays, 1, "");
     }
 
+    /**
+     * Метод SubjectScheduleRule.
+     */
     public SubjectScheduleRule(
         String subject,
         Set<DayOfWeek> allowedDays,
@@ -33,6 +39,9 @@ public class SubjectScheduleRule {
         this(subject, allowedDays, exclusiveDays, consecutiveHours, "");
     }
 
+    /**
+     * Метод SubjectScheduleRule.
+     */
     public SubjectScheduleRule(
         String subject,
         Set<DayOfWeek> allowedDays,
@@ -52,6 +61,9 @@ public class SubjectScheduleRule {
         );
     }
 
+    /**
+     * Метод SubjectScheduleRule.
+     */
     public SubjectScheduleRule(
         String subject,
         Set<DayOfWeek> allowedDays,
@@ -72,6 +84,9 @@ public class SubjectScheduleRule {
         );
     }
 
+    /**
+     * Метод SubjectScheduleRule.
+     */
     public SubjectScheduleRule(
         String subject,
         Set<DayOfWeek> allowedDays,
@@ -93,6 +108,9 @@ public class SubjectScheduleRule {
         );
     }
 
+    /**
+     * Метод SubjectScheduleRule.
+     */
     public SubjectScheduleRule(
         String subject,
         Set<DayOfWeek> allowedDays,
@@ -119,46 +137,79 @@ public class SubjectScheduleRule {
         this.noSameDayWithSubjects = normalizeSubjectSet(noSameDayWithSubjects);
     }
 
+    /**
+     * Метод getSubject.
+     */
     public String getSubject() {
         return subject;
     }
 
+    /**
+     * Метод getAllowedDays.
+     */
     public Set<DayOfWeek> getAllowedDays() {
         return EnumSet.copyOf(allowedDays);
     }
 
+    /**
+     * Метод getExclusiveDays.
+     */
     public Set<DayOfWeek> getExclusiveDays() {
         return EnumSet.copyOf(exclusiveDays);
     }
 
+    /**
+     * Метод isAllowedOn.
+     */
     public boolean isAllowedOn(DayOfWeek day) {
         return allowedDays.contains(day);
     }
 
+    /**
+     * Метод isExclusiveOn.
+     */
     public boolean isExclusiveOn(DayOfWeek day) {
         return exclusiveDays.contains(day);
     }
 
+    /**
+     * Метод getConsecutiveHours.
+     */
     public int getConsecutiveHours() {
         return consecutiveHours;
     }
 
+    /**
+     * Метод getMaxLessonsPerDay.
+     */
     public int getMaxLessonsPerDay() {
         return maxLessonsPerDay;
     }
 
+    /**
+     * Метод getFixedRoom.
+     */
     public String getFixedRoom() {
         return fixedRoom;
     }
 
+    /**
+     * Метод getNoConsecutiveWithSubjects.
+     */
     public Set<String> getNoConsecutiveWithSubjects() {
         return Collections.unmodifiableSet(noConsecutiveWithSubjects);
     }
 
+    /**
+     * Метод getNoSameDayWithSubjects.
+     */
     public Set<String> getNoSameDayWithSubjects() {
         return Collections.unmodifiableSet(noSameDayWithSubjects);
     }
 
+    /**
+     * Метод normalizeSubjectSet.
+     */
     private Set<String> normalizeSubjectSet(Set<String> values) {
         if (values == null || values.isEmpty()) {
             return Set.of();

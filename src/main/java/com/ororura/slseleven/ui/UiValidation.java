@@ -7,8 +7,14 @@ import java.util.function.Consumer;
 import javafx.scene.control.TextInputControl;
 
 public final class UiValidation {
+    /**
+     * Метод UiValidation.
+     */
     private UiValidation() {}
 
+    /**
+     * Метод requireNotBlank.
+     */
     public static boolean requireNotBlank(
         TextInputControl field,
         String message,
@@ -25,6 +31,9 @@ public final class UiValidation {
         return true;
     }
 
+    /**
+     * Метод parseTime.
+     */
     public static LocalTime parseTime(
         TextInputControl field,
         DateTimeFormatter formatter,
@@ -39,6 +48,9 @@ public final class UiValidation {
         }
     }
 
+    /**
+     * Метод parseInt.
+     */
     public static Integer parseInt(
         TextInputControl field,
         String invalidMessage,

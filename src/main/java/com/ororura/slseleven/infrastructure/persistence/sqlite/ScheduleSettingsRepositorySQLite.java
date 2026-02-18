@@ -26,6 +26,9 @@ public class ScheduleSettingsRepositorySQLite
 
     private final SQLiteConnectionProvider provider;
 
+    /**
+     * Метод ScheduleSettingsRepositorySQLite.
+     */
     public ScheduleSettingsRepositorySQLite(SQLiteConnectionProvider provider) {
         this.provider = provider;
     }
@@ -57,6 +60,9 @@ public class ScheduleSettingsRepositorySQLite
         return result;
     }
 
+    /**
+     * Метод saveMaxHours.
+     */
     @Override
     public void saveMaxHours(DayOfWeek dayOfWeek, int maxHours) {
         String sql =
@@ -75,6 +81,9 @@ public class ScheduleSettingsRepositorySQLite
         }
     }
 
+    /**
+     * Метод saveAll.
+     */
     @Override
     public void saveAll(Map<DayOfWeek, Integer> maxHoursByDay) {
         if (maxHoursByDay == null || maxHoursByDay.isEmpty()) {
@@ -100,6 +109,9 @@ public class ScheduleSettingsRepositorySQLite
         }
     }
 
+    /**
+     * Метод getSubjectRules.
+     */
     @Override
     public List<SubjectScheduleRule> getSubjectRules() {
         String sql =
@@ -149,6 +161,9 @@ public class ScheduleSettingsRepositorySQLite
         }
     }
 
+    /**
+     * Метод saveSubjectRules.
+     */
     @Override
     public void saveSubjectRules(List<SubjectScheduleRule> rules) {
         String deleteSql =
@@ -196,6 +211,9 @@ public class ScheduleSettingsRepositorySQLite
         }
     }
 
+    /**
+     * Метод getInstructors.
+     */
     @Override
     public List<InstructorProfile> getInstructors() {
         String sql =
@@ -222,6 +240,9 @@ public class ScheduleSettingsRepositorySQLite
         }
     }
 
+    /**
+     * Метод createInstructor.
+     */
     @Override
     public InstructorProfile createInstructor(String name) {
         if (name == null || name.trim().isEmpty()) {
@@ -251,6 +272,9 @@ public class ScheduleSettingsRepositorySQLite
         }
     }
 
+    /**
+     * Метод updateInstructor.
+     */
     @Override
     public void updateInstructor(InstructorProfile instructor) {
         if (
@@ -278,11 +302,17 @@ public class ScheduleSettingsRepositorySQLite
         }
     }
 
+    /**
+     * Метод deleteInstructor.
+     */
     @Override
     public void deleteInstructor(String instructorId) {
         if (instructorId == null || instructorId.isBlank()) {
             throw new IllegalArgumentException("ID преподавателя не может быть пустым");
         }
+        /**
+         * Метод try.
+         */
         try (Connection conn = provider.getConnection()) {
             conn.setAutoCommit(false);
             try (
@@ -313,6 +343,9 @@ public class ScheduleSettingsRepositorySQLite
         }
     }
 
+    /**
+     * Метод getRooms.
+     */
     @Override
     public List<RoomProfile> getRooms() {
         String sql = "SELECT id, name FROM rooms WHERE calendar_id = ? ORDER BY name";
@@ -332,6 +365,9 @@ public class ScheduleSettingsRepositorySQLite
         }
     }
 
+    /**
+     * Метод createRoom.
+     */
     @Override
     public RoomProfile createRoom(String name) {
         if (name == null || name.trim().isEmpty()) {
@@ -353,6 +389,9 @@ public class ScheduleSettingsRepositorySQLite
         }
     }
 
+    /**
+     * Метод renameRoom.
+     */
     @Override
     public void renameRoom(String roomId, String newName) {
         if (roomId == null || roomId.isBlank()) {
@@ -379,6 +418,9 @@ public class ScheduleSettingsRepositorySQLite
         }
     }
 
+    /**
+     * Метод deleteRoom.
+     */
     @Override
     public void deleteRoom(String roomId) {
         if (roomId == null || roomId.isBlank()) {
@@ -397,6 +439,9 @@ public class ScheduleSettingsRepositorySQLite
         }
     }
 
+    /**
+     * Метод getInstructorDuties.
+     */
     @Override
     public List<InstructorDuty> getInstructorDuties() {
         String sql =
@@ -422,6 +467,9 @@ public class ScheduleSettingsRepositorySQLite
         }
     }
 
+    /**
+     * Метод addInstructorDuty.
+     */
     @Override
     public void addInstructorDuty(String instructorId, LocalDate dutyDate) {
         if (
@@ -446,6 +494,9 @@ public class ScheduleSettingsRepositorySQLite
         }
     }
 
+    /**
+     * Метод removeInstructorDuty.
+     */
     @Override
     public void removeInstructorDuty(String instructorId, LocalDate dutyDate) {
         if (
@@ -470,6 +521,9 @@ public class ScheduleSettingsRepositorySQLite
         }
     }
 
+    /**
+     * Метод findAllCalendars.
+     */
     @Override
     public List<AppCalendar> findAllCalendars() {
         String sql = "SELECT id, name, directory_path FROM calendars ORDER BY directory_path, name";
@@ -494,11 +548,17 @@ public class ScheduleSettingsRepositorySQLite
         }
     }
 
+    /**
+     * Метод createCalendar.
+     */
     @Override
     public AppCalendar createCalendar(String name) {
         return createCalendar(name, "");
     }
 
+    /**
+     * Метод createCalendar.
+     */
     @Override
     public AppCalendar createCalendar(String name, String directoryPath) {
         if (name == null || name.trim().isEmpty()) {
@@ -508,6 +568,9 @@ public class ScheduleSettingsRepositorySQLite
         String id = UUID.randomUUID().toString();
         String normalizedName = name.trim();
         String normalizedDirectoryPath = normalizeDirectoryPath(directoryPath);
+        /**
+         * Метод try.
+         */
         try (Connection conn = provider.getConnection()) {
             conn.setAutoCommit(false);
             try (
@@ -552,6 +615,9 @@ public class ScheduleSettingsRepositorySQLite
         return new AppCalendar(id, normalizedName, normalizedDirectoryPath);
     }
 
+    /**
+     * Метод renameCalendar.
+     */
     @Override
     public void renameCalendar(String calendarId, String newName) {
         if (calendarId == null || calendarId.isBlank()) {
@@ -581,6 +647,9 @@ public class ScheduleSettingsRepositorySQLite
         }
     }
 
+    /**
+     * Метод moveCalendarToDirectory.
+     */
     @Override
     public void moveCalendarToDirectory(String calendarId, String directoryPath) {
         if (calendarId == null || calendarId.isBlank()) {
@@ -606,6 +675,9 @@ public class ScheduleSettingsRepositorySQLite
         }
     }
 
+    /**
+     * Метод getCalendarDirectories.
+     */
     @Override
     public List<String> getCalendarDirectories() {
         String sql =
@@ -625,6 +697,9 @@ public class ScheduleSettingsRepositorySQLite
         }
     }
 
+    /**
+     * Метод deleteCalendar.
+     */
     @Override
     public void deleteCalendar(String calendarId) {
         if (calendarId == null || calendarId.isBlank()) {
@@ -644,6 +719,9 @@ public class ScheduleSettingsRepositorySQLite
             .findFirst()
             .orElse(CalendarDefaults.DEFAULT_ID);
 
+        /**
+         * Метод try.
+         */
         try (Connection conn = provider.getConnection()) {
             conn.setAutoCommit(false);
             try {
@@ -673,6 +751,9 @@ public class ScheduleSettingsRepositorySQLite
         }
     }
 
+    /**
+     * Метод getActiveCalendarId.
+     */
     @Override
     public String getActiveCalendarId() {
         String sql = "SELECT value FROM app_settings WHERE key = 'active_calendar_id'";
@@ -696,6 +777,9 @@ public class ScheduleSettingsRepositorySQLite
         }
     }
 
+    /**
+     * Метод setActiveCalendarId.
+     */
     @Override
     public void setActiveCalendarId(String calendarId) {
         if (calendarId == null || calendarId.isBlank()) {
@@ -718,16 +802,28 @@ public class ScheduleSettingsRepositorySQLite
         }
     }
 
+    /**
+     * Метод deleteByCalendar.
+     */
     private void deleteByCalendar(Connection conn, String sql, String calendarId)
         throws Exception {
+        /**
+         * Метод try.
+         */
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, calendarId);
             ps.executeUpdate();
         }
     }
 
+    /**
+     * Метод setActiveCalendarIdInConnection.
+     */
     private void setActiveCalendarIdInConnection(Connection conn, String calendarId)
         throws Exception {
+        /**
+         * Метод try.
+         */
         try (
             PreparedStatement ps = conn.prepareStatement(
                 "INSERT OR REPLACE INTO app_settings (key, value) VALUES ('active_calendar_id', ?)"
@@ -738,6 +834,9 @@ public class ScheduleSettingsRepositorySQLite
         }
     }
 
+    /**
+     * Метод toMask.
+     */
     private int toMask(Iterable<DayOfWeek> days) {
         int mask = 0;
         for (DayOfWeek day : days) {
@@ -746,6 +845,9 @@ public class ScheduleSettingsRepositorySQLite
         return mask;
     }
 
+    /**
+     * Метод fromMask.
+     */
     private EnumSet<DayOfWeek> fromMask(int mask) {
         EnumSet<DayOfWeek> days = EnumSet.noneOf(DayOfWeek.class);
         for (DayOfWeek day : DayOfWeek.values()) {
@@ -757,6 +859,9 @@ public class ScheduleSettingsRepositorySQLite
         return days;
     }
 
+    /**
+     * Метод encodeSubjectList.
+     */
     private String encodeSubjectList(Set<String> subjects) {
         if (subjects == null || subjects.isEmpty()) {
             return "";
@@ -764,6 +869,9 @@ public class ScheduleSettingsRepositorySQLite
         return String.join("\n", subjects);
     }
 
+    /**
+     * Метод decodeSubjectList.
+     */
     private Set<String> decodeSubjectList(String value) {
         if (value == null || value.isBlank()) {
             return Set.of();
@@ -779,6 +887,9 @@ public class ScheduleSettingsRepositorySQLite
         return result.isEmpty() ? Set.of() : result;
     }
 
+    /**
+     * Метод normalizeDirectoryPath.
+     */
     private String normalizeDirectoryPath(String directoryPath) {
         if (directoryPath == null || directoryPath.isBlank()) {
             return "";
@@ -796,6 +907,9 @@ public class ScheduleSettingsRepositorySQLite
         return normalized;
     }
 
+    /**
+     * Метод isCalendarNameConflict.
+     */
     private boolean isCalendarNameConflict(Exception exception) {
         String message = exception == null ? "" : String.valueOf(exception.getMessage());
         return message.contains("UNIQUE constraint failed") &&

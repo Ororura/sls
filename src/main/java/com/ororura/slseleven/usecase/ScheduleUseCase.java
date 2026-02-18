@@ -29,6 +29,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+/**
+ * Бизнес-логика планировщика:
+ * - управление пулом предметов/часов для автораспределения;
+ * - генерация авто-занятий с учётом правил по предметам, кабинетам и преподавателям;
+ * - восстановление/сохранение снимков состояния расписания.
+ */
 public class ScheduleUseCase {
 
     private static final List<LocalTime> LESSON_SLOT_START_TIMES = List.of(
@@ -58,6 +64,9 @@ public class ScheduleUseCase {
         return indexByTime;
     }
 
+    /**
+     * Создаёт use-case планировщика и инициализирует активный календарь из настроек.
+     */
     public ScheduleUseCase(
         LessonRepository lessonRepository,
         ScheduleItemRepository scheduleItemRepository,
@@ -71,6 +80,9 @@ public class ScheduleUseCase {
         this.currentCalendarId = scheduleSettingsRepository.getActiveCalendarId();
     }
 
+    /**
+     * Устанавливает активный календарь и синхронизирует его в хранилище настроек.
+     */
     public void setCurrentCalendarId(String calendarId) {
         if (calendarId == null || calendarId.isBlank()) {
             throw new IllegalArgumentException("ID календаря не может быть пустым");
@@ -79,26 +91,44 @@ public class ScheduleUseCase {
         this.currentCalendarId = calendarId;
     }
 
+    /**
+     * Возвращает ID активного календаря.
+     */
     public String getCurrentCalendarId() {
         return currentCalendarId;
     }
 
+    /**
+     * Возвращает список всех календарей.
+     */
     public List<AppCalendar> getCalendars() {
         return scheduleSettingsRepository.findAllCalendars();
     }
 
+    /**
+     * Создаёт новый календарь.
+     */
     public AppCalendar createCalendar(String name) {
         return scheduleSettingsRepository.createCalendar(name);
     }
 
+    /**
+     * Создаёт новый календарь.
+     */
     public AppCalendar createCalendar(String name, String directoryPath) {
         return scheduleSettingsRepository.createCalendar(name, directoryPath);
     }
 
+    /**
+     * Переименовывает календарь по ID.
+     */
     public void renameCalendar(String calendarId, String newName) {
         scheduleSettingsRepository.renameCalendar(calendarId, newName);
     }
 
+    /**
+     * Перемещает календарь в указанную директорию.
+     */
     public void moveCalendarToDirectory(String calendarId, String directoryPath) {
         scheduleSettingsRepository.moveCalendarToDirectory(
             calendarId,
@@ -106,19 +136,31 @@ public class ScheduleUseCase {
         );
     }
 
+    /**
+     * Возвращает список доступных директорий календарей.
+     */
     public List<String> getCalendarDirectories() {
         return scheduleSettingsRepository.getCalendarDirectories();
     }
 
+    /**
+     * Удаляет календарь и переключает активный календарь на доступный.
+     */
     public void deleteCalendar(String calendarId) {
         scheduleSettingsRepository.deleteCalendar(calendarId);
         this.currentCalendarId = scheduleSettingsRepository.getActiveCalendarId();
     }
 
+    /**
+     * Возвращает пул нераспределённых элементов расписания активного календаря.
+     */
     public List<ScheduleItem> getAllItems() {
         return scheduleItemRepository.findAll(currentCalendarId);
     }
 
+    /**
+     * Добавляет элемент в пул распределения и синхронизирует правила подрядности по предмету.
+     */
     public void createItem(ScheduleItem item) {
         validateItem(item);
         item.setCalendarId(currentCalendarId);
@@ -126,6 +168,9 @@ public class ScheduleUseCase {
         syncSubjectConsecutiveHours(item.getTopic(), item.getConsecutiveHours(), item.getId());
     }
 
+    /**
+     * Обновляет элемент пула распределения с проверкой принадлежности активному календарю.
+     */
     public void updateItem(ScheduleItem item) {
         if (item == null || item.getId() == null) {
             throw new IllegalArgumentException(
@@ -149,6 +194,9 @@ public class ScheduleUseCase {
         syncSubjectConsecutiveHours(item.getTopic(), item.getConsecutiveHours(), item.getId());
     }
 
+    /**
+     * Удаляет элемент пула распределения по ID.
+     */
     public void deleteItem(String id) {
         if (id == null || id.trim().isEmpty()) {
             throw new IllegalArgumentException(
@@ -164,6 +212,9 @@ public class ScheduleUseCase {
         scheduleItemRepository.deleteById(id);
     }
 
+    /**
+     * Очищает весь пул распределения активного календаря.
+     */
     public void deleteAllItems() {
         scheduleItemRepository.deleteAll(currentCalendarId);
     }
@@ -172,10 +223,16 @@ public class ScheduleUseCase {
         return scheduleSettingsRepository.getMaxHoursByDay();
     }
 
+    /**
+     * Возвращает правила распределения по предметам.
+     */
     public List<SubjectScheduleRule> getSubjectRules() {
         return scheduleSettingsRepository.getSubjectRules();
     }
 
+    /**
+     * Сохраняет правила предметов и синхронизирует подрядные часы у элементов пула.
+     */
     public void saveSubjectRules(List<SubjectScheduleRule> rules) {
         scheduleSettingsRepository.saveSubjectRules(rules);
         if (rules == null || rules.isEmpty()) {
@@ -209,50 +266,86 @@ public class ScheduleUseCase {
         }
     }
 
+    /**
+     * Возвращает список преподавателей активного календаря.
+     */
     public List<InstructorProfile> getInstructors() {
         return scheduleSettingsRepository.getInstructors();
     }
 
+    /**
+     * Создаёт нового преподавателя.
+     */
     public InstructorProfile createInstructor(String name) {
         return scheduleSettingsRepository.createInstructor(name);
     }
 
+    /**
+     * Обновляет карточку преподавателя.
+     */
     public void updateInstructor(InstructorProfile instructor) {
         scheduleSettingsRepository.updateInstructor(instructor);
     }
 
+    /**
+     * Удаляет преподавателя по ID.
+     */
     public void deleteInstructor(String instructorId) {
         scheduleSettingsRepository.deleteInstructor(instructorId);
     }
 
+    /**
+     * Возвращает список кабинетов активного календаря.
+     */
     public List<RoomProfile> getRooms() {
         return scheduleSettingsRepository.getRooms();
     }
 
+    /**
+     * Создаёт новый кабинет.
+     */
     public RoomProfile createRoom(String name) {
         return scheduleSettingsRepository.createRoom(name);
     }
 
+    /**
+     * Переименовывает кабинет по ID.
+     */
     public void renameRoom(String roomId, String newName) {
         scheduleSettingsRepository.renameRoom(roomId, newName);
     }
 
+    /**
+     * Удаляет кабинет по ID.
+     */
     public void deleteRoom(String roomId) {
         scheduleSettingsRepository.deleteRoom(roomId);
     }
 
+    /**
+     * Возвращает список дежурств преподавателей.
+     */
     public List<InstructorDuty> getInstructorDuties() {
         return scheduleSettingsRepository.getInstructorDuties();
     }
 
+    /**
+     * Добавляет дату дежурства преподавателя.
+     */
     public void addInstructorDuty(String instructorId, LocalDate dutyDate) {
         scheduleSettingsRepository.addInstructorDuty(instructorId, dutyDate);
     }
 
+    /**
+     * Удаляет дату дежурства преподавателя.
+     */
     public void removeInstructorDuty(String instructorId, LocalDate dutyDate) {
         scheduleSettingsRepository.removeInstructorDuty(instructorId, dutyDate);
     }
 
+    /**
+     * Возвращает список снимков истории расписания для UI.
+     */
     public List<HistoryEntry> getHistoryEntries() {
         List<ScheduleHistorySnapshot> snapshots = scheduleHistoryRepository.findAll(currentCalendarId);
         List<HistoryEntry> entries = new ArrayList<>();
@@ -268,6 +361,9 @@ public class ScheduleUseCase {
         return entries;
     }
 
+    /**
+     * Создаёт снимок текущего состояния занятий и пула распределения.
+     */
     public boolean createHistorySnapshot(String label) {
         List<Lesson> lessons = lessonRepository.findAll(currentCalendarId);
         List<ScheduleItem> items = scheduleItemRepository.findAll(currentCalendarId);
@@ -288,6 +384,9 @@ public class ScheduleUseCase {
         return true;
     }
 
+    /**
+     * Восстанавливает занятия и пул из выбранного снимка истории.
+     */
     public boolean restoreFromHistory(String historyId) {
         if (historyId == null || historyId.isBlank()) {
             throw new IllegalArgumentException("ID снимка не может быть пустым");
@@ -318,15 +417,24 @@ public class ScheduleUseCase {
         return true;
     }
 
+    /**
+     * Сохраняет лимиты часов по дням недели.
+     */
     public void saveMaxHoursByDay(Map<DayOfWeek, Integer> maxHoursByDay) {
         scheduleSettingsRepository.saveAll(maxHoursByDay);
     }
 
+    /**
+     * Подсчитывает количество занятий в заданном диапазоне дат.
+     */
     public int countLessonsInRange(LocalDate startDate, LocalDate endDate) {
         validateDateRange(startDate, endDate);
         return findLessonsInRange(startDate, endDate).size();
     }
 
+    /**
+     * Возвращает все архивные занятия в пул распределения с агрегацией часов.
+     */
     public int moveArchivedLessonsToPool() {
         List<Lesson> allLessons = lessonRepository.findAll(currentCalendarId);
         Map<ScheduleKey, Integer> aggregatedHours = new LinkedHashMap<>();
@@ -400,6 +508,9 @@ public class ScheduleUseCase {
         return archivedLessonIds.size();
     }
 
+    /**
+     * Возвращает одно архивное занятие в пул распределения.
+     */
     public void moveArchivedLessonToPool(String lessonId) {
         if (lessonId == null || lessonId.isBlank()) {
             throw new IllegalArgumentException("ID занятия не может быть пустым");
@@ -416,6 +527,9 @@ public class ScheduleUseCase {
         moveLessonToPoolAndDelete(lesson);
     }
 
+    /**
+     * Возвращает одно авто-созданное занятие обратно в пул распределения.
+     */
     public void moveAutoScheduledLessonToPool(String lessonId) {
         if (lessonId == null || lessonId.isBlank()) {
             throw new IllegalArgumentException("ID занятия не может быть пустым");
@@ -437,6 +551,9 @@ public class ScheduleUseCase {
         moveLessonToPoolAndDelete(lesson);
     }
 
+    /**
+     * Возвращает все авто-созданные занятия в пул и удаляет их из расписания.
+     */
     public int moveAllAutoScheduledLessonsToPool() {
         List<Lesson> allLessons = lessonRepository.findAll(currentCalendarId);
         int moved = 0;
@@ -450,6 +567,9 @@ public class ScheduleUseCase {
         return moved;
     }
 
+    /**
+     * Служебно переносит занятие в пул распределения и удаляет исходную запись.
+     */
     private void moveLessonToPoolAndDelete(Lesson lesson) {
         if (lesson == null) {
             return;
@@ -490,6 +610,9 @@ public class ScheduleUseCase {
         lessonRepository.deleteById(lesson.getId());
     }
 
+    /**
+     * Подсчитывает авто-созданные занятия в диапазоне дат.
+     */
     public int countAutoScheduledLessonsInRange(
         LocalDate startDate,
         LocalDate endDate
@@ -498,6 +621,9 @@ public class ScheduleUseCase {
         return findAutoScheduledLessonsInRange(startDate, endDate).size();
     }
 
+    /**
+     * Подсчитывает авто-занятия, которые будут затронуты перераспределением.
+     */
     public int countAutoScheduledLessonsForReschedule(
         LocalDate startDate,
         LocalDate endDate
@@ -506,6 +632,9 @@ public class ScheduleUseCase {
         return findAutoScheduledLessonsForReschedule(startDate, endDate).size();
     }
 
+    /**
+     * Пересобирает пул из текущих данных и выполняет новое автораспределение.
+     */
     public AutoScheduleResult reschedule(LocalDate startDate, LocalDate endDate) {
         validateDateRange(startDate, endDate);
 
@@ -584,10 +713,16 @@ public class ScheduleUseCase {
         return autoSchedule(startDate, endDate);
     }
 
+    /**
+     * Выполняет автоматическое распределение часов в расписание по ограничениям и слотам.
+     */
     public AutoScheduleResult autoSchedule(LocalDate startDate) {
         return autoSchedule(startDate, null);
     }
 
+    /**
+     * Выполняет автоматическое распределение часов в расписание по ограничениям и слотам.
+     */
     public AutoScheduleResult autoSchedule(
         LocalDate startDate,
         LocalDate endDate
@@ -645,6 +780,8 @@ public class ScheduleUseCase {
         int candidateStartIndex = 0;
         int daysWithoutProgress = 0;
 
+        // Главный цикл: идём по дням от startDate до endDate (если задан),
+        // пока есть часы в пуле и в расписании остаются доступные слоты.
         while (
             totalHours > 0 &&
             (endDate == null || !currentDate.isAfter(endDate))
@@ -708,6 +845,7 @@ public class ScheduleUseCase {
 
             int slotOffset = 0;
             int createdToday = 0;
+            // Внутренний цикл: пробуем заполнить каждый слот текущего дня.
             while (
                 availableSlots > 0 &&
                 totalHours > 0 &&
@@ -878,10 +1016,16 @@ public class ScheduleUseCase {
         return map;
     }
 
+    /**
+     * Нормализует название предмета для сопоставления и сравнений.
+     */
     private String normalizeSubject(String value) {
         return value == null ? "" : value.trim().toLowerCase();
     }
 
+    /**
+     * Подбирает лучший валидный элемент для текущего слота с приоритетом чередования предметов.
+     */
     private AssignmentCandidate findNextSchedulableItem(
         List<ScheduleItem> items,
         int[] remainingByItem,
@@ -912,6 +1056,10 @@ public class ScheduleUseCase {
         AssignmentCandidate preferTwoHourMix = null;
         AssignmentCandidate fallbackCandidate = null;
 
+        // Приоритет выбора:
+        // 1) другой предмет (чтобы не ставить одинаковые подряд),
+        // 2) тот же предмет, но с ограничением непрерывной серии до 2 часов,
+        // 3) fallback на любого валидного кандидата, чтобы не остановить планирование.
         for (int offset = 0; offset < items.size(); offset++) {
             int i = (normalizedStartIndex + offset) % items.size();
             if (remainingByItem[i] <= 0) {
@@ -1042,6 +1190,9 @@ public class ScheduleUseCase {
         return fallbackCandidate;
     }
 
+    /**
+     * Формирует кандидата на назначение, включая проверку доступности преподавателя.
+     */
     private AssignmentCandidate buildCandidate(
         int itemIndex,
         int blockHours,
@@ -1074,6 +1225,9 @@ public class ScheduleUseCase {
         );
     }
 
+    /**
+     * Выбирает кабинет по правилу предмета или возвращает кабинет по умолчанию.
+     */
     private String resolveRoomForSubject(
         SubjectScheduleRule rule,
         List<RoomProfile> rooms
@@ -1092,6 +1246,9 @@ public class ScheduleUseCase {
         return rooms.get(0).getName();
     }
 
+    /**
+     * Проверяет конфликты предмета с уже размещёнными предметами текущего дня.
+     */
     private boolean violatesSameDayCompatibility(
         String candidateSubject,
         Set<String> subjectsScheduledToday,
@@ -1119,6 +1276,9 @@ public class ScheduleUseCase {
         return false;
     }
 
+    /**
+     * Проверяет, превышен ли лимит числа занятий предмета за день.
+     */
     private boolean exceedsDailyLessonsLimit(
         String candidateSubject,
         SubjectScheduleRule rule,
@@ -1142,6 +1302,9 @@ public class ScheduleUseCase {
         return currentCount >= maxLessonsPerDay;
     }
 
+    /**
+     * Проверяет конфликт предмета с соседними слотами слева и справа.
+     */
     private boolean violatesAdjacentCompatibility(
         String candidateSubject,
         int startSlotIndex,
@@ -1149,6 +1312,8 @@ public class ScheduleUseCase {
         Map<Integer, String> subjectBySlotIndex,
         Map<String, SubjectScheduleRule> rulesBySubject
     ) {
+        // Проверяем конфликт только с соседями блока:
+        // слева от начала и справа от конца.
         if (
             candidateSubject == null ||
             candidateSubject.isBlank() ||
@@ -1177,6 +1342,9 @@ public class ScheduleUseCase {
         );
     }
 
+    /**
+     * Проверяет взаимный запрет предметов на размещение подряд.
+     */
     private boolean hasMutualConflictForConsecutive(
         String subjectA,
         String subjectB,
@@ -1191,6 +1359,9 @@ public class ScheduleUseCase {
         (ruleB != null && ruleB.getNoConsecutiveWithSubjects().contains(subjectA));
     }
 
+    /**
+     * Проверяет взаимный запрет предметов на размещение в один день.
+     */
     private boolean hasMutualConflictForSameDay(
         String subjectA,
         String subjectB,
@@ -1205,6 +1376,9 @@ public class ScheduleUseCase {
         (ruleB != null && ruleB.getNoSameDayWithSubjects().contains(subjectA));
     }
 
+    /**
+     * Помечает занятые слоты соответствующим предметом для проверок совместимости.
+     */
     private void markSubjectBlock(
         Map<Integer, String> subjectBySlotIndex,
         int startSlotIndex,
@@ -1223,6 +1397,9 @@ public class ScheduleUseCase {
         }
     }
 
+    /**
+     * Выбирает первого подходящего преподавателя с учётом ограничений дня и дежурств.
+     */
     private String pickAvailableInstructor(
         LocalDate date,
         DayOfWeek day,
@@ -1304,6 +1481,9 @@ public class ScheduleUseCase {
         return result;
     }
 
+    /**
+     * Проверяет, что блок часов помещается в свободные слоты без пересечений.
+     */
     private boolean canPlaceConsecutiveBlock(
         Set<Integer> occupiedSlotIndexes,
         int startSlotIndex,
@@ -1324,6 +1504,9 @@ public class ScheduleUseCase {
         return true;
     }
 
+    /**
+     * Помечает слоты занятыми после размещения блока занятия.
+     */
     private void markConsecutiveBlockOccupied(
         Set<Integer> occupiedSlotIndexes,
         int startSlotIndex,
@@ -1334,6 +1517,9 @@ public class ScheduleUseCase {
         }
     }
 
+    /**
+     * Возвращает предметы, эксклюзивно разрешённые для выбранного дня.
+     */
     private Set<String> getExclusiveSubjectsForDay(
         DayOfWeek day,
         Map<String, SubjectScheduleRule> rulesBySubject
@@ -1347,6 +1533,9 @@ public class ScheduleUseCase {
         return subjects;
     }
 
+    /**
+     * Проверяет корректность входного диапазона дат.
+     */
     private void validateDateRange(LocalDate startDate, LocalDate endDate) {
         if (startDate == null) {
             throw new IllegalArgumentException(
@@ -1360,6 +1549,9 @@ public class ScheduleUseCase {
         }
     }
 
+    /**
+     * Возвращает занятия в диапазоне или от даты начала при открытом конце.
+     */
     private List<Lesson> findLessonsInRange(LocalDate startDate, LocalDate endDate) {
         if (endDate != null) {
             return lessonRepository.findByDateRange(
@@ -1378,6 +1570,9 @@ public class ScheduleUseCase {
         return filtered;
     }
 
+    /**
+     * Возвращает авто-созданные и неархивные занятия в диапазоне.
+     */
     private List<Lesson> findAutoScheduledLessonsInRange(
         LocalDate startDate,
         LocalDate endDate
@@ -1392,6 +1587,9 @@ public class ScheduleUseCase {
         return autoLessons;
     }
 
+    /**
+     * Возвращает авто-занятия, которые должны участвовать в перераспределении.
+     */
     private List<Lesson> findAutoScheduledLessonsForReschedule(
         LocalDate startDate,
         LocalDate endDate
@@ -1417,6 +1615,9 @@ public class ScheduleUseCase {
         return autoLessons;
     }
 
+    /**
+     * Проверяет корректность элемента пула распределения перед сохранением.
+     */
     private void validateItem(ScheduleItem item) {
         if (item == null) {
             throw new IllegalArgumentException(
@@ -1455,6 +1656,9 @@ public class ScheduleUseCase {
         private final String location;
         private final String instructor;
 
+        /**
+     * Создаёт ключ агрегации для объединения однотипных занятий и элементов пула.
+     */
         private ScheduleKey(
             String topic,
             String lessonName,
@@ -1469,6 +1673,9 @@ public class ScheduleUseCase {
             this.instructor = instructor;
         }
 
+        /**
+     * Сравнивает ключи агрегации по всем полям.
+     */
         @Override
         public boolean equals(Object obj) {
             if (this == obj) {
@@ -1485,6 +1692,9 @@ public class ScheduleUseCase {
             instructor.equals(other.instructor);
         }
 
+        /**
+     * Возвращает хэш ключа агрегации для map/set структур.
+     */
         @Override
         public int hashCode() {
             int result = topic.hashCode();
@@ -1502,6 +1712,9 @@ public class ScheduleUseCase {
         private final String instructorName;
         private final String roomName;
 
+        /**
+     * Создаёт структуру кандидата на размещение в слот.
+     */
         private AssignmentCandidate(
             int itemIndex,
             int blockHours,
@@ -1520,30 +1733,48 @@ public class ScheduleUseCase {
         private final LocalDateTime createdAt;
         private final String label;
 
+        /**
+     * Создаёт DTO записи истории для отображения снимков в интерфейсе.
+     */
         public HistoryEntry(String id, LocalDateTime createdAt, String label) {
             this.id = id;
             this.createdAt = createdAt;
             this.label = label;
         }
 
+        /**
+     * Возвращает идентификатор записи истории.
+     */
         public String getId() {
             return id;
         }
 
+        /**
+     * Возвращает время создания записи истории.
+     */
         public LocalDateTime getCreatedAt() {
             return createdAt;
         }
 
+        /**
+     * Возвращает подпись записи истории.
+     */
         public String getLabel() {
             return label;
         }
 
+        /**
+     * Возвращает человекочитаемое представление записи истории.
+     */
         @Override
         public String toString() {
             return createdAt + " — " + label;
         }
     }
 
+    /**
+     * Сериализует список занятий в табличный текст для сохранения в истории.
+     */
     private String serializeLessons(List<Lesson> lessons) {
         StringBuilder sb = new StringBuilder();
         for (Lesson lesson : lessons) {
@@ -1574,6 +1805,9 @@ public class ScheduleUseCase {
         return sb.toString();
     }
 
+    /**
+     * Сериализует пул элементов расписания в текстовый формат истории.
+     */
     private String serializeScheduleItems(List<ScheduleItem> items) {
         StringBuilder sb = new StringBuilder();
         for (ScheduleItem item : items) {
@@ -1600,6 +1834,9 @@ public class ScheduleUseCase {
         return sb.toString();
     }
 
+    /**
+     * Восстанавливает занятия из сериализованного текстового представления.
+     */
     private List<Lesson> deserializeLessons(String blob) {
         List<Lesson> lessons = new ArrayList<>();
         if (blob == null || blob.isBlank()) {
@@ -1639,6 +1876,9 @@ public class ScheduleUseCase {
         return lessons;
     }
 
+    /**
+     * Восстанавливает элементы пула из сериализованного текста.
+     */
     private List<ScheduleItem> deserializeScheduleItems(String blob) {
         List<ScheduleItem> items = new ArrayList<>();
         if (blob == null || blob.isBlank()) {
@@ -1675,6 +1915,9 @@ public class ScheduleUseCase {
         return items;
     }
 
+    /**
+     * Кодирует значение в Base64 для безопасного хранения в snapshot-строках.
+     */
     private String encode(String value) {
         String safe = value == null ? "" : value;
         return Base64
@@ -1682,6 +1925,9 @@ public class ScheduleUseCase {
             .encodeToString(safe.getBytes(StandardCharsets.UTF_8));
     }
 
+    /**
+     * Декодирует Base64-значение, поддерживая совместимость со старыми форматами.
+     */
     private String decode(String value) {
         if (value == null || value.isBlank()) {
             return "";
@@ -1692,6 +1938,9 @@ public class ScheduleUseCase {
         );
     }
 
+    /**
+     * Формирует ключ агрегации из занятия.
+     */
     private ScheduleKey scheduleKeyOfLesson(Lesson lesson) {
         return new ScheduleKey(
             safeText(lesson.getTopic()),
@@ -1702,6 +1951,9 @@ public class ScheduleUseCase {
         );
     }
 
+    /**
+     * Формирует ключ агрегации из элемента пула.
+     */
     private ScheduleKey scheduleKeyOfItem(ScheduleItem item) {
         return new ScheduleKey(
             safeText(item.getTopic()),
@@ -1712,10 +1964,16 @@ public class ScheduleUseCase {
         );
     }
 
+    /**
+     * Нормализует null-строку к пустому тексту.
+     */
     private String safeText(String value) {
         return value == null ? "" : value;
     }
 
+    /**
+     * Находит целевое значение подрядных часов для предмета из правил и пула.
+     */
     private int resolveSubjectConsecutiveHours(String topic) {
         String subjectKey = normalizeSubject(topic);
         int result = 1;
@@ -1728,6 +1986,9 @@ public class ScheduleUseCase {
         return result;
     }
 
+    /**
+     * Синхронизирует подрядные часы у всех элементов одного предмета.
+     */
     private void syncSubjectConsecutiveHours(
         String topic,
         int consecutiveHours,

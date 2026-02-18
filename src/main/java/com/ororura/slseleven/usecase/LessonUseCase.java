@@ -16,10 +16,16 @@ public class LessonUseCase {
     private final LessonRepository lessonRepository;
     private String currentCalendarId = CalendarDefaults.DEFAULT_ID;
 
+    /**
+     * Создаёт use-case для операций с занятиями и сохраняет ссылку на репозиторий.
+     */
     public LessonUseCase(LessonRepository lessonRepository) {
         this.lessonRepository = lessonRepository;
     }
 
+    /**
+     * Устанавливает активный календарь, в контексте которого выполняются все операции.
+     */
     public void setCurrentCalendarId(String calendarId) {
         if (calendarId == null || calendarId.isBlank()) {
             throw new IllegalArgumentException("ID календаря не может быть пустым");
@@ -89,6 +95,9 @@ public class LessonUseCase {
         lessonRepository.deleteAll(currentCalendarId);
     }
 
+    /**
+     * Удаляет одно занятие, созданное автораспределением.
+     */
     public void deleteAutoScheduledLesson(String lessonId) {
         if (lessonId == null || lessonId.trim().isEmpty()) {
             throw new IllegalArgumentException(
@@ -115,6 +124,9 @@ public class LessonUseCase {
         lessonRepository.deleteById(lessonId);
     }
 
+    /**
+     * Удаляет все авто-созданные занятия и возвращает количество удалённых записей.
+     */
     public int deleteAllAutoScheduledLessons() {
         List<Lesson> allLessons = lessonRepository.findAll(currentCalendarId);
         int deleted = 0;
@@ -127,7 +139,10 @@ public class LessonUseCase {
         return deleted;
     }
 
-    public int archivePastLessons(LocalDate today) {
+    /**
+     * Помечает прошедшие занятия как архивные и возвращает число изменённых записей.
+     */
+    public void archivePastLessons(LocalDate today) {
         if (today == null) {
             throw new IllegalArgumentException("Дата не может быть null");
         }
@@ -143,7 +158,6 @@ public class LessonUseCase {
                 archived++;
             }
         }
-        return archived;
     }
 
     /**
@@ -174,6 +188,9 @@ public class LessonUseCase {
         return activeLessons;
     }
 
+    /**
+     * Возвращает только архивные занятия активного календаря.
+     */
     public List<Lesson> getArchivedLessons() {
         List<Lesson> allLessons = lessonRepository.findAll(currentCalendarId);
         List<Lesson> archivedLessons = new java.util.ArrayList<>();
@@ -202,6 +219,9 @@ public class LessonUseCase {
         return activeLessons;
     }
 
+    /**
+     * Возвращает неархивные занятия указанной даты по всем календарям.
+     */
     public List<Lesson> getLessonsByDateAllCalendars(LocalDate date) {
         if (date == null) {
             throw new IllegalArgumentException("Дата не может быть null");
@@ -241,6 +261,9 @@ public class LessonUseCase {
         return activeLessons;
     }
 
+    /**
+     * Возвращает неархивные занятия в диапазоне дат по всем календарям.
+     */
     public List<Lesson> getLessonsByDateRangeAllCalendars(
         LocalDate startDate,
         LocalDate endDate
@@ -266,6 +289,9 @@ public class LessonUseCase {
         return activeLessons;
     }
 
+    /**
+     * Гарантирует минимальную длительность занятия не меньше одного часа.
+     */
     private void normalizeDuration(Lesson lesson) {
         if (lesson.getDurationHours() <= 0) {
             lesson.setDurationHours(1);

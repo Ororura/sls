@@ -6,7 +6,11 @@ import java.sql.Statement;
 
 public class SchemaInitializer {
 
+    /**
+     * Метод init.
+     */
     public static void init(SQLiteConnectionProvider provider) {
+        // Базовые таблицы приложения.
         String calendarsSql =
             "CREATE TABLE IF NOT EXISTS calendars (\n" +
             "    id TEXT PRIMARY KEY,\n" +
@@ -110,6 +114,7 @@ public class SchemaInitializer {
             Connection c = provider.getConnection();
             Statement s = c.createStatement()
         ) {
+            // Создание схемы "с нуля".
             s.execute(calendarsSql);
             s.execute(appSettingsSql);
             s.execute(lessonsSql);
@@ -120,6 +125,8 @@ public class SchemaInitializer {
             s.execute(roomsSql);
             s.execute(instructorDutiesSql);
             s.execute(scheduleHistorySql);
+
+            // Мягкие миграции: добавляем колонку, если её не было в старой версии.
             ensureColumnExists(
                 s,
                 "ALTER TABLE calendars ADD COLUMN directory_path TEXT NOT NULL DEFAULT ''"
@@ -188,9 +195,13 @@ public class SchemaInitializer {
                 s,
                 "ALTER TABLE schedule_history ADD COLUMN calendar_id TEXT NOT NULL DEFAULT 'default'"
             );
+
+            // Нормализация таблиц после серии точечных миграций.
             normalizeScheduleSettingsTable(s);
             normalizeScheduleSubjectRulesTable(s);
             normalizeCalendarsTable(s);
+
+            // Начальные данные по умолчанию.
             s.execute(
                 "INSERT OR IGNORE INTO calendars (id, name) VALUES ('default', 'Основной')"
             );
@@ -223,6 +234,9 @@ public class SchemaInitializer {
         }
     }
 
+    /**
+     * Метод ensureColumnExists.
+     */
     private static void ensureColumnExists(Statement statement, String sql)
         throws Exception {
         try {
@@ -230,6 +244,9 @@ public class SchemaInitializer {
         } catch (Exception ignored) {}
     }
 
+    /**
+     * Метод normalizeScheduleSettingsTable.
+     */
     private static void normalizeScheduleSettingsTable(Statement s)
         throws Exception {
         s.execute("DROP TABLE IF EXISTS schedule_settings_new");
@@ -249,6 +266,9 @@ public class SchemaInitializer {
         s.execute("ALTER TABLE schedule_settings_new RENAME TO schedule_settings");
     }
 
+    /**
+     * Метод normalizeScheduleSubjectRulesTable.
+     */
     private static void normalizeScheduleSubjectRulesTable(Statement s)
         throws Exception {
         s.execute("DROP TABLE IF EXISTS schedule_subject_rules_new");
@@ -276,6 +296,9 @@ public class SchemaInitializer {
         );
     }
 
+    /**
+     * Метод normalizeCalendarsTable.
+     */
     private static void normalizeCalendarsTable(Statement s) throws Exception {
         s.execute("DROP TABLE IF EXISTS calendars_new");
         s.execute(

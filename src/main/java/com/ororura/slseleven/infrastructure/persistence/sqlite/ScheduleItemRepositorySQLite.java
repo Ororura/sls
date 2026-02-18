@@ -19,10 +19,16 @@ public class ScheduleItemRepositorySQLite implements ScheduleItemRepository {
     private static final String ITEM_SELECT =
         "SELECT " + ITEM_COLUMNS + " FROM schedule_items";
 
+    /**
+     * Метод ScheduleItemRepositorySQLite.
+     */
     public ScheduleItemRepositorySQLite(SQLiteConnectionProvider provider) {
         this.provider = provider;
     }
 
+    /**
+     * Метод save.
+     */
     @Override
     public void save(ScheduleItem item) {
         String sql =
@@ -58,6 +64,9 @@ public class ScheduleItemRepositorySQLite implements ScheduleItemRepository {
         }
     }
 
+    /**
+     * Метод findById.
+     */
     @Override
     public Optional<ScheduleItem> findById(String id) {
         String sql = ITEM_SELECT + " WHERE id = ?";
@@ -77,6 +86,9 @@ public class ScheduleItemRepositorySQLite implements ScheduleItemRepository {
         }
     }
 
+    /**
+     * Метод findAll.
+     */
     @Override
     public List<ScheduleItem> findAll(String calendarId) {
         String sql =
@@ -98,6 +110,9 @@ public class ScheduleItemRepositorySQLite implements ScheduleItemRepository {
         return items;
     }
 
+    /**
+     * Метод deleteById.
+     */
     @Override
     public void deleteById(String id) {
         String sql = "DELETE FROM schedule_items WHERE id = ?";
@@ -116,6 +131,9 @@ public class ScheduleItemRepositorySQLite implements ScheduleItemRepository {
         }
     }
 
+    /**
+     * Метод deleteAllByIds.
+     */
     @Override
     public void deleteAllByIds(List<String> ids) {
         if (ids == null || ids.isEmpty()) {
@@ -149,6 +167,9 @@ public class ScheduleItemRepositorySQLite implements ScheduleItemRepository {
         }
     }
 
+    /**
+     * Метод deleteAll.
+     */
     @Override
     public void deleteAll(String calendarId) {
         String sql = "DELETE FROM schedule_items WHERE calendar_id = ?";
@@ -167,6 +188,9 @@ public class ScheduleItemRepositorySQLite implements ScheduleItemRepository {
         }
     }
 
+    /**
+     * Метод existsById.
+     */
     @Override
     public boolean existsById(String id) {
         String sql = "SELECT 1 FROM schedule_items WHERE id = ? LIMIT 1";
@@ -186,6 +210,9 @@ public class ScheduleItemRepositorySQLite implements ScheduleItemRepository {
         }
     }
 
+    /**
+     * Метод mapResultSet.
+     */
     private ScheduleItem mapResultSet(ResultSet rs) throws Exception {
         ScheduleItem item = new ScheduleItem();
         item.setId(rs.getString("id"));
