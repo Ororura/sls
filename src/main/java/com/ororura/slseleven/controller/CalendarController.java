@@ -1031,6 +1031,7 @@ public class CalendarController {
      */
     private void buildPrintSheet(Workbook workbook) {
         Sheet sheet = workbook.createSheet("Календарь " + currentYearMonth);
+        final String printFontName = "Times New Roman";
         sheet.setDisplayGridlines(true);
         sheet.setFitToPage(true);
         sheet.setHorizontallyCenter(true);
@@ -1042,6 +1043,7 @@ public class CalendarController {
 
         CellStyle titleStyle = workbook.createCellStyle();
         org.apache.poi.ss.usermodel.Font titleFont = workbook.createFont();
+        titleFont.setFontName(printFontName);
         titleFont.setBold(true);
         titleFont.setFontHeightInPoints((short) 20);
         titleStyle.setFont(titleFont);
@@ -1050,6 +1052,7 @@ public class CalendarController {
 
         CellStyle subtitleStyle = workbook.createCellStyle();
         org.apache.poi.ss.usermodel.Font subtitleFont = workbook.createFont();
+        subtitleFont.setFontName(printFontName);
         subtitleFont.setFontHeightInPoints((short) 13);
         subtitleStyle.setFont(subtitleFont);
         subtitleStyle.setAlignment(HorizontalAlignment.CENTER);
@@ -1057,6 +1060,7 @@ public class CalendarController {
 
         CellStyle dayHeaderStyle = workbook.createCellStyle();
         org.apache.poi.ss.usermodel.Font dayHeaderFont = workbook.createFont();
+        dayHeaderFont.setFontName(printFontName);
         dayHeaderFont.setBold(true);
         dayHeaderFont.setFontHeightInPoints((short) 12);
         dayHeaderStyle.setFont(dayHeaderFont);
@@ -1077,9 +1081,13 @@ public class CalendarController {
         dayCellStyle.setBorderTop(BorderStyle.THIN);
         dayCellStyle.setBorderLeft(BorderStyle.THIN);
         dayCellStyle.setBorderRight(BorderStyle.THIN);
+        org.apache.poi.ss.usermodel.Font dayCellFont = workbook.createFont();
+        dayCellFont.setFontName(printFontName);
+        dayCellStyle.setFont(dayCellFont);
 
         CellStyle dayNumberStyle = workbook.createCellStyle();
         org.apache.poi.ss.usermodel.Font dayNumberFont = workbook.createFont();
+        dayNumberFont.setFontName(printFontName);
         dayNumberFont.setBold(true);
         dayNumberFont.setFontHeightInPoints((short) 11);
         dayNumberStyle.setFont(dayNumberFont);
@@ -1095,20 +1103,23 @@ public class CalendarController {
         CellStyle lessonCellStyle = workbook.createCellStyle();
         lessonCellStyle.cloneStyleFrom(dayCellStyle);
         org.apache.poi.ss.usermodel.Font lessonFont = workbook.createFont();
-        lessonFont.setFontHeightInPoints((short) 11);
+        lessonFont.setFontName(printFontName);
+        lessonFont.setFontHeightInPoints((short) 14);
         lessonCellStyle.setFont(lessonFont);
 
         CellStyle emptyLessonStyle = workbook.createCellStyle();
         emptyLessonStyle.cloneStyleFrom(dayCellStyle);
         org.apache.poi.ss.usermodel.Font emptyFont = workbook.createFont();
+        emptyFont.setFontName(printFontName);
         emptyFont.setItalic(true);
         emptyFont.setColor(IndexedColors.GREY_50_PERCENT.getIndex());
-        emptyFont.setFontHeightInPoints((short) 11);
+        emptyFont.setFontHeightInPoints((short) 14);
         emptyLessonStyle.setFont(emptyFont);
         emptyLessonStyle.setAlignment(HorizontalAlignment.CENTER);
 
         CellStyle footerStyle = workbook.createCellStyle();
         org.apache.poi.ss.usermodel.Font footerFont = workbook.createFont();
+        footerFont.setFontName(printFontName);
         footerFont.setItalic(true);
         footerFont.setFontHeightInPoints((short) 9);
         footerStyle.setFont(footerFont);
@@ -1236,13 +1247,36 @@ public class CalendarController {
         if (lesson == null) {
             return "";
         }
-        String time = lesson.getTime() == null ? "--:--" : lesson.getTime().format(statusTimeFormatter);
-        return time +
-        " • " + safe(lesson.getTopic()) +
-        "\nТема: " + safe(lesson.getLessonName()) +
-        "\nЗанятие: " + safe(lesson.getClassName()) +
-        "\nМесто: " + safe(lesson.getLocation()) +
-        "\nПреподаватель: " + safe(lesson.getInstructor());
+        String timeLabel = buildLessonPrintTimeLabel(lesson);
+        return timeLabel +
+        " " + safe(lesson.getTopic()) +
+        "/" + safe(lesson.getLessonName()) +
+        "/" + safe(lesson.getClassName());
+    }
+
+    /**
+     * Возвращает короткий временной префикс занятия для печати.
+     */
+    private String buildLessonPrintTimeLabel(Lesson lesson) {
+        if (lesson == null || lesson.getTime() == null) {
+            return "--";
+        }
+
+        int startIndex = lessonStartSlotIndex(lesson.getTime());
+        if (startIndex < 0) {
+            return formatLessonTimeRange(lesson);
+        }
+
+        int duration = Math.max(1, lesson.getDurationHours());
+        int endIndex = Math.min(
+            startIndex + duration - 1,
+            LESSON_SLOT_START_TIMES_ORDERED.size() - 1
+        );
+        int startSlot = startIndex + 1;
+        int endSlot = endIndex + 1;
+        return startSlot == endSlot
+            ? String.valueOf(startSlot)
+            : startSlot + "-" + endSlot;
     }
 
     /**
