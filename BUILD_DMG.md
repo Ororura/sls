@@ -5,13 +5,13 @@
 ## Быстрый старт (Intel macOS)
 
 ```bash
-mvn clean package
+./mvnw clean package -Pmac-x64
 ```
 
 ## Apple Silicon (arm64)
 
 ```bash
-mvn clean package -Pmac-arm
+./mvnw clean package -Pmac-arm
 ```
 
 ## Выходные файлы
@@ -38,7 +38,7 @@ src/main/resources/macos.icns
 
 - `--input target/app-libs` (все зависимости)
 - `--main-jar target/${project.build.finalName}.jar`
-- `--main-class com.ororura.slseleven.HelloApplication`
+- `--main-class com.ororura.slseleven.Launcher`
 
 ## Частые ошибки
 
@@ -54,5 +54,10 @@ ls target/app-libs | grep javafx
 
 Убедитесь, что:
 
-- используется `mvn clean package`;
+- используется `./mvnw clean package`;
 - `jpackage` доступен (`jpackage --version`).
+
+## См. также
+
+- `BUILD.md`
+- `docs/USER_GUIDE.md`

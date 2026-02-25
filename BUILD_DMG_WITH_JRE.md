@@ -9,13 +9,13 @@
 ## Быстрый старт (Intel macOS)
 
 ```bash
-mvn clean package
+./mvnw clean package -Pmac-x64
 ```
 
 ## Apple Silicon (arm64)
 
 ```bash
-mvn clean package -Pmac-arm
+./mvnw clean package -Pmac-arm
 ```
 
 ## Что делает сборка
@@ -58,3 +58,8 @@ ls target/app-libs | grep javafx
 ```
 jpackage --version
 ```
+
+## См. также
+
+- `BUILD.md`
+- `docs/USER_GUIDE.md`

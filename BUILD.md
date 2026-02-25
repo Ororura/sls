@@ -13,13 +13,13 @@
 ### Intel macOS (x64)
 
 ```bash
-mvn clean package
+./mvnw clean package -Pmac-x64
 ```
 
 ### Apple Silicon (arm64)
 
 ```bash
-mvn clean package -Pmac-arm
+./mvnw clean package -Pmac-arm
 ```
 
 Результат:
@@ -39,7 +39,7 @@ src/main/resources/macos.icns
 ## Windows
 
 ```bash
-mvn clean package -Pwindows
+./mvnw clean package -Pwindows
 ```
 
 Результат:
@@ -80,9 +80,14 @@ src/main/resources/win.ico
 - сборка выполнена с `clean`;
 - в `target/app-libs` есть `javafx-*-mac-aarch64.jar` (или `javafx-*-win.jar`).
 
-## Примеры XLSX для импорта
+## Примеры файлов для импорта
 
-Готовые файлы находятся в корне проекта:
+Готовые примеры находятся в репозитории:
 
-- `lesson_import_sample.xlsx` — для импорта занятий
-- `schedule_import_sample.xlsx` — для импорта авторасписания
+- `lesson_import_sample.xlsx` — импорт занятий (`Все занятия`)
+- `test-data/lessons_test.tsv` — импорт занятий (TSV)
+- `test-data/schedule_pool_test.tsv` — импорт пула авторасписания (TSV)
+
+Подробно про форматы полей и обязательные колонки:
+
+- `docs/USER_GUIDE.md`
