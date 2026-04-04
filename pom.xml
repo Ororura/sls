@@ -17,6 +17,7 @@
         <javafx.version>17.0.14</javafx.version>
         <main.class
         >com.ororura.slseleven/com.ororura.slseleven.Launcher</main.class>
+        <javafx.platform>linux</javafx.platform>
         <app.name>ClassCalendar</app.name>
         <app.version>1.0.0</app.version>
         <app.vendor>SLSEleven</app.vendor>

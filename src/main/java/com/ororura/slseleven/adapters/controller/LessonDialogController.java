@@ -1,10 +1,10 @@
-package com.ororura.slseleven.controller;
+package com.ororura.slseleven.adapters.controller;
 
 import com.ororura.slseleven.domain.model.Lesson;
-import com.ororura.slseleven.ui.UiAlerts;
-import com.ororura.slseleven.ui.UiFormatters;
-import com.ororura.slseleven.ui.UiValidation;
-import com.ororura.slseleven.usecase.LessonUseCase;
+import com.ororura.slseleven.adapters.ui.UiAlerts;
+import com.ororura.slseleven.adapters.ui.UiFormatters;
+import com.ororura.slseleven.adapters.ui.UiValidation;
+import com.ororura.slseleven.application.usecase.LessonUseCase;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.function.Consumer;

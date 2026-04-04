@@ -3,7 +3,7 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 
-<BorderPane styleClass="app-root" xmlns:fx="http://javafx.com/fxml/1" xmlns="http://javafx.com/javafx/17.0.12" fx:controller="com.ororura.slseleven.controller.LessonsListController">
+<BorderPane styleClass="app-root" xmlns:fx="http://javafx.com/fxml/1" xmlns="http://javafx.com/javafx/17.0.12" fx:controller="com.ororura.slseleven.adapters.controller.LessonsListController">
 
     <top>
         <VBox styleClass="toolbar">

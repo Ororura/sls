@@ -1,5 +1,6 @@
-package com.ororura.slseleven.usecase;
+package com.ororura.slseleven.application.usecase;
 
+import com.ororura.slseleven.infrastructure.context.PersistentCalendarContext;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -7,16 +8,20 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.ororura.slseleven.domain.model.Lesson;
 import com.ororura.slseleven.domain.model.ScheduleItem;
 import com.ororura.slseleven.domain.model.SubjectScheduleRule;
+import com.ororura.slseleven.domain.repository.ActiveCalendarRepository;
+import com.ororura.slseleven.domain.repository.CalendarRepository;
 import com.ororura.slseleven.domain.repository.LessonRepository;
+import com.ororura.slseleven.domain.repository.ScheduleCatalogRepository;
 import com.ororura.slseleven.domain.repository.ScheduleHistoryRepository;
 import com.ororura.slseleven.domain.repository.ScheduleItemRepository;
-import com.ororura.slseleven.domain.repository.ScheduleSettingsRepository;
 import com.ororura.slseleven.infrastructure.persistence.migrations.SchemaInitializer;
+import com.ororura.slseleven.infrastructure.persistence.sqlite.ActiveCalendarRepositorySQLite;
+import com.ororura.slseleven.infrastructure.persistence.sqlite.CalendarRepositorySQLite;
 import com.ororura.slseleven.infrastructure.persistence.sqlite.LessonRepositorySQLite;
 import com.ororura.slseleven.infrastructure.persistence.sqlite.SQLiteConnectionProvider;
+import com.ororura.slseleven.infrastructure.persistence.sqlite.ScheduleCatalogRepositorySQLite;
 import com.ororura.slseleven.infrastructure.persistence.sqlite.ScheduleHistoryRepositorySQLite;
 import com.ororura.slseleven.infrastructure.persistence.sqlite.ScheduleItemRepositorySQLite;
-import com.ororura.slseleven.infrastructure.persistence.sqlite.ScheduleSettingsRepositorySQLite;
 import java.nio.file.Path;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
@@ -50,16 +55,23 @@ class ScheduleUseCaseIntegrationTest {
 
         lessonRepository = new LessonRepositorySQLite(provider);
         scheduleItemRepository = new ScheduleItemRepositorySQLite(provider);
-        ScheduleSettingsRepository scheduleSettingsRepository =
-            new ScheduleSettingsRepositorySQLite(provider);
+        ScheduleCatalogRepository scheduleCatalogRepository =
+            new ScheduleCatalogRepositorySQLite(provider);
+        CalendarRepository calendarRepository = new CalendarRepositorySQLite(
+            provider
+        );
+        ActiveCalendarRepository activeCalendarRepository =
+            new ActiveCalendarRepositorySQLite(provider);
         ScheduleHistoryRepository scheduleHistoryRepository =
             new ScheduleHistoryRepositorySQLite(provider);
 
         scheduleUseCase = new ScheduleUseCase(
             lessonRepository,
             scheduleItemRepository,
-            scheduleSettingsRepository,
-            scheduleHistoryRepository
+            scheduleHistoryRepository,
+            scheduleCatalogRepository,
+            calendarRepository,
+            new PersistentCalendarContext(activeCalendarRepository)
         );
     }
 

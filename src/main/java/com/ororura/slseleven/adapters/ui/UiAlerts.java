@@ -1,4 +1,4 @@
-package com.ororura.slseleven.ui;
+package com.ororura.slseleven.adapters.ui;
 
 import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonType;

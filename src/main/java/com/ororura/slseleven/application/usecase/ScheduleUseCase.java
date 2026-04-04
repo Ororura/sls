@@ -1,6 +1,7 @@
-package com.ororura.slseleven.usecase;
+package com.ororura.slseleven.application.usecase;
 
-import com.ororura.slseleven.domain.model.CalendarDefaults;
+import com.ororura.slseleven.application.port.CalendarContext;
+import com.ororura.slseleven.application.support.CalendarScopedUseCase;
 import com.ororura.slseleven.domain.model.Lesson;
 import com.ororura.slseleven.domain.model.AppCalendar;
 import com.ororura.slseleven.domain.model.InstructorDuty;
@@ -9,10 +10,11 @@ import com.ororura.slseleven.domain.model.RoomProfile;
 import com.ororura.slseleven.domain.model.ScheduleHistorySnapshot;
 import com.ororura.slseleven.domain.model.ScheduleItem;
 import com.ororura.slseleven.domain.model.SubjectScheduleRule;
-import com.ororura.slseleven.domain.repository.ScheduleHistoryRepository;
+import com.ororura.slseleven.domain.repository.CalendarRepository;
 import com.ororura.slseleven.domain.repository.LessonRepository;
+import com.ororura.slseleven.domain.repository.ScheduleCatalogRepository;
+import com.ororura.slseleven.domain.repository.ScheduleHistoryRepository;
 import com.ororura.slseleven.domain.repository.ScheduleItemRepository;
-import com.ororura.slseleven.domain.repository.ScheduleSettingsRepository;
 import java.nio.charset.StandardCharsets;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
@@ -35,7 +37,7 @@ import java.util.Set;
  * - генерация авто-занятий с учётом правил по предметам, кабинетам и преподавателям;
  * - восстановление/сохранение снимков состояния расписания.
  */
-public class ScheduleUseCase {
+public class ScheduleUseCase extends CalendarScopedUseCase {
 
     private static final List<LocalTime> LESSON_SLOT_START_TIMES = List.of(
         LocalTime.of(9, 0),
@@ -52,9 +54,9 @@ public class ScheduleUseCase {
 
     private final LessonRepository lessonRepository;
     private final ScheduleItemRepository scheduleItemRepository;
-    private final ScheduleSettingsRepository scheduleSettingsRepository;
     private final ScheduleHistoryRepository scheduleHistoryRepository;
-    private String currentCalendarId = CalendarDefaults.DEFAULT_ID;
+    private final ScheduleCatalogRepository scheduleCatalogRepository;
+    private final CalendarRepository calendarRepository;
 
     private static Map<LocalTime, Integer> buildSlotIndexByStartTime() {
         Map<LocalTime, Integer> indexByTime = new HashMap<>();
@@ -65,72 +67,57 @@ public class ScheduleUseCase {
     }
 
     /**
-     * Создаёт use-case планировщика и инициализирует активный календарь из настроек.
+     * Создаёт use-case планировщика.
      */
     public ScheduleUseCase(
         LessonRepository lessonRepository,
         ScheduleItemRepository scheduleItemRepository,
-        ScheduleSettingsRepository scheduleSettingsRepository,
-        ScheduleHistoryRepository scheduleHistoryRepository
+        ScheduleHistoryRepository scheduleHistoryRepository,
+        ScheduleCatalogRepository scheduleCatalogRepository,
+        CalendarRepository calendarRepository,
+        CalendarContext calendarContext
     ) {
+        super(calendarContext);
         this.lessonRepository = lessonRepository;
         this.scheduleItemRepository = scheduleItemRepository;
-        this.scheduleSettingsRepository = scheduleSettingsRepository;
         this.scheduleHistoryRepository = scheduleHistoryRepository;
-        this.currentCalendarId = scheduleSettingsRepository.getActiveCalendarId();
-    }
-
-    /**
-     * Устанавливает активный календарь и синхронизирует его в хранилище настроек.
-     */
-    public void setCurrentCalendarId(String calendarId) {
-        if (calendarId == null || calendarId.isBlank()) {
-            throw new IllegalArgumentException("ID календаря не может быть пустым");
-        }
-        scheduleSettingsRepository.setActiveCalendarId(calendarId);
-        this.currentCalendarId = calendarId;
-    }
-
-    /**
-     * Возвращает ID активного календаря.
-     */
-    public String getCurrentCalendarId() {
-        return currentCalendarId;
+        this.scheduleCatalogRepository = scheduleCatalogRepository;
+        this.calendarRepository = calendarRepository;
     }
 
     /**
      * Возвращает список всех календарей.
      */
     public List<AppCalendar> getCalendars() {
-        return scheduleSettingsRepository.findAllCalendars();
+        return calendarRepository.findAllCalendars();
     }
 
     /**
      * Создаёт новый календарь.
      */
     public AppCalendar createCalendar(String name) {
-        return scheduleSettingsRepository.createCalendar(name);
+        return calendarRepository.createCalendar(name);
     }
 
     /**
      * Создаёт новый календарь.
      */
     public AppCalendar createCalendar(String name, String directoryPath) {
-        return scheduleSettingsRepository.createCalendar(name, directoryPath);
+        return calendarRepository.createCalendar(name, directoryPath);
     }
 
     /**
      * Переименовывает календарь по ID.
      */
     public void renameCalendar(String calendarId, String newName) {
-        scheduleSettingsRepository.renameCalendar(calendarId, newName);
+        calendarRepository.renameCalendar(calendarId, newName);
     }
 
     /**
      * Перемещает календарь в указанную директорию.
      */
     public void moveCalendarToDirectory(String calendarId, String directoryPath) {
-        scheduleSettingsRepository.moveCalendarToDirectory(
+        calendarRepository.moveCalendarToDirectory(
             calendarId,
             directoryPath
         );
@@ -140,22 +127,39 @@ public class ScheduleUseCase {
      * Возвращает список доступных директорий календарей.
      */
     public List<String> getCalendarDirectories() {
-        return scheduleSettingsRepository.getCalendarDirectories();
+        return calendarRepository.getCalendarDirectories();
     }
 
     /**
      * Удаляет календарь и переключает активный календарь на доступный.
      */
     public void deleteCalendar(String calendarId) {
-        scheduleSettingsRepository.deleteCalendar(calendarId);
-        this.currentCalendarId = scheduleSettingsRepository.getActiveCalendarId();
+        List<AppCalendar> calendars = calendarRepository.findAllCalendars();
+        if (calendars.size() <= 1) {
+            throw new IllegalStateException("Нельзя удалить единственный календарь");
+        }
+
+        boolean deletingActiveCalendar = currentCalendarId().equals(calendarId);
+        String fallbackCalendarId = calendars
+            .stream()
+            .map(AppCalendar::getId)
+            .filter(id -> !id.equals(calendarId))
+            .findFirst()
+            .orElseThrow(() ->
+                new IllegalStateException("Не удалось определить резервный календарь")
+            );
+
+        calendarRepository.deleteCalendar(calendarId);
+        if (deletingActiveCalendar) {
+            setCurrentCalendarId(fallbackCalendarId);
+        }
     }
 
     /**
      * Возвращает пул нераспределённых элементов расписания активного календаря.
      */
     public List<ScheduleItem> getAllItems() {
-        return scheduleItemRepository.findAll(currentCalendarId);
+        return scheduleItemRepository.findAll(currentCalendarId());
     }
 
     /**
@@ -163,7 +167,7 @@ public class ScheduleUseCase {
      */
     public void createItem(ScheduleItem item) {
         validateItem(item);
-        item.setCalendarId(currentCalendarId);
+        item.setCalendarId(currentCalendarId());
         scheduleItemRepository.save(item);
         syncSubjectConsecutiveHours(item.getTopic(), item.getConsecutiveHours(), item.getId());
     }
@@ -184,12 +188,12 @@ public class ScheduleUseCase {
             );
         }
         ScheduleItem existing = scheduleItemRepository.findById(item.getId()).orElse(null);
-        if (existing == null || !currentCalendarId.equals(existing.getCalendarId())) {
+        if (existing == null || !currentCalendarId().equals(existing.getCalendarId())) {
             throw new IllegalArgumentException(
                 "Элемент списка с ID " + item.getId() + " не найден"
             );
         }
-        item.setCalendarId(currentCalendarId);
+        item.setCalendarId(currentCalendarId());
         scheduleItemRepository.save(item);
         syncSubjectConsecutiveHours(item.getTopic(), item.getConsecutiveHours(), item.getId());
     }
@@ -204,7 +208,7 @@ public class ScheduleUseCase {
             );
         }
         ScheduleItem existing = scheduleItemRepository.findById(id).orElse(null);
-        if (existing == null || !currentCalendarId.equals(existing.getCalendarId())) {
+        if (existing == null || !currentCalendarId().equals(existing.getCalendarId())) {
             throw new IllegalArgumentException(
                 "Элемент списка с ID " + id + " не найден"
             );
@@ -216,25 +220,25 @@ public class ScheduleUseCase {
      * Очищает весь пул распределения активного календаря.
      */
     public void deleteAllItems() {
-        scheduleItemRepository.deleteAll(currentCalendarId);
+        scheduleItemRepository.deleteAll(currentCalendarId());
     }
 
     public Map<DayOfWeek, Integer> getMaxHoursByDay() {
-        return scheduleSettingsRepository.getMaxHoursByDay();
+        return scheduleCatalogRepository.getMaxHoursByDay(currentCalendarId());
     }
 
     /**
      * Возвращает правила распределения по предметам.
      */
     public List<SubjectScheduleRule> getSubjectRules() {
-        return scheduleSettingsRepository.getSubjectRules();
+        return scheduleCatalogRepository.getSubjectRules(currentCalendarId());
     }
 
     /**
      * Сохраняет правила предметов и синхронизирует подрядные часы у элементов пула.
      */
     public void saveSubjectRules(List<SubjectScheduleRule> rules) {
-        scheduleSettingsRepository.saveSubjectRules(rules);
+        scheduleCatalogRepository.saveSubjectRules(currentCalendarId(), rules);
         if (rules == null || rules.isEmpty()) {
             return;
         }
@@ -251,7 +255,7 @@ public class ScheduleUseCase {
         if (consecutiveBySubject.isEmpty()) {
             return;
         }
-        for (ScheduleItem item : scheduleItemRepository.findAll(currentCalendarId)) {
+        for (ScheduleItem item : scheduleItemRepository.findAll(currentCalendarId())) {
             Integer subjectConsecutive = consecutiveBySubject.get(
                 normalizeSubject(item.getTopic())
             );
@@ -270,84 +274,92 @@ public class ScheduleUseCase {
      * Возвращает список преподавателей активного календаря.
      */
     public List<InstructorProfile> getInstructors() {
-        return scheduleSettingsRepository.getInstructors();
+        return scheduleCatalogRepository.getInstructors(currentCalendarId());
     }
 
     /**
      * Создаёт нового преподавателя.
      */
     public InstructorProfile createInstructor(String name) {
-        return scheduleSettingsRepository.createInstructor(name);
+        return scheduleCatalogRepository.createInstructor(currentCalendarId(), name);
     }
 
     /**
      * Обновляет карточку преподавателя.
      */
     public void updateInstructor(InstructorProfile instructor) {
-        scheduleSettingsRepository.updateInstructor(instructor);
+        scheduleCatalogRepository.updateInstructor(currentCalendarId(), instructor);
     }
 
     /**
      * Удаляет преподавателя по ID.
      */
     public void deleteInstructor(String instructorId) {
-        scheduleSettingsRepository.deleteInstructor(instructorId);
+        scheduleCatalogRepository.deleteInstructor(currentCalendarId(), instructorId);
     }
 
     /**
      * Возвращает список кабинетов активного календаря.
      */
     public List<RoomProfile> getRooms() {
-        return scheduleSettingsRepository.getRooms();
+        return scheduleCatalogRepository.getRooms(currentCalendarId());
     }
 
     /**
      * Создаёт новый кабинет.
      */
     public RoomProfile createRoom(String name) {
-        return scheduleSettingsRepository.createRoom(name);
+        return scheduleCatalogRepository.createRoom(currentCalendarId(), name);
     }
 
     /**
      * Переименовывает кабинет по ID.
      */
     public void renameRoom(String roomId, String newName) {
-        scheduleSettingsRepository.renameRoom(roomId, newName);
+        scheduleCatalogRepository.renameRoom(currentCalendarId(), roomId, newName);
     }
 
     /**
      * Удаляет кабинет по ID.
      */
     public void deleteRoom(String roomId) {
-        scheduleSettingsRepository.deleteRoom(roomId);
+        scheduleCatalogRepository.deleteRoom(currentCalendarId(), roomId);
     }
 
     /**
      * Возвращает список дежурств преподавателей.
      */
     public List<InstructorDuty> getInstructorDuties() {
-        return scheduleSettingsRepository.getInstructorDuties();
+        return scheduleCatalogRepository.getInstructorDuties(currentCalendarId());
     }
 
     /**
      * Добавляет дату дежурства преподавателя.
      */
     public void addInstructorDuty(String instructorId, LocalDate dutyDate) {
-        scheduleSettingsRepository.addInstructorDuty(instructorId, dutyDate);
+        scheduleCatalogRepository.addInstructorDuty(
+            currentCalendarId(),
+            instructorId,
+            dutyDate
+        );
     }
 
     /**
      * Удаляет дату дежурства преподавателя.
      */
     public void removeInstructorDuty(String instructorId, LocalDate dutyDate) {
-        scheduleSettingsRepository.removeInstructorDuty(instructorId, dutyDate);
+        scheduleCatalogRepository.removeInstructorDuty(
+            currentCalendarId(),
+            instructorId,
+            dutyDate
+        );
     }
 
     /**
      * Возвращает список снимков истории расписания для UI.
      */
     public List<HistoryEntry> getHistoryEntries() {
-        List<ScheduleHistorySnapshot> snapshots = scheduleHistoryRepository.findAll(currentCalendarId);
+        List<ScheduleHistorySnapshot> snapshots = scheduleHistoryRepository.findAll(currentCalendarId());
         List<HistoryEntry> entries = new ArrayList<>();
         for (ScheduleHistorySnapshot snapshot : snapshots) {
             entries.add(
@@ -365,8 +377,8 @@ public class ScheduleUseCase {
      * Создаёт снимок текущего состояния занятий и пула распределения.
      */
     public boolean createHistorySnapshot(String label) {
-        List<Lesson> lessons = lessonRepository.findAll(currentCalendarId);
-        List<ScheduleItem> items = scheduleItemRepository.findAll(currentCalendarId);
+        List<Lesson> lessons = lessonRepository.findAll(currentCalendarId());
+        List<ScheduleItem> items = scheduleItemRepository.findAll(currentCalendarId());
         if (lessons.isEmpty() && items.isEmpty()) {
             return false;
         }
@@ -374,7 +386,7 @@ public class ScheduleUseCase {
         String snapshotId = java.util.UUID.randomUUID().toString();
         ScheduleHistorySnapshot snapshot = new ScheduleHistorySnapshot(
             snapshotId,
-            currentCalendarId,
+            currentCalendarId(),
             LocalDateTime.now(),
             label == null || label.isBlank() ? "Ручной снимок" : label,
             serializeLessons(lessons),
@@ -392,7 +404,7 @@ public class ScheduleUseCase {
             throw new IllegalArgumentException("ID снимка не может быть пустым");
         }
         ScheduleHistorySnapshot snapshot = scheduleHistoryRepository
-            .findById(historyId, currentCalendarId)
+            .findById(historyId, currentCalendarId())
             .orElse(null);
         if (snapshot == null) {
             return false;
@@ -403,15 +415,15 @@ public class ScheduleUseCase {
             snapshot.getScheduleItemsBlob()
         );
 
-        lessonRepository.deleteAll(currentCalendarId);
-        scheduleItemRepository.deleteAll(currentCalendarId);
+        lessonRepository.deleteAll(currentCalendarId());
+        scheduleItemRepository.deleteAll(currentCalendarId());
 
         for (Lesson lesson : lessons) {
-            lesson.setCalendarId(currentCalendarId);
+            lesson.setCalendarId(currentCalendarId());
             lessonRepository.save(lesson);
         }
         for (ScheduleItem item : items) {
-            item.setCalendarId(currentCalendarId);
+            item.setCalendarId(currentCalendarId());
             scheduleItemRepository.save(item);
         }
         return true;
@@ -421,7 +433,10 @@ public class ScheduleUseCase {
      * Сохраняет лимиты часов по дням недели.
      */
     public void saveMaxHoursByDay(Map<DayOfWeek, Integer> maxHoursByDay) {
-        scheduleSettingsRepository.saveAll(maxHoursByDay);
+        scheduleCatalogRepository.saveMaxHoursByDay(
+            currentCalendarId(),
+            maxHoursByDay
+        );
     }
 
     /**
@@ -436,7 +451,7 @@ public class ScheduleUseCase {
      * Возвращает все архивные занятия в пул распределения с агрегацией часов.
      */
     public int moveArchivedLessonsToPool() {
-        List<Lesson> allLessons = lessonRepository.findAll(currentCalendarId);
+        List<Lesson> allLessons = lessonRepository.findAll(currentCalendarId());
         Map<ScheduleKey, Integer> aggregatedHours = new LinkedHashMap<>();
         Map<String, Integer> preferredConsecutiveBySubject = new HashMap<>();
         List<String> archivedLessonIds = new ArrayList<>();
@@ -461,7 +476,7 @@ public class ScheduleUseCase {
         }
 
         Map<ScheduleKey, ScheduleItem> existingItemsByKey = new HashMap<>();
-        for (ScheduleItem item : scheduleItemRepository.findAll(currentCalendarId)) {
+        for (ScheduleItem item : scheduleItemRepository.findAll(currentCalendarId())) {
             preferredConsecutiveBySubject.merge(
                 normalizeSubject(item.getTopic()),
                 Math.max(1, item.getConsecutiveHours()),
@@ -497,7 +512,7 @@ public class ScheduleUseCase {
                 key.instructor,
                 hoursToAdd
             );
-            created.setCalendarId(currentCalendarId);
+            created.setCalendarId(currentCalendarId());
             created.setConsecutiveHours(subjectConsecutive);
             scheduleItemRepository.save(created);
         }
@@ -517,7 +532,7 @@ public class ScheduleUseCase {
         }
 
         Lesson lesson = lessonRepository.findById(lessonId).orElse(null);
-        if (lesson == null || !currentCalendarId.equals(lesson.getCalendarId())) {
+        if (lesson == null || !currentCalendarId().equals(lesson.getCalendarId())) {
             throw new IllegalArgumentException("Занятие не найдено");
         }
         if (!lesson.isArchived()) {
@@ -536,7 +551,7 @@ public class ScheduleUseCase {
         }
 
         Lesson lesson = lessonRepository.findById(lessonId).orElse(null);
-        if (lesson == null || !currentCalendarId.equals(lesson.getCalendarId())) {
+        if (lesson == null || !currentCalendarId().equals(lesson.getCalendarId())) {
             throw new IllegalArgumentException("Занятие не найдено");
         }
         if (lesson.isArchived()) {
@@ -555,7 +570,7 @@ public class ScheduleUseCase {
      * Возвращает все авто-созданные занятия в пул и удаляет их из расписания.
      */
     public int moveAllAutoScheduledLessonsToPool() {
-        List<Lesson> allLessons = lessonRepository.findAll(currentCalendarId);
+        List<Lesson> allLessons = lessonRepository.findAll(currentCalendarId());
         int moved = 0;
         for (Lesson lesson : allLessons) {
             if (!lesson.isAutoScheduled() || lesson.isArchived()) {
@@ -578,7 +593,7 @@ public class ScheduleUseCase {
         ScheduleKey key = scheduleKeyOfLesson(lesson);
         int durationHours = Math.max(1, lesson.getDurationHours());
         ScheduleItem existing = null;
-        for (ScheduleItem item : scheduleItemRepository.findAll(currentCalendarId)) {
+        for (ScheduleItem item : scheduleItemRepository.findAll(currentCalendarId())) {
             if (scheduleKeyOfItem(item).equals(key)) {
                 existing = item;
                 break;
@@ -600,7 +615,7 @@ public class ScheduleUseCase {
                 lesson.getInstructor(),
                 durationHours
             );
-            created.setCalendarId(currentCalendarId);
+            created.setCalendarId(currentCalendarId());
             created.setConsecutiveHours(durationHours);
             scheduleItemRepository.save(created);
         }
@@ -648,7 +663,7 @@ public class ScheduleUseCase {
             );
         }
 
-        List<ScheduleItem> queuedItems = scheduleItemRepository.findAll(currentCalendarId);
+        List<ScheduleItem> queuedItems = scheduleItemRepository.findAll(currentCalendarId());
         Map<ScheduleKey, Integer> aggregatedHours = new LinkedHashMap<>();
         Map<String, Integer> preferredConsecutiveBySubject = new HashMap<>();
 
@@ -685,7 +700,7 @@ public class ScheduleUseCase {
             );
         }
 
-        scheduleItemRepository.deleteAll(currentCalendarId);
+        scheduleItemRepository.deleteAll(currentCalendarId());
         for (Map.Entry<ScheduleKey, Integer> entry : aggregatedHours.entrySet()) {
             ScheduleKey key = entry.getKey();
             ScheduleItem created = new ScheduleItem(
@@ -696,7 +711,7 @@ public class ScheduleUseCase {
                 key.instructor,
                 entry.getValue()
             );
-            created.setCalendarId(currentCalendarId);
+            created.setCalendarId(currentCalendarId());
             created.setConsecutiveHours(
                 preferredConsecutiveBySubject.getOrDefault(
                     normalizeSubject(key.topic),
@@ -729,25 +744,27 @@ public class ScheduleUseCase {
     ) {
         validateDateRange(startDate, endDate);
 
-        List<ScheduleItem> items = scheduleItemRepository.findAll(currentCalendarId);
+        List<ScheduleItem> items = scheduleItemRepository.findAll(currentCalendarId());
         if (items.isEmpty()) {
             return new AutoScheduleResult(0, null, 0, List.of());
         }
 
         Map<DayOfWeek, Integer> maxHoursByDay = new EnumMap<>(
-            scheduleSettingsRepository.getMaxHoursByDay()
+            scheduleCatalogRepository.getMaxHoursByDay(currentCalendarId())
         );
         Map<String, SubjectScheduleRule> rulesBySubject = toRuleMap(
-            scheduleSettingsRepository.getSubjectRules()
+            scheduleCatalogRepository.getSubjectRules(currentCalendarId())
         );
         List<InstructorProfile> instructors = new ArrayList<>(
-            scheduleSettingsRepository.getInstructors()
+            scheduleCatalogRepository.getInstructors(currentCalendarId())
         );
         instructors.sort(Comparator.comparing(InstructorProfile::getName, String.CASE_INSENSITIVE_ORDER));
-        List<RoomProfile> rooms = new ArrayList<>(scheduleSettingsRepository.getRooms());
+        List<RoomProfile> rooms = new ArrayList<>(
+            scheduleCatalogRepository.getRooms(currentCalendarId())
+        );
         rooms.sort(Comparator.comparing(RoomProfile::getName, String.CASE_INSENSITIVE_ORDER));
         Map<String, Set<LocalDate>> dutyDatesByInstructor = buildDutyDatesByInstructor(
-            scheduleSettingsRepository.getInstructorDuties()
+            scheduleCatalogRepository.getInstructorDuties(currentCalendarId())
         );
         boolean hasCapacity = maxHoursByDay
             .values()
@@ -795,7 +812,7 @@ public class ScheduleUseCase {
 
             List<Lesson> existingLessons = lessonRepository.findByDate(
                 currentDate,
-                currentCalendarId
+                currentCalendarId()
             );
             existingLessons.removeIf(Lesson::isArchived);
             Set<String> dayExclusiveSubjects = getExclusiveSubjectsForDay(
@@ -908,7 +925,7 @@ public class ScheduleUseCase {
                     candidate.instructorName,
                     currentDate
                 );
-                lesson.setCalendarId(currentCalendarId);
+                lesson.setCalendarId(currentCalendarId());
                 lesson.setDurationHours(blockHours);
                 lessonRepository.save(lesson);
 
@@ -1557,10 +1574,10 @@ public class ScheduleUseCase {
             return lessonRepository.findByDateRange(
                 startDate,
                 endDate,
-                currentCalendarId
+                currentCalendarId()
             );
         }
-        List<Lesson> lessons = lessonRepository.findAll(currentCalendarId);
+        List<Lesson> lessons = lessonRepository.findAll(currentCalendarId());
         List<Lesson> filtered = new ArrayList<>();
         for (Lesson lesson : lessons) {
             if (!lesson.getDate().isBefore(startDate)) {
@@ -1602,7 +1619,7 @@ public class ScheduleUseCase {
             return autoLessons;
         }
 
-        List<Lesson> allLessons = lessonRepository.findAll(currentCalendarId);
+        List<Lesson> allLessons = lessonRepository.findAll(currentCalendarId());
         for (Lesson lesson : allLessons) {
             if (
                 lesson.isAutoScheduled() &&
@@ -1977,7 +1994,7 @@ public class ScheduleUseCase {
     private int resolveSubjectConsecutiveHours(String topic) {
         String subjectKey = normalizeSubject(topic);
         int result = 1;
-        for (ScheduleItem item : scheduleItemRepository.findAll(currentCalendarId)) {
+        for (ScheduleItem item : scheduleItemRepository.findAll(currentCalendarId())) {
             if (!subjectKey.equals(normalizeSubject(item.getTopic()))) {
                 continue;
             }
@@ -1999,7 +2016,7 @@ public class ScheduleUseCase {
             return;
         }
         int normalizedConsecutive = Math.max(1, consecutiveHours);
-        for (ScheduleItem existing : scheduleItemRepository.findAll(currentCalendarId)) {
+        for (ScheduleItem existing : scheduleItemRepository.findAll(currentCalendarId())) {
             if (!subjectKey.equals(normalizeSubject(existing.getTopic()))) {
                 continue;
             }

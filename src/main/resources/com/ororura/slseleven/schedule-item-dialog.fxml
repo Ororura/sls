@@ -4,7 +4,7 @@
 <?import javafx.scene.layout.*?>
 
 <GridPane xmlns:fx="http://javafx.com/fxml"
-          fx:controller="com.ororura.slseleven.controller.ScheduleItemDialogController"
+          fx:controller="com.ororura.slseleven.adapters.controller.ScheduleItemDialogController"
           prefWidth="420" styleClass="dialog-grid">
     <columnConstraints>
         <ColumnConstraints minWidth="150" />

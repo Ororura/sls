@@ -1,14 +1,14 @@
-package com.ororura.slseleven.controller;
+package com.ororura.slseleven.adapters.controller;
 
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import com.ororura.slseleven.domain.model.AppCalendar;
 import com.ororura.slseleven.domain.model.Lesson;
-import com.ororura.slseleven.ui.UiAlerts;
-import com.ororura.slseleven.ui.UiFormatters;
-import com.ororura.slseleven.ui.UiStyles;
-import com.ororura.slseleven.usecase.LessonUseCase;
-import com.ororura.slseleven.usecase.ScheduleUseCase;
+import com.ororura.slseleven.adapters.ui.UiAlerts;
+import com.ororura.slseleven.adapters.ui.UiFormatters;
+import com.ororura.slseleven.adapters.ui.UiStyles;
+import com.ororura.slseleven.application.usecase.LessonUseCase;
+import com.ororura.slseleven.application.usecase.ScheduleUseCase;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
@@ -221,7 +221,7 @@ public class CalendarController {
             stage.setOnHidden(event -> refreshCalendar());
             stage.show();
         } catch (IOException e) {
-            e.printStackTrace();
+            showError("Не удалось открыть список занятий: " + e.getMessage());
         }
     }
 
@@ -254,7 +254,7 @@ public class CalendarController {
             stage.setOnHidden(event -> refreshCalendar());
             stage.show();
         } catch (IOException e) {
-            e.printStackTrace();
+            showError("Не удалось открыть авторасписание: " + e.getMessage());
         }
     }
 
@@ -1693,7 +1693,6 @@ public class CalendarController {
                     }
                 });
         } catch (Exception e) {
-            e.printStackTrace();
             Alert alert = new Alert(Alert.AlertType.ERROR);
             alert.setTitle("Ошибка");
             alert.setContentText(

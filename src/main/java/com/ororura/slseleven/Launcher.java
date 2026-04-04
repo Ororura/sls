@@ -7,6 +7,6 @@ public class Launcher {
      * Метод main.
      */
     public static void main(String[] args) {
-        Application.launch(HelloApplication.class, args);
+        Application.launch(ClassCalendarApplication.class, args);
     }
 }

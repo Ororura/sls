@@ -1,15 +1,15 @@
-package com.ororura.slseleven.controller;
+package com.ororura.slseleven.adapters.controller;
 
 import com.ororura.slseleven.domain.model.ScheduleItem;
 import com.ororura.slseleven.domain.model.InstructorDuty;
 import com.ororura.slseleven.domain.model.InstructorProfile;
 import com.ororura.slseleven.domain.model.RoomProfile;
 import com.ororura.slseleven.domain.model.SubjectScheduleRule;
-import com.ororura.slseleven.ui.UiAlerts;
-import com.ororura.slseleven.ui.UiStyles;
-import com.ororura.slseleven.usecase.AutoScheduleResult;
-import com.ororura.slseleven.usecase.ScheduleUseCase;
-import com.ororura.slseleven.util.DelimitedText;
+import com.ororura.slseleven.adapters.shared.DelimitedTextParser;
+import com.ororura.slseleven.adapters.ui.UiAlerts;
+import com.ororura.slseleven.adapters.ui.UiStyles;
+import com.ororura.slseleven.application.usecase.AutoScheduleResult;
+import com.ororura.slseleven.application.usecase.ScheduleUseCase;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.nio.charset.Charset;
@@ -1775,7 +1775,7 @@ public class SchedulePlannerController {
      */
     private ImportResult importItemsFromText(String text) {
         List<String> errors = new ArrayList<>();
-        List<List<String>> rows = DelimitedText.parse(text, errors);
+        List<List<String>> rows = DelimitedTextParser.parse(text, errors);
         return importItemsFromRows(rows, errors);
     }
 
@@ -2382,7 +2382,7 @@ public class SchedulePlannerController {
         ) {
             Map<String, Integer> map = new HashMap<>();
             for (int i = 0; i < row.size(); i++) {
-                String normalized = DelimitedText.normalizeHeader(row.get(i));
+                String normalized = DelimitedTextParser.normalizeHeader(row.get(i));
                 if (normalized.isEmpty()) {
                     continue;
                 }

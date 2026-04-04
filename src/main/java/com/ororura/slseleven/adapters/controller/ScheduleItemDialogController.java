@@ -1,9 +1,9 @@
-package com.ororura.slseleven.controller;
+package com.ororura.slseleven.adapters.controller;
 
 import com.ororura.slseleven.domain.model.ScheduleItem;
-import com.ororura.slseleven.ui.UiAlerts;
-import com.ororura.slseleven.ui.UiValidation;
-import com.ororura.slseleven.usecase.ScheduleUseCase;
+import com.ororura.slseleven.adapters.ui.UiAlerts;
+import com.ororura.slseleven.adapters.ui.UiValidation;
+import com.ororura.slseleven.application.usecase.ScheduleUseCase;
 import java.util.function.Consumer;
 import javafx.fxml.FXML;
 import javafx.scene.control.ButtonType;

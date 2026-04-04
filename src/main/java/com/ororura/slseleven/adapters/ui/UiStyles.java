@@ -1,4 +1,4 @@
-package com.ororura.slseleven.ui;
+package com.ororura.slseleven.adapters.ui;
 
 import javafx.animation.FadeTransition;
 import javafx.animation.ScaleTransition;

@@ -1,15 +1,15 @@
-package com.ororura.slseleven.util;
+package com.ororura.slseleven.adapters.shared;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
-public final class DelimitedText {
+public final class DelimitedTextParser {
 
     /**
-     * Метод DelimitedText.
+     * Метод DelimitedTextParser.
      */
-    private DelimitedText() {}
+    private DelimitedTextParser() {}
 
     /**
      * Метод parse.

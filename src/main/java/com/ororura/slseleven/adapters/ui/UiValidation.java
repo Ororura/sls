@@ -1,4 +1,4 @@
-package com.ororura.slseleven.ui;
+package com.ororura.slseleven.adapters.ui;
 
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;

@@ -4,7 +4,7 @@
 <?import javafx.scene.layout.*?>
 <BorderPane
     xmlns:fx="http://javafx.com/fxml"
-    fx:controller="com.ororura.slseleven.controller.CalendarController"
+    fx:controller="com.ororura.slseleven.adapters.controller.CalendarController"
     styleClass="app-root"
 >
     <top>

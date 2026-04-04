@@ -1,4 +1,4 @@
-package com.ororura.slseleven.usecase;
+package com.ororura.slseleven.application.usecase;
 
 import java.time.LocalDate;
 import java.util.List;

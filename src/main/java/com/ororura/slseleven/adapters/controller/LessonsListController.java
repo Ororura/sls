@@ -1,11 +1,11 @@
-package com.ororura.slseleven.controller;
+package com.ororura.slseleven.adapters.controller;
 
 import com.ororura.slseleven.domain.model.Lesson;
-import com.ororura.slseleven.ui.UiFormatters;
-import com.ororura.slseleven.ui.UiStyles;
-import com.ororura.slseleven.usecase.LessonUseCase;
-import com.ororura.slseleven.usecase.ScheduleUseCase;
-import com.ororura.slseleven.util.DelimitedText;
+import com.ororura.slseleven.adapters.shared.DelimitedTextParser;
+import com.ororura.slseleven.adapters.ui.UiFormatters;
+import com.ororura.slseleven.adapters.ui.UiStyles;
+import com.ororura.slseleven.application.usecase.LessonUseCase;
+import com.ororura.slseleven.application.usecase.ScheduleUseCase;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.nio.charset.Charset;
@@ -1027,7 +1027,7 @@ public class LessonsListController {
      */
     private ImportResult importLessonsFromText(String text) {
         List<String> errors = new ArrayList<>();
-        List<List<String>> rows = DelimitedText.parse(text, errors);
+        List<List<String>> rows = DelimitedTextParser.parse(text, errors);
         return importLessonsFromRows(rows, errors);
     }
 
@@ -1847,7 +1847,7 @@ public class LessonsListController {
         ) {
             Map<String, Integer> map = new HashMap<>();
             for (int i = 0; i < row.size(); i++) {
-                String normalized = DelimitedText.normalizeHeader(row.get(i));
+                String normalized = DelimitedTextParser.normalizeHeader(row.get(i));
                 if (normalized.isEmpty()) {
                     continue;
                 }
