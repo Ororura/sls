@@ -24,6 +24,7 @@
                         styleClass="button-primary"
                     />
                     <Button
+                        fx:id="editItemButton"
                         text="Редактировать"
                         onAction="#onEditItem"
                         styleClass="button-secondary"
@@ -42,16 +43,19 @@
                         styleClass="button-secondary"
                     />
                     <Button
+                        fx:id="exportXlsxButton"
                         text="Экспорт XLSX"
                         onAction="#onExportXlsx"
                         styleClass="button-secondary"
                     />
                     <Button
+                        fx:id="deleteItemButton"
                         text="Удалить"
                         onAction="#onDeleteItem"
                         styleClass="button-danger"
                     />
                     <Button
+                        fx:id="deleteAllItemsButton"
                         text="Удалить все"
                         onAction="#onDeleteAll"
                         styleClass="button-danger"
@@ -204,11 +208,13 @@
                     styleClass="button-secondary"
                 />
                 <Button
+                    fx:id="autoScheduleButton"
                     text="Сформировать расписание"
                     onAction="#onAutoSchedule"
                     styleClass="button-primary"
                 />
                 <Button
+                    fx:id="rescheduleButton"
                     text="Перераспределить"
                     onAction="#onReschedule"
                     styleClass="button-secondary"

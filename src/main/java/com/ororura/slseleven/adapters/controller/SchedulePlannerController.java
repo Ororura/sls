@@ -1,20 +1,18 @@
 package com.ororura.slseleven.adapters.controller;
 
-import com.ororura.slseleven.domain.model.ScheduleItem;
-import com.ororura.slseleven.domain.model.InstructorDuty;
-import com.ororura.slseleven.domain.model.InstructorProfile;
-import com.ororura.slseleven.domain.model.RoomProfile;
-import com.ororura.slseleven.domain.model.SubjectScheduleRule;
 import com.ororura.slseleven.adapters.shared.DelimitedTextParser;
+import com.ororura.slseleven.adapters.shared.TabularDataFiles;
 import com.ororura.slseleven.adapters.ui.UiAlerts;
 import com.ororura.slseleven.adapters.ui.UiStyles;
 import com.ororura.slseleven.application.usecase.AutoScheduleResult;
+import com.ororura.slseleven.application.usecase.ScheduleHistoryEntry;
 import com.ororura.slseleven.application.usecase.ScheduleUseCase;
-import java.io.FileInputStream;
 import java.io.FileOutputStream;
-import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
+import com.ororura.slseleven.domain.model.InstructorDuty;
+import com.ororura.slseleven.domain.model.InstructorProfile;
+import com.ororura.slseleven.domain.model.RoomProfile;
+import com.ororura.slseleven.domain.model.ScheduleItem;
+import com.ororura.slseleven.domain.model.SubjectScheduleRule;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -28,6 +26,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.StringJoiner;
 import java.util.stream.Collectors;
+import javafx.beans.binding.Bindings;
+import javafx.beans.binding.BooleanBinding;
 import javafx.collections.FXCollections;
 import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
@@ -43,9 +43,6 @@ import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
-import javafx.stage.Window;
-import org.apache.poi.ss.usermodel.Cell;
-import org.apache.poi.ss.usermodel.DataFormatter;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
@@ -110,6 +107,24 @@ public class SchedulePlannerController {
     @FXML
     private TextField searchField;
 
+    @FXML
+    private Button editItemButton;
+
+    @FXML
+    private Button exportXlsxButton;
+
+    @FXML
+    private Button deleteItemButton;
+
+    @FXML
+    private Button deleteAllItemsButton;
+
+    @FXML
+    private Button autoScheduleButton;
+
+    @FXML
+    private Button rescheduleButton;
+
     private final ObservableList<ScheduleItem> data =
         FXCollections.observableArrayList();
     private FilteredList<ScheduleItem> filteredData;
@@ -161,6 +176,7 @@ public class SchedulePlannerController {
             applySearchFilter(newValue);
             updateTotalLabel();
         });
+        configureActionStates();
     }
 
     /**
@@ -170,6 +186,22 @@ public class SchedulePlannerController {
         this.scheduleUseCase = scheduleUseCase;
         reload();
         loadSettings();
+    }
+
+    private void configureActionStates() {
+        BooleanBinding noItems = Bindings.isEmpty(data);
+        BooleanBinding noSelection = Bindings.isEmpty(
+            scheduleTable.getSelectionModel().getSelectedItems()
+        );
+
+        editItemButton.disableProperty().bind(
+            scheduleTable.getSelectionModel().selectedItemProperty().isNull()
+        );
+        deleteItemButton.disableProperty().bind(noSelection);
+        deleteAllItemsButton.disableProperty().bind(noItems);
+        exportXlsxButton.disableProperty().bind(noItems);
+        autoScheduleButton.disableProperty().bind(startDatePicker.valueProperty().isNull());
+        rescheduleButton.disableProperty().bind(startDatePicker.valueProperty().isNull());
     }
 
     /**
@@ -336,7 +368,7 @@ public class SchedulePlannerController {
         }
 
         List<String> errors = new ArrayList<>();
-        List<List<String>> rows = readXlsxRows(file, errors);
+        List<List<String>> rows = TabularDataFiles.readXlsxRows(file, errors);
         ImportResult result = importItemsFromRows(rows, errors);
         showImportResult(result);
     }
@@ -1259,14 +1291,14 @@ public class SchedulePlannerController {
             showError("Ошибка: Use case не инициализирован");
             return;
         }
-        List<ScheduleUseCase.HistoryEntry> entries =
+        List<ScheduleHistoryEntry> entries =
             scheduleUseCase.getHistoryEntries();
         if (entries.isEmpty()) {
             showInfo("История распределений пуста.");
             return;
         }
 
-        ChoiceDialog<ScheduleUseCase.HistoryEntry> dialog = new ChoiceDialog<>(
+        ChoiceDialog<ScheduleHistoryEntry> dialog = new ChoiceDialog<>(
             entries.get(0),
             entries
         );
@@ -1275,7 +1307,7 @@ public class SchedulePlannerController {
         dialog.setContentText("Снимок:");
         UiStyles.apply(dialog.getDialogPane());
 
-        ScheduleUseCase.HistoryEntry selected = dialog
+        ScheduleHistoryEntry selected = dialog
             .showAndWait()
             .orElse(null);
         if (selected == null) {
@@ -1875,24 +1907,7 @@ public class SchedulePlannerController {
      * Метод showImportResult.
      */
     private void showImportResult(ImportResult result) {
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("Импорт");
-        alert.setHeaderText(null);
-        if (result.errors.isEmpty()) {
-            alert.setContentText("Импортировано строк: " + result.added);
-        } else {
-            StringJoiner joiner = new StringJoiner(System.lineSeparator());
-            joiner.add("Импортировано строк: " + result.added);
-            int limit = Math.min(6, result.errors.size());
-            for (int i = 0; i < limit; i++) {
-                joiner.add(result.errors.get(i));
-            }
-            if (result.errors.size() > limit) {
-                joiner.add("Ошибок ещё: " + (result.errors.size() - limit));
-            }
-            alert.setContentText(joiner.toString());
-        }
-        alert.showAndWait();
+        UiAlerts.showImportResult("Импорт", result.added, result.errors, 6);
     }
 
     /**
@@ -1989,81 +2004,9 @@ public class SchedulePlannerController {
     /**
      * Метод readXlsxRows.
      */
-    private List<List<String>> readXlsxRows(
-        java.io.File file,
-        List<String> errors
-    ) {
-        try (
-            FileInputStream input = new FileInputStream(file);
-            Workbook workbook = new XSSFWorkbook(input)
-        ) {
-            Sheet sheet =
-                workbook.getNumberOfSheets() > 0
-                    ? workbook.getSheetAt(0)
-                    : null;
-            if (sheet == null) {
-                errors.add("XLSX файл не содержит листов.");
-                return List.of();
-            }
-
-            DataFormatter formatter = new DataFormatter();
-            List<List<String>> rows = new ArrayList<>();
-            int lastRow = sheet.getLastRowNum();
-            for (int i = 0; i <= lastRow; i++) {
-                Row row = sheet.getRow(i);
-                if (row == null) {
-                    continue;
-                }
-                int lastCell = row.getLastCellNum();
-                if (lastCell <= 0) {
-                    continue;
-                }
-                List<String> values = new ArrayList<>();
-                boolean hasContent = false;
-                for (int c = 0; c < lastCell; c++) {
-                    Cell cell = row.getCell(c);
-                    String value =
-                        cell == null ? "" : formatter.formatCellValue(cell);
-                    if (!value.isBlank()) {
-                        hasContent = true;
-                    }
-                    values.add(value.trim());
-                }
-                if (hasContent) {
-                    rows.add(values);
-                }
-            }
-            return rows;
-        } catch (Exception ex) {
-            errors.add("Не удалось прочитать XLSX: " + ex.getMessage());
-            return List.of();
-        }
-    }
-
-    /**
-     * Метод loadDelimitedFromFile.
-     */
-    private void loadDelimitedFromFile(Window owner, TextArea target) {
-        FileChooser chooser = new FileChooser();
-        chooser.setTitle("Загрузить TSV/CSV");
-        chooser
-            .getExtensionFilters()
-            .addAll(
-                new FileChooser.ExtensionFilter("TSV (*.tsv)", "*.tsv"),
-                new FileChooser.ExtensionFilter("CSV (*.csv)", "*.csv"),
-                new FileChooser.ExtensionFilter("Все файлы (*.*)", "*.*")
-            );
-        java.io.File file = chooser.showOpenDialog(owner);
-        if (file == null) {
-            return;
-        }
+    private void loadDelimitedFromFile(javafx.stage.Window owner, TextArea target) {
         try {
-            byte[] bytes = Files.readAllBytes(file.toPath());
-            String content = new String(bytes, StandardCharsets.UTF_8);
-            if (content.indexOf('\uFFFD') >= 0) {
-                content = new String(bytes, Charset.forName("Windows-1251"));
-            }
-            target.setText(content);
+            TabularDataFiles.loadDelimitedText(owner, "Загрузить TSV/CSV", target);
         } catch (Exception ex) {
             showError("Не удалось прочитать файл: " + ex.getMessage());
         }

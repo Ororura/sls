@@ -40,6 +40,7 @@ import javafx.scene.image.PixelReader;
 import javafx.scene.image.WritableImage;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Pane;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
@@ -89,6 +90,12 @@ public class CalendarController {
 
     @FXML
     private Button nextMonthButton;
+
+    @FXML
+    private Button openSchedulePlannerButton;
+
+    @FXML
+    private Button openLessonsListButton;
 
     @FXML
     private ComboBox<AppCalendar> calendarComboBox;
@@ -181,6 +188,7 @@ public class CalendarController {
         applyCalendarSelection();
         refreshCalendar();
         updateHeaderStatus();
+        updateActionAvailability();
     }
 
     /**
@@ -189,6 +197,7 @@ public class CalendarController {
     public void setScheduleUseCase(ScheduleUseCase scheduleUseCase) {
         this.scheduleUseCase = scheduleUseCase;
         loadCalendars();
+        updateActionAvailability();
     }
 
     /**
@@ -328,6 +337,28 @@ public class CalendarController {
             });
         startHeaderTicker();
         buildCalendar();
+        updateActionAvailability();
+    }
+
+    private void updateActionAvailability() {
+        boolean canOpenScopedViews =
+            !allCalendarsMode && lessonUseCase != null && scheduleUseCase != null;
+        if (openSchedulePlannerButton != null) {
+            openSchedulePlannerButton.setDisable(!canOpenScopedViews);
+            openSchedulePlannerButton.setTooltip(
+                !canOpenScopedViews
+                    ? new Tooltip("Выберите конкретный календарь, чтобы открыть авторасписание.")
+                    : null
+            );
+        }
+        if (openLessonsListButton != null) {
+            openLessonsListButton.setDisable(!canOpenScopedViews);
+            openLessonsListButton.setTooltip(
+                !canOpenScopedViews
+                    ? new Tooltip("Выберите конкретный календарь, чтобы открыть список занятий.")
+                    : null
+            );
+        }
     }
 
     /**
@@ -1468,11 +1499,25 @@ public class CalendarController {
     private void showLessonsForDate(LocalDate date) {
         lessonsList.getChildren().clear();
 
+        HBox header = new HBox(10);
+        header.setAlignment(Pos.CENTER_LEFT);
         Label dateLabel = new Label(
             date.format(UiFormatters.LONG_DATE_FORMATTER)
         );
         dateLabel.getStyleClass().add("section-title");
-        lessonsList.getChildren().add(dateLabel);
+        Button addLessonButton = new Button("Добавить занятие");
+        addLessonButton.getStyleClass().add("button-primary");
+        addLessonButton.setOnAction(event -> showAddLessonDialog(date));
+        if (allCalendarsMode) {
+            addLessonButton.setDisable(true);
+            addLessonButton.setTooltip(
+                new Tooltip("Добавление доступно только в конкретном календаре.")
+            );
+        }
+        Pane spacer = new Pane();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+        header.getChildren().addAll(dateLabel, spacer, addLessonButton);
+        lessonsList.getChildren().add(header);
 
         if (lessonUseCase == null) {
             Label errorLabel = new Label("Ошибка: Use case не инициализирован");
@@ -1557,6 +1602,15 @@ public class CalendarController {
         Button deleteButton = new Button("Удалить");
         editButton.getStyleClass().add("button-secondary");
         deleteButton.getStyleClass().add("button-danger");
+        if (allCalendarsMode) {
+            Tooltip readOnlyTooltip = new Tooltip(
+                "Редактирование доступно только в конкретном календаре."
+            );
+            editButton.setDisable(true);
+            deleteButton.setDisable(true);
+            editButton.setTooltip(readOnlyTooltip);
+            deleteButton.setTooltip(readOnlyTooltip);
+        }
 
         editButton.setOnAction(event -> showEditLessonDialog(lesson));
         deleteButton.setOnAction(event -> {
@@ -1744,6 +1798,7 @@ public class CalendarController {
         updatingCalendarSelection = false;
 
         applyCalendarSelection();
+        updateActionAvailability();
     }
 
     /**
@@ -1825,6 +1880,7 @@ public class CalendarController {
         selectedDate = null;
         buildCalendar();
         updateHeaderStatus();
+        updateActionAvailability();
     }
 
     /**

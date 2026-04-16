@@ -198,8 +198,8 @@ public class LessonDialogController {
                 return false;
             }
 
-            // Создание или обновление занятия
-            if (lesson == null) {
+            boolean isNew = lesson == null;
+            if (isNew) {
                 lesson = new Lesson();
             }
 
@@ -212,17 +212,11 @@ public class LessonDialogController {
             lesson.setDate(datePicker.getValue());
             lesson.setDurationHours(durationHours);
 
-            if (
-                lesson.getId() == null ||
-                !lessonUseCase.getLessonById(lesson.getId()).isPresent()
-            ) {
-                // Создание нового занятия
+            if (isNew) {
                 lessonUseCase.createLesson(lesson);
             } else {
-                // Обновление существующего занятия
                 lessonUseCase.updateLesson(lesson);
             }
-
             return true;
         } catch (Exception e) {
             UiAlerts.showError("Ошибка", "Ошибка при сохранении: " + e.getMessage());

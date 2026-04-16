@@ -1,13 +1,15 @@
 package com.ororura.slseleven.application.usecase;
 
+import com.ororura.slseleven.application.service.CalendarManagementService;
+import com.ororura.slseleven.application.service.ScheduleHistoryService;
+import com.ororura.slseleven.application.service.ScheduleSnapshotCodec;
 import com.ororura.slseleven.application.port.CalendarContext;
 import com.ororura.slseleven.application.support.CalendarScopedUseCase;
-import com.ororura.slseleven.domain.model.Lesson;
 import com.ororura.slseleven.domain.model.AppCalendar;
 import com.ororura.slseleven.domain.model.InstructorDuty;
 import com.ororura.slseleven.domain.model.InstructorProfile;
+import com.ororura.slseleven.domain.model.Lesson;
 import com.ororura.slseleven.domain.model.RoomProfile;
-import com.ororura.slseleven.domain.model.ScheduleHistorySnapshot;
 import com.ororura.slseleven.domain.model.ScheduleItem;
 import com.ororura.slseleven.domain.model.SubjectScheduleRule;
 import com.ororura.slseleven.domain.repository.CalendarRepository;
@@ -15,14 +17,11 @@ import com.ororura.slseleven.domain.repository.LessonRepository;
 import com.ororura.slseleven.domain.repository.ScheduleCatalogRepository;
 import com.ororura.slseleven.domain.repository.ScheduleHistoryRepository;
 import com.ororura.slseleven.domain.repository.ScheduleItemRepository;
-import java.nio.charset.StandardCharsets;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.Base64;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -54,9 +53,9 @@ public class ScheduleUseCase extends CalendarScopedUseCase {
 
     private final LessonRepository lessonRepository;
     private final ScheduleItemRepository scheduleItemRepository;
-    private final ScheduleHistoryRepository scheduleHistoryRepository;
     private final ScheduleCatalogRepository scheduleCatalogRepository;
-    private final CalendarRepository calendarRepository;
+    private final CalendarManagementService calendarManagementService;
+    private final ScheduleHistoryService scheduleHistoryService;
 
     private static Map<LocalTime, Integer> buildSlotIndexByStartTime() {
         Map<LocalTime, Integer> indexByTime = new HashMap<>();
@@ -80,44 +79,53 @@ public class ScheduleUseCase extends CalendarScopedUseCase {
         super(calendarContext);
         this.lessonRepository = lessonRepository;
         this.scheduleItemRepository = scheduleItemRepository;
-        this.scheduleHistoryRepository = scheduleHistoryRepository;
         this.scheduleCatalogRepository = scheduleCatalogRepository;
-        this.calendarRepository = calendarRepository;
+        this.calendarManagementService = new CalendarManagementService(
+            calendarRepository,
+            calendarContext
+        );
+        this.scheduleHistoryService = new ScheduleHistoryService(
+            lessonRepository,
+            scheduleItemRepository,
+            scheduleHistoryRepository,
+            calendarContext,
+            new ScheduleSnapshotCodec()
+        );
     }
 
     /**
      * Возвращает список всех календарей.
      */
     public List<AppCalendar> getCalendars() {
-        return calendarRepository.findAllCalendars();
+        return calendarManagementService.getCalendars();
     }
 
     /**
      * Создаёт новый календарь.
      */
     public AppCalendar createCalendar(String name) {
-        return calendarRepository.createCalendar(name);
+        return calendarManagementService.createCalendar(name);
     }
 
     /**
      * Создаёт новый календарь.
      */
     public AppCalendar createCalendar(String name, String directoryPath) {
-        return calendarRepository.createCalendar(name, directoryPath);
+        return calendarManagementService.createCalendar(name, directoryPath);
     }
 
     /**
      * Переименовывает календарь по ID.
      */
     public void renameCalendar(String calendarId, String newName) {
-        calendarRepository.renameCalendar(calendarId, newName);
+        calendarManagementService.renameCalendar(calendarId, newName);
     }
 
     /**
      * Перемещает календарь в указанную директорию.
      */
     public void moveCalendarToDirectory(String calendarId, String directoryPath) {
-        calendarRepository.moveCalendarToDirectory(
+        calendarManagementService.moveCalendarToDirectory(
             calendarId,
             directoryPath
         );
@@ -127,32 +135,14 @@ public class ScheduleUseCase extends CalendarScopedUseCase {
      * Возвращает список доступных директорий календарей.
      */
     public List<String> getCalendarDirectories() {
-        return calendarRepository.getCalendarDirectories();
+        return calendarManagementService.getCalendarDirectories();
     }
 
     /**
      * Удаляет календарь и переключает активный календарь на доступный.
      */
     public void deleteCalendar(String calendarId) {
-        List<AppCalendar> calendars = calendarRepository.findAllCalendars();
-        if (calendars.size() <= 1) {
-            throw new IllegalStateException("Нельзя удалить единственный календарь");
-        }
-
-        boolean deletingActiveCalendar = currentCalendarId().equals(calendarId);
-        String fallbackCalendarId = calendars
-            .stream()
-            .map(AppCalendar::getId)
-            .filter(id -> !id.equals(calendarId))
-            .findFirst()
-            .orElseThrow(() ->
-                new IllegalStateException("Не удалось определить резервный календарь")
-            );
-
-        calendarRepository.deleteCalendar(calendarId);
-        if (deletingActiveCalendar) {
-            setCurrentCalendarId(fallbackCalendarId);
-        }
+        calendarManagementService.deleteCalendar(calendarId);
     }
 
     /**
@@ -358,75 +348,22 @@ public class ScheduleUseCase extends CalendarScopedUseCase {
     /**
      * Возвращает список снимков истории расписания для UI.
      */
-    public List<HistoryEntry> getHistoryEntries() {
-        List<ScheduleHistorySnapshot> snapshots = scheduleHistoryRepository.findAll(currentCalendarId());
-        List<HistoryEntry> entries = new ArrayList<>();
-        for (ScheduleHistorySnapshot snapshot : snapshots) {
-            entries.add(
-                new HistoryEntry(
-                    snapshot.getId(),
-                    snapshot.getCreatedAt(),
-                    snapshot.getLabel()
-                )
-            );
-        }
-        return entries;
+    public List<ScheduleHistoryEntry> getHistoryEntries() {
+        return scheduleHistoryService.getHistoryEntries();
     }
 
     /**
      * Создаёт снимок текущего состояния занятий и пула распределения.
      */
     public boolean createHistorySnapshot(String label) {
-        List<Lesson> lessons = lessonRepository.findAll(currentCalendarId());
-        List<ScheduleItem> items = scheduleItemRepository.findAll(currentCalendarId());
-        if (lessons.isEmpty() && items.isEmpty()) {
-            return false;
-        }
-
-        String snapshotId = java.util.UUID.randomUUID().toString();
-        ScheduleHistorySnapshot snapshot = new ScheduleHistorySnapshot(
-            snapshotId,
-            currentCalendarId(),
-            LocalDateTime.now(),
-            label == null || label.isBlank() ? "Ручной снимок" : label,
-            serializeLessons(lessons),
-            serializeScheduleItems(items)
-        );
-        scheduleHistoryRepository.save(snapshot);
-        return true;
+        return scheduleHistoryService.createHistorySnapshot(label);
     }
 
     /**
      * Восстанавливает занятия и пул из выбранного снимка истории.
      */
     public boolean restoreFromHistory(String historyId) {
-        if (historyId == null || historyId.isBlank()) {
-            throw new IllegalArgumentException("ID снимка не может быть пустым");
-        }
-        ScheduleHistorySnapshot snapshot = scheduleHistoryRepository
-            .findById(historyId, currentCalendarId())
-            .orElse(null);
-        if (snapshot == null) {
-            return false;
-        }
-
-        List<Lesson> lessons = deserializeLessons(snapshot.getLessonsBlob());
-        List<ScheduleItem> items = deserializeScheduleItems(
-            snapshot.getScheduleItemsBlob()
-        );
-
-        lessonRepository.deleteAll(currentCalendarId());
-        scheduleItemRepository.deleteAll(currentCalendarId());
-
-        for (Lesson lesson : lessons) {
-            lesson.setCalendarId(currentCalendarId());
-            lessonRepository.save(lesson);
-        }
-        for (ScheduleItem item : items) {
-            item.setCalendarId(currentCalendarId());
-            scheduleItemRepository.save(item);
-        }
-        return true;
+        return scheduleHistoryService.restoreFromHistory(historyId);
     }
 
     /**
@@ -1743,216 +1680,6 @@ public class ScheduleUseCase extends CalendarScopedUseCase {
             this.instructorName = instructorName;
             this.roomName = roomName;
         }
-    }
-
-    public static final class HistoryEntry {
-        private final String id;
-        private final LocalDateTime createdAt;
-        private final String label;
-
-        /**
-     * Создаёт DTO записи истории для отображения снимков в интерфейсе.
-     */
-        public HistoryEntry(String id, LocalDateTime createdAt, String label) {
-            this.id = id;
-            this.createdAt = createdAt;
-            this.label = label;
-        }
-
-        /**
-     * Возвращает идентификатор записи истории.
-     */
-        public String getId() {
-            return id;
-        }
-
-        /**
-     * Возвращает время создания записи истории.
-     */
-        public LocalDateTime getCreatedAt() {
-            return createdAt;
-        }
-
-        /**
-     * Возвращает подпись записи истории.
-     */
-        public String getLabel() {
-            return label;
-        }
-
-        /**
-     * Возвращает человекочитаемое представление записи истории.
-     */
-        @Override
-        public String toString() {
-            return createdAt + " — " + label;
-        }
-    }
-
-    /**
-     * Сериализует список занятий в табличный текст для сохранения в истории.
-     */
-    private String serializeLessons(List<Lesson> lessons) {
-        StringBuilder sb = new StringBuilder();
-        for (Lesson lesson : lessons) {
-            sb
-                .append(encode(lesson.getId()))
-                .append('\t')
-                .append(encode(lesson.getTopic()))
-                .append('\t')
-                .append(encode(lesson.getLessonName()))
-                .append('\t')
-                .append(encode(lesson.getClassName()))
-                .append('\t')
-                .append(lesson.isAutoScheduled() ? "1" : "0")
-                .append('\t')
-                .append(lesson.isArchived() ? "1" : "0")
-                .append('\t')
-                .append(Math.max(1, lesson.getDurationHours()))
-                .append('\t')
-                .append(lesson.getTime())
-                .append('\t')
-                .append(encode(lesson.getLocation()))
-                .append('\t')
-                .append(encode(lesson.getInstructor()))
-                .append('\t')
-                .append(lesson.getDate())
-                .append('\n');
-        }
-        return sb.toString();
-    }
-
-    /**
-     * Сериализует пул элементов расписания в текстовый формат истории.
-     */
-    private String serializeScheduleItems(List<ScheduleItem> items) {
-        StringBuilder sb = new StringBuilder();
-        for (ScheduleItem item : items) {
-            sb
-                .append(encode(item.getId()))
-                .append('\t')
-                .append(encode(item.getTopic()))
-                .append('\t')
-                .append(encode(item.getLessonName()))
-                .append('\t')
-                .append(encode(item.getClassName()))
-                .append('\t')
-                .append(encode(item.getLocation()))
-                .append('\t')
-                .append(encode(item.getInstructor()))
-                .append('\t')
-                .append(item.getHours())
-                .append('\t')
-                .append(Math.max(1, item.getConsecutiveHours()))
-                .append('\t')
-                .append(item.getCreatedAt())
-                .append('\n');
-        }
-        return sb.toString();
-    }
-
-    /**
-     * Восстанавливает занятия из сериализованного текстового представления.
-     */
-    private List<Lesson> deserializeLessons(String blob) {
-        List<Lesson> lessons = new ArrayList<>();
-        if (blob == null || blob.isBlank()) {
-            return lessons;
-        }
-        String[] lines = blob.split("\\R");
-        for (String line : lines) {
-            if (line.isBlank()) {
-                continue;
-            }
-            String[] parts = line.split("\t", -1);
-            if (parts.length < 10) {
-                continue;
-            }
-            Lesson lesson = new Lesson();
-            lesson.setId(decode(parts[0]));
-            lesson.setTopic(decode(parts[1]));
-            lesson.setLessonName(decode(parts[2]));
-            lesson.setClassName(decode(parts[3]));
-            lesson.setAutoScheduled("1".equals(parts[4]));
-            lesson.setArchived("1".equals(parts[5]));
-            if (parts.length >= 11) {
-                lesson.setDurationHours(Math.max(1, Integer.parseInt(parts[6])));
-                lesson.setTime(LocalTime.parse(parts[7]));
-                lesson.setLocation(decode(parts[8]));
-                lesson.setInstructor(decode(parts[9]));
-                lesson.setDate(LocalDate.parse(parts[10]));
-            } else {
-                lesson.setDurationHours(1);
-                lesson.setTime(LocalTime.parse(parts[6]));
-                lesson.setLocation(decode(parts[7]));
-                lesson.setInstructor(decode(parts[8]));
-                lesson.setDate(LocalDate.parse(parts[9]));
-            }
-            lessons.add(lesson);
-        }
-        return lessons;
-    }
-
-    /**
-     * Восстанавливает элементы пула из сериализованного текста.
-     */
-    private List<ScheduleItem> deserializeScheduleItems(String blob) {
-        List<ScheduleItem> items = new ArrayList<>();
-        if (blob == null || blob.isBlank()) {
-            return items;
-        }
-        String[] lines = blob.split("\\R");
-        for (String line : lines) {
-            if (line.isBlank()) {
-                continue;
-            }
-            String[] parts = line.split("\t", -1);
-            if (parts.length < 8) {
-                continue;
-            }
-            ScheduleItem item = new ScheduleItem();
-            item.setId(decode(parts[0]));
-            item.setTopic(decode(parts[1]));
-            item.setLessonName(decode(parts[2]));
-            item.setClassName(decode(parts[3]));
-            item.setLocation(decode(parts[4]));
-            item.setInstructor(decode(parts[5]));
-            item.setHours(Integer.parseInt(parts[6]));
-            if (parts.length >= 9) {
-                item.setConsecutiveHours(
-                    Math.max(1, Integer.parseInt(parts[7]))
-                );
-                item.setCreatedAt(LocalDateTime.parse(parts[8]));
-            } else {
-                item.setConsecutiveHours(1);
-                item.setCreatedAt(LocalDateTime.parse(parts[7]));
-            }
-            items.add(item);
-        }
-        return items;
-    }
-
-    /**
-     * Кодирует значение в Base64 для безопасного хранения в snapshot-строках.
-     */
-    private String encode(String value) {
-        String safe = value == null ? "" : value;
-        return Base64
-            .getEncoder()
-            .encodeToString(safe.getBytes(StandardCharsets.UTF_8));
-    }
-
-    /**
-     * Декодирует Base64-значение, поддерживая совместимость со старыми форматами.
-     */
-    private String decode(String value) {
-        if (value == null || value.isBlank()) {
-            return "";
-        }
-        return new String(
-            Base64.getDecoder().decode(value),
-            StandardCharsets.UTF_8
-        );
     }
 
     /**
