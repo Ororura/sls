@@ -1,7 +1,5 @@
 package com.ororura.slseleven.adapters.ui;
 
-import java.util.List;
-import java.util.StringJoiner;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonType;
 
@@ -33,28 +31,7 @@ public final class UiAlerts {
         alert.setTitle(title);
         alert.setHeaderText(header);
         alert.setContentText(message);
-        UiStyles.apply(alert.getDialogPane());
         return alert.showAndWait().filter(ButtonType.OK::equals).isPresent();
-    }
-
-    public static void showImportResult(
-        String title,
-        int imported,
-        List<String> errors,
-        int previewLimit
-    ) {
-        StringJoiner joiner = new StringJoiner(System.lineSeparator());
-        joiner.add("Импортировано строк: " + imported);
-        if (errors != null && !errors.isEmpty()) {
-            int limit = Math.min(previewLimit, errors.size());
-            for (int i = 0; i < limit; i++) {
-                joiner.add(errors.get(i));
-            }
-            if (errors.size() > limit) {
-                joiner.add("Ошибок ещё: " + (errors.size() - limit));
-            }
-        }
-        showInfo(title, joiner.toString());
     }
 
     /**

@@ -18,8 +18,8 @@
                 <FlowPane styleClass="action-flow">
                     <Button onAction="#onImport" styleClass="button-secondary" text="Импорт" />
                     <Button onAction="#onImportXlsx" styleClass="button-secondary" text="Импорт XLSX" />
-                    <Button fx:id="exportButton" onAction="#onExport" styleClass="button-secondary" text="Экспорт" />
-                    <Button fx:id="weeklyReportButton" onAction="#onWeeklyReport" styleClass="button-secondary" text="Отчет по неделям" />
+                    <Button onAction="#onExport" styleClass="button-secondary" text="Экспорт" />
+                    <Button onAction="#onWeeklyReport" styleClass="button-secondary" text="Отчет по неделям" />
                 </FlowPane>
             </VBox>
         </VBox>
@@ -46,10 +46,10 @@
             <Label fx:id="countLabel" text="Всего занятий: 0" />
             <Pane HBox.hgrow="ALWAYS" />
             <Button onAction="#onSave" styleClass="button-primary" text="Добавить" />
-            <Button fx:id="returnOneAutoToPoolButton" onAction="#onReturnOneAutoToPool" styleClass="button-secondary" text="Вернуть в пул" />
-            <Button fx:id="returnAllAutoToPoolButton" onAction="#onReturnAllAutoToPool" styleClass="button-secondary" text="Вернуть все в пул" />
-            <Button fx:id="deleteButton" onAction="#onDelete" styleClass="button-danger" text="Удалить" />
-            <Button fx:id="deleteAllButton" onAction="#onDeleteAll" styleClass="button-danger" text="Удалить все" />
+            <Button onAction="#onReturnOneAutoToPool" styleClass="button-secondary" text="Вернуть в пул" />
+            <Button onAction="#onReturnAllAutoToPool" styleClass="button-secondary" text="Вернуть все в пул" />
+            <Button onAction="#onDelete" styleClass="button-danger" text="Удалить" />
+            <Button onAction="#onDeleteAll" styleClass="button-danger" text="Удалить все" />
         </HBox>
     </bottom>
 

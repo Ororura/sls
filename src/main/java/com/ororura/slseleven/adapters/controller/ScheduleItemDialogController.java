@@ -140,10 +140,6 @@ public class ScheduleItemDialogController {
             if (hours == null) {
                 return false;
             }
-            if (hours <= 0) {
-                onError.accept("Часы должны быть больше 0");
-                return false;
-            }
             Integer consecutiveHours = UiValidation.parseInt(
                 consecutiveHoursField,
                 "Часы подряд для предмета должны быть целым числом",

@@ -42,13 +42,11 @@
                     />
                     <Pane HBox.hgrow="ALWAYS" />
                     <Button
-                        fx:id="openSchedulePlannerButton"
                         text="Авторасписание"
                         styleClass="button-secondary"
                         onAction="#onOpenSchedulePlanner"
                     />
                     <Button
-                        fx:id="openLessonsListButton"
                         text="Все занятия"
                         styleClass="button-primary"
                         onAction="#onOpenLessonsList"
