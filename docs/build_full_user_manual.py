@@ -19,10 +19,11 @@ ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "docs" / "SLSEleven_User_Manual_FULL.docx"
 IMG_DIR = ROOT / "docs" / "manual_placeholders"
 LOGO_PATH = IMG_DIR / "logo.png"
-APP_NAME = "SLSEleven / ClassCalendar"
+APP_NAME = "SLSEleven"
 VERSION = "1.0.0"
 DATE_RU = "14 мая 2026 г."
-ORG = "SLSEleven"
+ORG = "воинская часть 56529-2"
+CLASSIFICATION = "ДСП"
 AUTHORS = "Капитан 2 ранга Киселев О.А.\nСтарший матрос Гладких Е.Ю."
 WIN_DATA_DIR = r"C:\Users\<имя_пользователя>\.slseleven"
 WIN_DB_PATH = r"C:\Users\<имя_пользователя>\.slseleven\lessons.db"
@@ -238,7 +239,7 @@ def setup_document() -> Document:
 
     for section in doc.sections:
         header = section.header.paragraphs[0]
-        header.text = f"{APP_NAME}. Руководство пользователя"
+        header.text = f"{CLASSIFICATION}. {APP_NAME}. Руководство пользователя"
         header.alignment = WD_ALIGN_PARAGRAPH.RIGHT
         for r in header.runs:
             r.font.size = Pt(8.5)
@@ -253,6 +254,13 @@ def setup_document() -> Document:
 
 
 def add_cover(doc: Document) -> None:
+    p = doc.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+    run = p.add_run(CLASSIFICATION)
+    run.font.size = Pt(14)
+    run.font.bold = True
+    run.font.color.rgb = RGBColor(192, 0, 0)
+
     if LOGO_PATH.exists():
         p = doc.add_paragraph()
         p.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -264,11 +272,6 @@ def add_cover(doc: Document) -> None:
     run.font.size = Pt(32)
     run.font.bold = True
     run.font.color.rgb = RGBColor(31, 78, 121)
-    p = doc.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    r = p.add_run("ClassCalendar")
-    r.font.size = Pt(22)
-    r.font.color.rgb = RGBColor(47, 117, 181)
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     r = p.add_run("Полное руководство пользователя\nпо эксплуатации программного продукта")
@@ -285,6 +288,7 @@ def add_cover(doc: Document) -> None:
             ["Дата выпуска документа", DATE_RU],
             ["Авторы", AUTHORS],
             ["Организация", ORG],
+            ["Гриф", CLASSIFICATION],
             ["Статус", "Готово к передаче пользователю"],
             ["Логотип", "Сгенерирован для документации SLSEleven."],
         ],
@@ -396,7 +400,7 @@ def add_requirements(doc: Document) -> None:
         doc,
         ["Компонент", "Минимальное требование", "Рекомендуемое требование", "Комментарий"],
         [
-            ["Операционная система", "Windows 7", "Windows 10/11 с установленными обновлениями", "Windows рассматривается как основная платформа эксплуатации. macOS возможна как дополнительный вариант."],
+            ["Операционная система", "Windows 7 x64/x86", "Windows 10/11 x64 с установленными обновлениями", "Windows рассматривается как основная платформа эксплуатации. macOS возможна как дополнительный вариант."],
             ["CPU", "2 ядра x64/ARM64", "4 ядра и выше", "Автораспределение выполняется локально; производительность важна при большом пуле часов."],
             ["RAM", "4 ГБ", "8 ГБ и выше", "Для обычного расписания достаточно 4 ГБ, но Excel-операции комфортнее при 8 ГБ."],
             ["Диск", "200 МБ для приложения + место под БД", "1 ГБ свободного места", f"Файл базы данных создаётся в папке {WIN_DATA_DIR}."],
@@ -427,13 +431,6 @@ def add_installation(doc: Document) -> None:
         f"Если на компьютере уже велось расписание, попросите ответственного сделать резервную копию файла {WIN_DB_PATH}.",
         "Проверьте, что установочный файл получен из доверенного источника.",
     ])
-    add_figure(
-        doc,
-        "install_file",
-        "Установочный файл",
-        ["На экране должен быть показан установочный файл Windows EXE/MSI.", "Пользователь проверяет имя файла и версию перед запуском. Если файл называется непонятно или получен не от ответственного лица, запускать его нельзя."],
-        "Рисунок 1 — Плейсхолдер скриншота установочного файла.",
-    )
     doc.add_heading("3.2 Установка на Windows", level=2)
     doc.add_paragraph(
         "Ниже приведён основной порядок установки. Выполняйте действия строго по порядку. Если на экране появляется окно, которого нет в инструкции, не нажимайте случайные кнопки: прочитайте текст окна или обратитесь к ответственному."
@@ -445,21 +442,14 @@ def add_installation(doc: Document) -> None:
         "Если появится мастер установки, нажмите «Далее». Не меняйте папку установки, если администратор не дал отдельное указание.",
         "Если мастер предложит создать ярлык на рабочем столе, оставьте этот пункт включённым. Ярлык облегчит запуск программы для пользователей без опыта.",
         "Нажмите «Установить» и дождитесь окончания копирования файлов. Во время установки не выключайте компьютер и не закрывайте окно.",
-        "После завершения нажмите «Готово». Если есть пункт «Запустить ClassCalendar», можно оставить его включённым.",
+        "После завершения нажмите «Готово». Если есть пункт «Запустить SLSEleven», можно оставить его включённым.",
         "Убедитесь, что приложение запускается: на экране должен открыться календарь.",
     ])
-    add_figure(
-        doc,
-        "install_windows",
-        "Мастер установки Windows",
-        ["Окно выбора папки установки, кнопки «Далее», «Установить», «Готово».", "Покажите финальный экран успешной установки и созданный ярлык на рабочем столе."],
-        "Рисунок 2 — Плейсхолдер скриншота установки на Windows.",
-    )
     doc.add_heading("3.3 Первый запуск в Windows после установки", level=2)
     add_numbered_list(doc, [
-        "Найдите ярлык ClassCalendar или SLSEleven на рабочем столе Windows.",
+        "Найдите ярлык SLSEleven на рабочем столе Windows.",
         "Щёлкните по ярлыку два раза левой кнопкой мыши.",
-        "Если ярлыка нет, нажмите кнопку «Пуск» в левом нижнем углу экрана и начните вводить ClassCalendar.",
+        "Если ярлыка нет, нажмите кнопку «Пуск» в левом нижнем углу экрана и начните вводить SLSEleven.",
         "Когда Windows найдёт приложение, щёлкните по нему левой кнопкой мыши.",
         "Дождитесь открытия окна календаря. Первый запуск может занимать больше времени, потому что программа создаёт папку данных.",
     ])
@@ -483,13 +473,6 @@ def add_installation(doc: Document) -> None:
         p.add_run(f"{idx}. ").bold = True
         p.add_run(action)
         doc.add_paragraph("Ожидаемый результат: " + result)
-    add_figure(
-        doc,
-        "install_macos",
-        "Установка на macOS",
-        ["Окно DMG/Applications, значок приложения ClassCalendar.", "На финальном скриншоте должно быть видно приложение в папке «Программы»."],
-        "Рисунок 3 — Плейсхолдер скриншота установки на macOS.",
-    )
     doc.add_heading("3.5 Запуск из исходного кода", level=2)
     doc.add_paragraph("Если готовый инсталлятор не предоставлен, приложение можно запустить из корня проекта командой:")
     p = doc.add_paragraph(style="Intense Quote")
@@ -530,7 +513,7 @@ def add_first_run(doc: Document) -> None:
         "first_launch",
         "Первый запуск",
         ["Главный экран «Календарь»: календарная сетка месяца, правая панель занятий, верхние кнопки навигации.", "В шапке отображаются текущая дата, время и статус занятия. Пользователь не должен искать файлы программы вручную."],
-        "Рисунок 4 — Первый запуск приложения.",
+        "Рисунок 1 — Первый запуск приложения.",
     )
     doc.add_heading("4.1 Первичная настройка", level=2)
     add_numbered_list(doc, [
@@ -558,7 +541,7 @@ def add_interface(doc: Document) -> None:
         "calendar_overview",
         "Экран «Календарь»",
         ["Верхняя панель: Предыдущий, Следующий, Текущий месяц, Печать A4, Авторасписание, Все занятия, О приложении.", "В центре: сетка месяца. Справа: занятия на выбранный день."],
-        "Рисунок 5 — Общий вид календаря в окне 800 x 600.",
+        "Рисунок 2 — Общий вид календаря в окне 800 x 600.",
     )
     add_table(
         doc,
@@ -599,7 +582,7 @@ def add_interface(doc: Document) -> None:
         "lessons_list",
         "Экран «Все занятия»",
         ["Таблица: Дата, Время, Предмет, Тема, Занятие, Место, Преподаватель.", "Верхняя панель: поиск, обновление, архив, импорт и экспорт."],
-        "Рисунок 6 — Экран «Все занятия».",
+        "Рисунок 3 — Экран «Все занятия».",
     )
     add_table(
         doc,
@@ -624,7 +607,7 @@ def add_interface(doc: Document) -> None:
         "schedule_planner",
         "Экран «Авторасписание»",
         ["Таблица пула: Предмет, Тема, Занятие, Место, Преподаватель, Часы, Подряд.", "Нижняя область: даты, лимиты по дням недели, правила, преподаватели, кабинеты, наряды, история, запуск."],
-        "Рисунок 7 — Экран «Авторасписание».",
+        "Рисунок 4 — Экран «Авторасписание».",
     )
     add_table(
         doc,
@@ -1088,10 +1071,10 @@ def main() -> None:
     add_appendices(doc)
 
     core_props = doc.core_properties
-    core_props.title = "SLSEleven / ClassCalendar. Полное руководство пользователя"
+    core_props.title = "SLSEleven. Полное руководство пользователя"
     core_props.subject = "Пользовательская инструкция"
     core_props.author = ORG
-    core_props.comments = "Generated as enterprise-style user documentation."
+    core_props.comments = f"{CLASSIFICATION}. Generated as enterprise-style user documentation."
     core_props.created = dt.datetime(2026, 5, 14)
     core_props.modified = dt.datetime(2026, 5, 14)
 
