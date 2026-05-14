@@ -272,13 +272,9 @@ public class CalendarController {
         Label title = new Label("Авторы проекта");
         title.getStyleClass().add("about-title");
 
-        Label ideaLabel = new Label("Автор идеи");
-        ideaLabel.getStyleClass().add("about-label");
         Label ideaValue = new Label("капитан 2 ранга Киселев О. А.");
         ideaValue.getStyleClass().add("about-line");
 
-        Label devLabel = new Label("Разработчик");
-        devLabel.getStyleClass().add("about-label");
         Label devValue = new Label("старший матрос Гладких Е. Ю.");
         devValue.getStyleClass().add("about-line");
 
@@ -286,9 +282,7 @@ public class CalendarController {
             10,
             title,
             new Separator(),
-            ideaLabel,
             ideaValue,
-            devLabel,
             devValue
         );
         content.getStyleClass().add("about-card");
