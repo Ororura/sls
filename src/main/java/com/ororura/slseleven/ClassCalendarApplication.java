@@ -26,7 +26,7 @@ public class ClassCalendarApplication extends Application {
         FXMLLoader fxmlLoader = new FXMLLoader(
             ClassCalendarApplication.class.getResource("calendar-view.fxml")
         );
-        Scene scene = new Scene(fxmlLoader.load(), 1200, 800);
+        Scene scene = new Scene(fxmlLoader.load(), 800, 600);
         UiStyles.apply(scene);
 
         // 4) Внедрение use-case в главный контроллер.
@@ -35,6 +35,8 @@ public class ClassCalendarApplication extends Application {
         controller.setScheduleUseCase(services.getScheduleUseCase());
 
         stage.setTitle("Календарь занятий");
+        stage.setMinWidth(800);
+        stage.setMinHeight(600);
         stage.setScene(scene);
         stage.show();
     }

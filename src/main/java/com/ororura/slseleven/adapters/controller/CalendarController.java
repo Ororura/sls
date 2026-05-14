@@ -38,9 +38,11 @@ import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.control.*;
 import javafx.scene.image.PixelReader;
 import javafx.scene.image.WritableImage;
+import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
+import javafx.scene.layout.RowConstraints;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
@@ -327,7 +329,38 @@ public class CalendarController {
                 switchCalendar(newValue);
             });
         startHeaderTicker();
+        configureCalendarGridSizing();
         buildCalendar();
+    }
+
+    /**
+     * Делает сетку календаря пропорциональной, чтобы месяц помещался в окне 800x600.
+     */
+    private void configureCalendarGridSizing() {
+        calendarGrid.getColumnConstraints().clear();
+        for (int i = 0; i < 7; i++) {
+            ColumnConstraints column = new ColumnConstraints();
+            column.setPercentWidth(100.0 / 7.0);
+            column.setHgrow(Priority.ALWAYS);
+            column.setFillWidth(true);
+            calendarGrid.getColumnConstraints().add(column);
+        }
+
+        calendarGrid.getRowConstraints().clear();
+        RowConstraints header = new RowConstraints();
+        header.setMinHeight(18);
+        header.setPrefHeight(20);
+        calendarGrid.getRowConstraints().add(header);
+        for (int i = 0; i < 6; i++) {
+            RowConstraints row = new RowConstraints();
+            row.setPercentHeight(100.0 / 6.0);
+            row.setVgrow(Priority.ALWAYS);
+            row.setFillHeight(true);
+            calendarGrid.getRowConstraints().add(row);
+        }
+
+        calendarGrid.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
+        VBox.setVgrow(calendarGrid, Priority.ALWAYS);
     }
 
     /**
@@ -721,6 +754,7 @@ public class CalendarController {
             dayLabel.getStyleClass().add("dow-label");
             dayLabel.setMaxWidth(Double.MAX_VALUE);
             dayLabel.setAlignment(Pos.CENTER);
+            GridPane.setHgrow(dayLabel, Priority.ALWAYS);
             calendarGrid.add(dayLabel, i, 0);
         }
 
@@ -738,6 +772,8 @@ public class CalendarController {
             VBox dayCell = createDayCell(date, day, date.equals(today));
             int row = (day - 1 + dayOfWeek) / 7 + 1;
             int col = currentDayOfWeek;
+            GridPane.setHgrow(dayCell, Priority.ALWAYS);
+            GridPane.setVgrow(dayCell, Priority.ALWAYS);
             calendarGrid.add(dayCell, col, row);
             currentDayOfWeek = (currentDayOfWeek + 1) % 7;
         }
@@ -1418,7 +1454,9 @@ public class CalendarController {
     private VBox createDayCell(LocalDate date, int day, boolean isToday) {
         VBox cell = new VBox(2);
         cell.getStyleClass().add("day-cell");
-        cell.setPrefSize(100, 80);
+        cell.setMinSize(0, 54);
+        cell.setPrefSize(72, 60);
+        cell.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
         UiStyles.applyInteractiveAnimations(cell);
 
         boolean isSelected = date.equals(selectedDate);
@@ -1512,7 +1550,7 @@ public class CalendarController {
     private VBox createLessonCard(Lesson lesson) {
         VBox card = new VBox(5);
         card.getStyleClass().add("lesson-card");
-        card.setPrefWidth(300);
+        card.setMaxWidth(Double.MAX_VALUE);
         UiStyles.applyInteractiveAnimations(card);
 
         Label timeLabel = new Label(
@@ -1536,6 +1574,12 @@ public class CalendarController {
         locationLabel.getStyleClass().add("lesson-meta");
         instructorLabel.getStyleClass().add("lesson-meta");
         calendarLabel.getStyleClass().add("lesson-meta");
+        topicLabel.setWrapText(true);
+        lessonNameLabel.setWrapText(true);
+        classNameLabel.setWrapText(true);
+        locationLabel.setWrapText(true);
+        instructorLabel.setWrapText(true);
+        calendarLabel.setWrapText(true);
 
         card
             .getChildren()

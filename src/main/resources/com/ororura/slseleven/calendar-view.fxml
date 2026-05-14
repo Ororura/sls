@@ -13,7 +13,7 @@
                 <padding>
                     <Insets top="10" right="10" bottom="10" left="10" />
                 </padding>
-                <HBox alignment="CENTER_LEFT" styleClass="top-bar">
+                <FlowPane alignment="CENTER_LEFT" styleClass="top-bar">
                     <Button
                         fx:id="previousMonthButton"
                         text="◀ Предыдущий"
@@ -40,7 +40,6 @@
                         onAction="#onExportPrintExcel"
                         styleClass="button-secondary"
                     />
-                    <Pane HBox.hgrow="ALWAYS" />
                     <Button
                         text="Авторасписание"
                         styleClass="button-secondary"
@@ -56,20 +55,20 @@
                         styleClass="button-ghost"
                         onAction="#onAboutApp"
                     />
-                </HBox>
+                </FlowPane>
 
-                <HBox alignment="CENTER_LEFT" styleClass="control-bar">
+                <FlowPane alignment="CENTER_LEFT" styleClass="control-bar">
                     <Label text="Директория:" />
                     <ComboBox
                         fx:id="directoryComboBox"
-                        prefWidth="220"
+                        prefWidth="170"
                         promptText="Все директории"
                         styleClass="directory-combo"
                     />
                     <Label text="Календарь:" />
                     <ComboBox
                         fx:id="calendarComboBox"
-                        prefWidth="340"
+                        prefWidth="230"
                         promptText="Выберите календарь"
                         styleClass="calendar-combo"
                     />
@@ -93,26 +92,25 @@
                         onAction="#onDeleteCalendar"
                         styleClass="button-danger"
                     />
-                    <Pane HBox.hgrow="ALWAYS" />
                     <Label
                         text="ЛКМ: открыть день, ПКМ: добавить занятие"
                         styleClass="hint"
                     />
-                </HBox>
+                </FlowPane>
 
-                <HBox alignment="CENTER_LEFT" spacing="14" styleClass="status-bar">
+                <FlowPane alignment="CENTER_LEFT" styleClass="status-bar">
                     <Label text="СЕЙЧАС" styleClass="status-title" />
                     <Label fx:id="currentDateLabel" styleClass="status-chip-date" text="Дата: -" />
                     <Label fx:id="currentTimeLabel" styleClass="status-chip-time" text="Время: -" />
                     <Label fx:id="currentLessonLabel" styleClass="status-lesson-none" text="Текущее занятие: -" />
-                </HBox>
+                </FlowPane>
             </VBox>
         </VBox>
     </top>
 
     <center>
-        <HBox spacing="20" styleClass="content">
-            <VBox spacing="10" styleClass="calendar-panel panel-card">
+        <HBox spacing="12" styleClass="content">
+            <VBox spacing="10" styleClass="calendar-panel panel-card" HBox.hgrow="ALWAYS">
                 <GridPane fx:id="calendarGrid" styleClass="calendar-grid" />
             </VBox>
 

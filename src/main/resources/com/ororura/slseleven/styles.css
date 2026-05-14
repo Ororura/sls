@@ -8,13 +8,14 @@
 }
 
 .top-section {
-    -fx-padding: 16 20 10 20;
+    -fx-padding: 8 10 6 10;
 }
 
 .top-bar,
 .control-bar {
     -fx-alignment: center-left;
-    -fx-spacing: 10;
+    -fx-hgap: 7;
+    -fx-vgap: 7;
 }
 
 .toolbar {
@@ -28,10 +29,10 @@
 .footer-bar,
 .toolbar-card {
     -fx-background-color: rgba(255, 255, 255, 0.94);
-    -fx-background-radius: 16;
+    -fx-background-radius: 12;
     -fx-border-color: rgba(197, 207, 221, 0.88);
-    -fx-border-radius: 16;
-    -fx-effect: dropshadow(gaussian, rgba(12, 27, 49, 0.09), 18, 0.22, 0, 4);
+    -fx-border-radius: 12;
+    -fx-effect: dropshadow(gaussian, rgba(12, 27, 49, 0.07), 10, 0.18, 0, 2);
 }
 
 .toolbar-card {
@@ -40,7 +41,7 @@
 }
 
 .title {
-    -fx-font-size: 23px;
+    -fx-font-size: 20px;
     -fx-font-weight: 800;
     -fx-text-fill: #0f172a;
 }
@@ -66,10 +67,11 @@
 
 .status-bar {
     -fx-alignment: center-left;
-    -fx-spacing: 10;
-    -fx-padding: 10 12;
+    -fx-hgap: 10;
+    -fx-vgap: 4;
+    -fx-padding: 7 10;
     -fx-background-color: linear-gradient(to right, #0f2b4d, #1b4f86);
-    -fx-background-radius: 12;
+    -fx-background-radius: 10;
 }
 
 .status-title {
@@ -116,27 +118,28 @@
 }
 
 .content {
-    -fx-padding: 12 20 20 20;
-    -fx-spacing: 16;
+    -fx-padding: 8 10 10 10;
+    -fx-spacing: 12;
 }
 
 .calendar-panel {
-    -fx-padding: 14;
-    -fx-pref-width: 740;
+    -fx-padding: 10;
+    -fx-min-width: 500;
+    -fx-pref-width: 528;
 }
 
 .calendar-grid {
-    -fx-hgap: 8;
-    -fx-vgap: 8;
+    -fx-hgap: 5;
+    -fx-vgap: 5;
 }
 
 .day-cell {
     -fx-background-color: linear-gradient(to bottom, #ffffff, #f9fbff);
-    -fx-background-radius: 12;
-    -fx-border-radius: 12;
+    -fx-background-radius: 9;
+    -fx-border-radius: 9;
     -fx-border-color: #dde4ee;
     -fx-border-width: 1;
-    -fx-padding: 8 9;
+    -fx-padding: 5 6;
 }
 
 .day-cell:hover {
@@ -162,7 +165,7 @@
 }
 
 .day-number {
-    -fx-font-size: 14px;
+    -fx-font-size: 13px;
     -fx-font-weight: 700;
 }
 
@@ -173,30 +176,31 @@
 }
 
 .lesson-count {
-    -fx-font-size: 10px;
+    -fx-font-size: 9px;
     -fx-text-fill: #1158cb;
     -fx-background-color: rgba(17, 88, 203, 0.13);
-    -fx-background-radius: 8;
-    -fx-padding: 2 6;
+    -fx-background-radius: 7;
+    -fx-padding: 1 4;
 }
 
 .sidebar {
-    -fx-padding: 14;
-    -fx-pref-width: 350;
+    -fx-padding: 10;
+    -fx-min-width: 210;
+    -fx-pref-width: 220;
 }
 
 .sidebar-content {
-    -fx-padding: 10;
-    -fx-spacing: 10;
+    -fx-padding: 8;
+    -fx-spacing: 8;
 }
 
 .lesson-card {
     -fx-background-color: linear-gradient(to bottom, #ffffff, #fbfcfe);
-    -fx-background-radius: 12;
-    -fx-border-radius: 12;
+    -fx-background-radius: 10;
+    -fx-border-radius: 10;
     -fx-border-color: #d9e1ec;
-    -fx-padding: 10 12;
-    -fx-effect: dropshadow(gaussian, rgba(16, 24, 40, 0.1), 12, 0.2, 0, 2);
+    -fx-padding: 8 9;
+    -fx-effect: dropshadow(gaussian, rgba(16, 24, 40, 0.08), 8, 0.18, 0, 1);
 }
 
 .lesson-card-current {
@@ -212,7 +216,7 @@
 }
 
 .lesson-time {
-    -fx-font-size: 14px;
+    -fx-font-size: 13px;
     -fx-font-weight: 800;
     -fx-text-fill: #195fca;
 }
@@ -241,7 +245,7 @@
 
 .lesson-meta {
     -fx-text-fill: #33475c;
-    -fx-font-size: 12px;
+    -fx-font-size: 11px;
 }
 
 .card-actions {
@@ -275,7 +279,7 @@
 
 .button {
     -fx-background-radius: 10;
-    -fx-padding: 8 14;
+    -fx-padding: 6 10;
     -fx-font-weight: 700;
     -fx-cursor: hand;
 }
