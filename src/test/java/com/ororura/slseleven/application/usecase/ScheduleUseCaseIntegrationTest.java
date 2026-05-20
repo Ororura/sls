@@ -106,6 +106,63 @@ class ScheduleUseCaseIntegrationTest {
     }
 
     @Test
+    void previewAutoSchedule_shouldNotPersistLessonsOrConsumeQueue() {
+        LocalDate monday = LocalDate.of(2026, 2, 2);
+        scheduleUseCase.saveMaxHoursByDay(onlyDayCapacity(DayOfWeek.MONDAY, 2));
+        scheduleUseCase.createItem(new ScheduleItem("Math", "Lesson 1", "A1", "Ivanov", 2));
+
+        AutoScheduleResult result = scheduleUseCase.previewAutoSchedule(
+            monday,
+            monday
+        );
+
+        assertTrue(result.isDryRun());
+        assertEquals(2, result.getCreatedLessons());
+        assertTrue(lessonRepository.findByDate(monday, DEFAULT_CALENDAR_ID).isEmpty());
+        List<ScheduleItem> queue = scheduleItemRepository.findAll(
+            DEFAULT_CALENDAR_ID
+        );
+        assertEquals(1, queue.size());
+        assertEquals(2, queue.get(0).getHours());
+    }
+
+    @Test
+    void autoSchedule_shouldUseCustomScheduleSlots() {
+        LocalDate monday = LocalDate.of(2026, 2, 2);
+        scheduleUseCase.saveMaxHoursByDay(onlyDayCapacity(DayOfWeek.MONDAY, 2));
+        scheduleUseCase.saveScheduleSlots(
+            List.of(LocalTime.of(8, 30), LocalTime.of(14, 15))
+        );
+        scheduleUseCase.createItem(new ScheduleItem("Math", "Lesson 1", "A1", "Ivanov", 2));
+
+        AutoScheduleResult result = scheduleUseCase.autoSchedule(monday, monday);
+
+        assertEquals(2, result.getCreatedLessons());
+        List<Lesson> lessons = lessonRepository.findByDate(
+            monday,
+            DEFAULT_CALENDAR_ID
+        );
+        assertEquals(LocalTime.of(8, 30), lessons.get(0).getTime());
+        assertEquals(LocalTime.of(14, 15), lessons.get(1).getTime());
+    }
+
+    @Test
+    void previewAutoSchedule_shouldExplainRemainingHours() {
+        LocalDate monday = LocalDate.of(2026, 2, 2);
+        scheduleUseCase.saveMaxHoursByDay(onlyDayCapacity(DayOfWeek.MONDAY, 1));
+        scheduleUseCase.createItem(new ScheduleItem("Math", "Lesson 1", "A1", "Ivanov", 2));
+
+        AutoScheduleResult result = scheduleUseCase.previewAutoSchedule(
+            monday,
+            monday
+        );
+
+        assertEquals(1, result.getRemainingHours());
+        assertEquals(1, result.getRemainingItems().size());
+        assertTrue(!result.getRemainingItems().get(0).getReasons().isEmpty());
+    }
+
+    @Test
     void reschedule_shouldRebuildLessonsFromRangeAndQueue() {
         LocalDate monday = LocalDate.of(2026, 2, 2);
         LocalDate tuesday = monday.plusDays(1);

@@ -204,6 +204,16 @@
                     styleClass="button-secondary"
                 />
                 <Button
+                    text="Слоты"
+                    onAction="#onScheduleSlots"
+                    styleClass="button-secondary"
+                />
+                <Button
+                    text="Проверить"
+                    onAction="#onPreviewAutoSchedule"
+                    styleClass="button-secondary"
+                />
+                <Button
                     text="Сформировать расписание"
                     onAction="#onAutoSchedule"
                     styleClass="button-primary"

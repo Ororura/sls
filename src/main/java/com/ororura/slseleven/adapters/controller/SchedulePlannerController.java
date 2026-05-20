@@ -17,6 +17,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumMap;
@@ -1330,6 +1332,94 @@ public class SchedulePlannerController {
         showInfo("Перенесено из архива: " + moved + " занятий.");
     }
 
+    @FXML
+    private void onScheduleSlots() {
+        if (scheduleUseCase == null) {
+            showError("Ошибка: Use case не инициализирован");
+            return;
+        }
+
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("Слоты расписания");
+        dialog.setHeaderText("Настройте время начала занятий");
+
+        TextArea textArea = new TextArea();
+        textArea.setPrefRowCount(10);
+        textArea.setWrapText(false);
+        textArea.setText(
+            scheduleUseCase
+                .getScheduleSlots()
+                .stream()
+                .map(LocalTime::toString)
+                .collect(Collectors.joining("\n"))
+        );
+        Label hint = new Label("Один слот на строку в формате ЧЧ:ММ.");
+        VBox content = new VBox(8, hint, textArea);
+        dialog.getDialogPane().setContent(content);
+        ButtonType saveButtonType = new ButtonType(
+            "Сохранить",
+            ButtonBar.ButtonData.OK_DONE
+        );
+        dialog
+            .getDialogPane()
+            .getButtonTypes()
+            .addAll(saveButtonType, ButtonType.CANCEL);
+        UiStyles.apply(dialog.getDialogPane());
+
+        Button saveButton = (Button) dialog
+            .getDialogPane()
+            .lookupButton(saveButtonType);
+        saveButton.addEventFilter(javafx.event.ActionEvent.ACTION, event -> {
+            try {
+                List<LocalTime> slots = parseSlots(textArea.getText());
+                scheduleUseCase.saveScheduleSlots(slots);
+                showInfo("Слоты сохранены: " + slots.size());
+                dialog.close();
+            } catch (Exception exception) {
+                showError(exception.getMessage());
+            }
+            event.consume();
+        });
+
+        dialog.showAndWait();
+    }
+
+    @FXML
+    private void onPreviewAutoSchedule() {
+        if (scheduleUseCase == null) {
+            showError("Ошибка: Use case не инициализирован");
+            return;
+        }
+        if (startDatePicker.getValue() == null) {
+            showError("Укажите дату начала");
+            return;
+        }
+        if (!validateDateRange()) {
+            return;
+        }
+
+        saveSettings();
+        try {
+            AutoScheduleResult result = scheduleUseCase.previewAutoSchedule(
+                startDatePicker.getValue(),
+                endDatePicker.getValue()
+            );
+            StringBuilder message = new StringBuilder();
+            message
+                .append("Предварительно будет создано занятий: ")
+                .append(result.getCreatedLessons());
+            if (result.getLastScheduledDate() != null) {
+                message
+                    .append("\nПоследняя дата: ")
+                    .append(result.getLastScheduledDate());
+            }
+            appendRemainingHours(message, result);
+            showInfo(message.toString());
+        } catch (Exception e) {
+            showError("Ошибка при проверке: " + e.getMessage());
+        }
+    }
+
     /**
      * Метод onAutoSchedule.
      */
@@ -2164,6 +2254,35 @@ public class SchedulePlannerController {
         return true;
     }
 
+    private List<LocalTime> parseSlots(String text) {
+        if (text == null || text.trim().isEmpty()) {
+            throw new IllegalArgumentException("Укажите хотя бы один слот.");
+        }
+        List<LocalTime> slots = new ArrayList<>();
+        String[] lines = text.split("\\R");
+        for (int i = 0; i < lines.length; i++) {
+            String value = lines[i].trim();
+            if (value.isEmpty()) {
+                continue;
+            }
+            try {
+                LocalTime time = LocalTime.parse(value);
+                if (!slots.contains(time)) {
+                    slots.add(time);
+                }
+            } catch (DateTimeParseException exception) {
+                throw new IllegalArgumentException(
+                    "Некорректное время в строке " + (i + 1) + ": " + value
+                );
+            }
+        }
+        if (slots.isEmpty()) {
+            throw new IllegalArgumentException("Укажите хотя бы один слот.");
+        }
+        slots.sort(Comparator.naturalOrder());
+        return slots;
+    }
+
     /**
      * Метод appendRemainingHours.
      */
@@ -2192,6 +2311,7 @@ public class SchedulePlannerController {
                 .append(item.getClassName())
                 .append(": ")
                 .append(item.getHours());
+            appendReasons(builder, item.getReasons());
         }
         if (result.getRemainingItems().size() > limit) {
             builder
@@ -2227,11 +2347,24 @@ public class SchedulePlannerController {
                 ": " +
                 item.getHours()
             );
+            for (String reason : item.getReasons()) {
+                joiner.add("  Причина: " + reason);
+            }
         }
         if (result.getRemainingItems().size() > limit) {
             joiner.add(
                 "Ещё позиций: " + (result.getRemainingItems().size() - limit)
             );
+        }
+    }
+
+    private void appendReasons(StringBuilder builder, List<String> reasons) {
+        if (reasons == null || reasons.isEmpty()) {
+            return;
+        }
+        int limit = Math.min(2, reasons.size());
+        for (int i = 0; i < limit; i++) {
+            builder.append("\n  Причина: ").append(reasons.get(i));
         }
     }
 

@@ -6,6 +6,7 @@ import com.ororura.slseleven.domain.model.RoomProfile;
 import com.ororura.slseleven.domain.model.SubjectScheduleRule;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.Map;
 
@@ -13,6 +14,10 @@ public interface ScheduleCatalogRepository {
     Map<DayOfWeek, Integer> getMaxHoursByDay(String calendarId);
 
     void saveMaxHoursByDay(String calendarId, Map<DayOfWeek, Integer> maxHoursByDay);
+
+    List<LocalTime> getScheduleSlots(String calendarId);
+
+    void saveScheduleSlots(String calendarId, List<LocalTime> slots);
 
     List<SubjectScheduleRule> getSubjectRules(String calendarId);
 

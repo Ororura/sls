@@ -8,6 +8,7 @@ public class AutoScheduleResult {
     private final LocalDate lastScheduledDate;
     private final int remainingHours;
     private final List<RemainingScheduleItem> remainingItems;
+    private final boolean dryRun;
 
     /**
      * Метод AutoScheduleResult.
@@ -18,12 +19,23 @@ public class AutoScheduleResult {
         int remainingHours,
         List<RemainingScheduleItem> remainingItems
     ) {
+        this(createdLessons, lastScheduledDate, remainingHours, remainingItems, false);
+    }
+
+    public AutoScheduleResult(
+        int createdLessons,
+        LocalDate lastScheduledDate,
+        int remainingHours,
+        List<RemainingScheduleItem> remainingItems,
+        boolean dryRun
+    ) {
         this.createdLessons = createdLessons;
         this.lastScheduledDate = lastScheduledDate;
         this.remainingHours = remainingHours;
         this.remainingItems = remainingItems == null
             ? List.of()
             : List.copyOf(remainingItems);
+        this.dryRun = dryRun;
     }
 
     /**
@@ -54,11 +66,16 @@ public class AutoScheduleResult {
         return remainingItems;
     }
 
+    public boolean isDryRun() {
+        return dryRun;
+    }
+
     public static final class RemainingScheduleItem {
         private final String topic;
         private final String lessonName;
         private final String className;
         private final int hours;
+        private final List<String> reasons;
 
         /**
          * Метод RemainingScheduleItem.
@@ -69,10 +86,21 @@ public class AutoScheduleResult {
             String className,
             int hours
         ) {
+            this(topic, lessonName, className, hours, List.of());
+        }
+
+        public RemainingScheduleItem(
+            String topic,
+            String lessonName,
+            String className,
+            int hours,
+            List<String> reasons
+        ) {
             this.topic = topic;
             this.lessonName = lessonName;
             this.className = className;
             this.hours = hours;
+            this.reasons = reasons == null ? List.of() : List.copyOf(reasons);
         }
 
         /**
@@ -101,6 +129,10 @@ public class AutoScheduleResult {
          */
         public int getHours() {
             return hours;
+        }
+
+        public List<String> getReasons() {
+            return reasons;
         }
     }
 }

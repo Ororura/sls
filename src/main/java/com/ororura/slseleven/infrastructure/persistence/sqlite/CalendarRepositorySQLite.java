@@ -192,6 +192,7 @@ public class CalendarRepositorySQLite implements CalendarRepository {
                 deleteByCalendar(connection, "DELETE FROM schedule_items WHERE calendar_id = ?", calendarId);
                 deleteByCalendar(connection, "DELETE FROM schedule_settings WHERE calendar_id = ?", calendarId);
                 deleteByCalendar(connection, "DELETE FROM schedule_subject_rules WHERE calendar_id = ?", calendarId);
+                deleteByCalendar(connection, "DELETE FROM schedule_slots WHERE calendar_id = ?", calendarId);
                 deleteByCalendar(connection, "DELETE FROM instructor_duties WHERE calendar_id = ?", calendarId);
                 deleteByCalendar(connection, "DELETE FROM instructors WHERE calendar_id = ?", calendarId);
                 deleteByCalendar(connection, "DELETE FROM rooms WHERE calendar_id = ?", calendarId);

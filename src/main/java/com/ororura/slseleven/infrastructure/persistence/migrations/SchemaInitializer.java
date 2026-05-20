@@ -77,6 +77,14 @@ public class SchemaInitializer {
             "    PRIMARY KEY (calendar_id, subject)\n" +
             ");";
 
+        String scheduleSlotsSql =
+            "CREATE TABLE IF NOT EXISTS schedule_slots (\n" +
+            "    calendar_id TEXT NOT NULL DEFAULT 'default',\n" +
+            "    slot_index INTEGER NOT NULL,\n" +
+            "    start_time TEXT NOT NULL,\n" +
+            "    PRIMARY KEY (calendar_id, slot_index)\n" +
+            ");";
+
         String instructorsSql =
             "CREATE TABLE IF NOT EXISTS instructors (\n" +
             "    id TEXT PRIMARY KEY,\n" +
@@ -121,6 +129,7 @@ public class SchemaInitializer {
             s.execute(scheduleItemsSql);
             s.execute(scheduleSettingsSql);
             s.execute(scheduleSubjectRulesSql);
+            s.execute(scheduleSlotsSql);
             s.execute(instructorsSql);
             s.execute(roomsSql);
             s.execute(instructorDutiesSql);
@@ -228,6 +237,30 @@ public class SchemaInitializer {
             );
             s.execute(
                 "INSERT OR IGNORE INTO schedule_settings (calendar_id, day_of_week, max_hours) VALUES ('default', 7, 0)"
+            );
+            s.execute(
+                "INSERT OR IGNORE INTO schedule_slots (calendar_id, slot_index, start_time) VALUES ('default', 0, '09:00')"
+            );
+            s.execute(
+                "INSERT OR IGNORE INTO schedule_slots (calendar_id, slot_index, start_time) VALUES ('default', 1, '09:50')"
+            );
+            s.execute(
+                "INSERT OR IGNORE INTO schedule_slots (calendar_id, slot_index, start_time) VALUES ('default', 2, '10:50')"
+            );
+            s.execute(
+                "INSERT OR IGNORE INTO schedule_slots (calendar_id, slot_index, start_time) VALUES ('default', 3, '11:40')"
+            );
+            s.execute(
+                "INSERT OR IGNORE INTO schedule_slots (calendar_id, slot_index, start_time) VALUES ('default', 4, '12:40')"
+            );
+            s.execute(
+                "INSERT OR IGNORE INTO schedule_slots (calendar_id, slot_index, start_time) VALUES ('default', 5, '13:30')"
+            );
+            s.execute(
+                "INSERT OR IGNORE INTO schedule_slots (calendar_id, slot_index, start_time) VALUES ('default', 6, '16:00')"
+            );
+            s.execute(
+                "INSERT OR IGNORE INTO schedule_slots (calendar_id, slot_index, start_time) VALUES ('default', 7, '16:50')"
             );
         } catch (Exception e) {
             throw new RuntimeException(e);

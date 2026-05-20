@@ -39,7 +39,7 @@ import java.util.Set;
  */
 public class ScheduleUseCase extends CalendarScopedUseCase {
 
-    private static final List<LocalTime> LESSON_SLOT_START_TIMES = List.of(
+    private static final List<LocalTime> DEFAULT_LESSON_SLOT_START_TIMES = List.of(
         LocalTime.of(9, 0),
         LocalTime.of(9, 50),
         LocalTime.of(10, 50),
@@ -49,19 +49,18 @@ public class ScheduleUseCase extends CalendarScopedUseCase {
         LocalTime.of(16, 0),
         LocalTime.of(16, 50)
     );
-    private static final Map<LocalTime, Integer> SLOT_INDEX_BY_START_TIME =
-        buildSlotIndexByStartTime();
-
     private final LessonRepository lessonRepository;
     private final ScheduleItemRepository scheduleItemRepository;
     private final ScheduleHistoryRepository scheduleHistoryRepository;
     private final ScheduleCatalogRepository scheduleCatalogRepository;
     private final CalendarRepository calendarRepository;
 
-    private static Map<LocalTime, Integer> buildSlotIndexByStartTime() {
+    private static Map<LocalTime, Integer> buildSlotIndexByStartTime(
+        List<LocalTime> slotStartTimes
+    ) {
         Map<LocalTime, Integer> indexByTime = new HashMap<>();
-        for (int i = 0; i < LESSON_SLOT_START_TIMES.size(); i++) {
-            indexByTime.put(LESSON_SLOT_START_TIMES.get(i), i);
+        for (int i = 0; i < slotStartTimes.size(); i++) {
+            indexByTime.put(slotStartTimes.get(i), i);
         }
         return indexByTime;
     }
@@ -439,6 +438,33 @@ public class ScheduleUseCase extends CalendarScopedUseCase {
         );
     }
 
+    public List<LocalTime> getScheduleSlots() {
+        List<LocalTime> slots = scheduleCatalogRepository.getScheduleSlots(
+            currentCalendarId()
+        );
+        if (slots == null || slots.isEmpty()) {
+            return DEFAULT_LESSON_SLOT_START_TIMES;
+        }
+        return slots;
+    }
+
+    public void saveScheduleSlots(List<LocalTime> slots) {
+        if (slots == null || slots.isEmpty()) {
+            throw new IllegalArgumentException("Нужно указать хотя бы один слот");
+        }
+        List<LocalTime> normalized = new ArrayList<>();
+        for (LocalTime slot : slots) {
+            if (slot != null && !normalized.contains(slot)) {
+                normalized.add(slot);
+            }
+        }
+        normalized.sort(Comparator.naturalOrder());
+        if (normalized.isEmpty()) {
+            throw new IllegalArgumentException("Нужно указать хотя бы один слот");
+        }
+        scheduleCatalogRepository.saveScheduleSlots(currentCalendarId(), normalized);
+    }
+
     /**
      * Подсчитывает количество занятий в заданном диапазоне дат.
      */
@@ -742,12 +768,31 @@ public class ScheduleUseCase extends CalendarScopedUseCase {
         LocalDate startDate,
         LocalDate endDate
     ) {
+        return executeAutoSchedule(startDate, endDate, true);
+    }
+
+    public AutoScheduleResult previewAutoSchedule(
+        LocalDate startDate,
+        LocalDate endDate
+    ) {
+        return executeAutoSchedule(startDate, endDate, false);
+    }
+
+    private AutoScheduleResult executeAutoSchedule(
+        LocalDate startDate,
+        LocalDate endDate,
+        boolean persistChanges
+    ) {
         validateDateRange(startDate, endDate);
 
         List<ScheduleItem> items = scheduleItemRepository.findAll(currentCalendarId());
         if (items.isEmpty()) {
-            return new AutoScheduleResult(0, null, 0, List.of());
+            return new AutoScheduleResult(0, null, 0, List.of(), !persistChanges);
         }
+        List<LocalTime> slotStartTimes = getScheduleSlots();
+        Map<LocalTime, Integer> slotIndexByStartTime = buildSlotIndexByStartTime(
+            slotStartTimes
+        );
 
         Map<DayOfWeek, Integer> maxHoursByDay = new EnumMap<>(
             scheduleCatalogRepository.getMaxHoursByDay(currentCalendarId())
@@ -786,6 +831,8 @@ public class ScheduleUseCase extends CalendarScopedUseCase {
         for (ScheduleItem item : items) {
             remainingHoursByItemId.put(item.getId(), item.getHours());
         }
+        Map<String, LinkedHashMap<String, Integer>> rejectionReasonsByItemId =
+            new HashMap<>();
 
         int[] remainingByItem = new int[items.size()];
         for (int i = 0; i < items.size(); i++) {
@@ -835,14 +882,14 @@ public class ScheduleUseCase extends CalendarScopedUseCase {
                         Integer::sum
                     );
                 }
-                Integer startIndex = SLOT_INDEX_BY_START_TIME.get(lesson.getTime());
+                Integer startIndex = slotIndexByStartTime.get(lesson.getTime());
                 if (startIndex == null) {
                     occupiedByCustomTime += duration;
                     continue;
                 }
                 for (int offset = 0; offset < duration; offset++) {
                     int slotIndex = startIndex + offset;
-                    if (slotIndex >= LESSON_SLOT_START_TIMES.size()) {
+                    if (slotIndex >= slotStartTimes.size()) {
                         break;
                     }
                     occupiedSlotIndexes.add(slotIndex);
@@ -866,10 +913,10 @@ public class ScheduleUseCase extends CalendarScopedUseCase {
             while (
                 availableSlots > 0 &&
                 totalHours > 0 &&
-                slotOffset < LESSON_SLOT_START_TIMES.size()
+                slotOffset < slotStartTimes.size()
             ) {
                 int candidateSlotIndex = slotOffset;
-                LocalTime candidateTime = LESSON_SLOT_START_TIMES.get(slotOffset++);
+                LocalTime candidateTime = slotStartTimes.get(slotOffset++);
 
                 if (occupiedSlotIndexes.contains(candidateSlotIndex)) {
                     continue;
@@ -894,7 +941,9 @@ public class ScheduleUseCase extends CalendarScopedUseCase {
                     availableSlots,
                     lastScheduledSubject,
                     lastSubjectStreakHours,
-                    candidateStartIndex
+                    candidateStartIndex,
+                    slotStartTimes.size(),
+                    rejectionReasonsByItemId
                 );
                 if (candidate == null) {
                     continue;
@@ -908,7 +957,8 @@ public class ScheduleUseCase extends CalendarScopedUseCase {
                     !canPlaceConsecutiveBlock(
                         occupiedSlotIndexes,
                         candidateSlotIndex,
-                        blockHours
+                        blockHours,
+                        slotStartTimes.size()
                     ) ||
                     availableSlots < blockHours
                 ) {
@@ -927,7 +977,9 @@ public class ScheduleUseCase extends CalendarScopedUseCase {
                 );
                 lesson.setCalendarId(currentCalendarId());
                 lesson.setDurationHours(blockHours);
-                lessonRepository.save(lesson);
+                if (persistChanges) {
+                    lessonRepository.save(lesson);
+                }
 
                 createdLessons++;
                 totalHours -= blockHours;
@@ -984,7 +1036,7 @@ public class ScheduleUseCase extends CalendarScopedUseCase {
             currentDate = currentDate.plusDays(1);
         }
 
-        if (!completedItemIds.isEmpty()) {
+        if (persistChanges && !completedItemIds.isEmpty()) {
             scheduleItemRepository.deleteAllByIds(new ArrayList<>(completedItemIds));
         }
 
@@ -995,7 +1047,11 @@ public class ScheduleUseCase extends CalendarScopedUseCase {
             if (remaining <= 0) {
                 continue;
             }
-            if (!completedItemIds.contains(item.getId()) && remaining != item.getHours()) {
+            if (
+                persistChanges &&
+                !completedItemIds.contains(item.getId()) &&
+                remaining != item.getHours()
+            ) {
                 item.setHours(remaining);
                 scheduleItemRepository.save(item);
             }
@@ -1004,7 +1060,8 @@ public class ScheduleUseCase extends CalendarScopedUseCase {
                     item.getTopic(),
                     item.getLessonName(),
                     item.getClassName(),
-                    remaining
+                    remaining,
+                    reasonsFor(item.getId(), rejectionReasonsByItemId)
                 )
             );
         }
@@ -1013,8 +1070,59 @@ public class ScheduleUseCase extends CalendarScopedUseCase {
             createdLessons,
             lastDate,
             totalHours,
-            remainingItems
+            remainingItems,
+            !persistChanges
         );
+    }
+
+    private void recordRejection(
+        Map<String, LinkedHashMap<String, Integer>> rejectionReasonsByItemId,
+        String itemId,
+        String reason
+    ) {
+        if (
+            rejectionReasonsByItemId == null ||
+            itemId == null ||
+            itemId.isBlank() ||
+            reason == null ||
+            reason.isBlank()
+        ) {
+            return;
+        }
+        LinkedHashMap<String, Integer> reasons =
+            rejectionReasonsByItemId.computeIfAbsent(
+                itemId,
+                key -> new LinkedHashMap<>()
+            );
+        reasons.merge(reason, 1, Integer::sum);
+    }
+
+    private List<String> reasonsFor(
+        String itemId,
+        Map<String, LinkedHashMap<String, Integer>> rejectionReasonsByItemId
+    ) {
+        if (
+            itemId == null ||
+            rejectionReasonsByItemId == null ||
+            !rejectionReasonsByItemId.containsKey(itemId)
+        ) {
+            return List.of("Не хватило доступных дат или слотов в выбранном диапазоне.");
+        }
+        List<Map.Entry<String, Integer>> entries = new ArrayList<>(
+            rejectionReasonsByItemId.get(itemId).entrySet()
+        );
+        entries.sort((left, right) -> Integer.compare(right.getValue(), left.getValue()));
+        List<String> reasons = new ArrayList<>();
+        for (Map.Entry<String, Integer> entry : entries) {
+            reasons.add(entry.getKey());
+            if (reasons.size() >= 3) {
+                break;
+            }
+        }
+        if (reasons.isEmpty()) {
+            reasons.add("Не хватило доступных дат или слотов в выбранном диапазоне.");
+        }
+        return reasons;
     }
 
     private Map<String, SubjectScheduleRule> toRuleMap(
@@ -1062,7 +1170,9 @@ public class ScheduleUseCase extends CalendarScopedUseCase {
         int availableSlots,
         String lastScheduledSubject,
         int lastSubjectStreakHours,
-        int candidateStartIndex
+        int candidateStartIndex,
+        int slotCount,
+        Map<String, LinkedHashMap<String, Integer>> rejectionReasonsByItemId
     ) {
         if (items.isEmpty()) {
             return null;
@@ -1083,6 +1193,7 @@ public class ScheduleUseCase extends CalendarScopedUseCase {
                 continue;
             }
             ScheduleItem item = items.get(i);
+            String itemId = item.getId();
             String normalizedSubject = normalizeSubject(item.getTopic());
             int subjectBlockHours = subjectConsecutiveHours.getOrDefault(
                 normalizedSubject,
@@ -1094,19 +1205,37 @@ public class ScheduleUseCase extends CalendarScopedUseCase {
                 !canPlaceConsecutiveBlock(
                     occupiedSlotIndexes,
                     candidateSlotIndex,
-                    baseBlockHours
+                    baseBlockHours,
+                    slotCount
                 )
             ) {
+                recordRejection(
+                    rejectionReasonsByItemId,
+                    itemId,
+                    "Недостаточно свободных подряд идущих слотов для блока " +
+                    baseBlockHours +
+                    " ч."
+                );
                 continue;
             }
             if (
                 !dayExclusiveSubjects.isEmpty() &&
                 !dayExclusiveSubjects.contains(normalizedSubject)
             ) {
+                recordRejection(
+                    rejectionReasonsByItemId,
+                    itemId,
+                    "В этот день есть эксклюзивное правило для другого предмета."
+                );
                 continue;
             }
             SubjectScheduleRule rule = rulesBySubject.get(normalizedSubject);
             if (rule != null && !rule.isAllowedOn(day)) {
+                recordRejection(
+                    rejectionReasonsByItemId,
+                    itemId,
+                    "Предмет запрещён правилами для дня недели " + day + "."
+                );
                 continue;
             }
             if (
@@ -1116,6 +1245,11 @@ public class ScheduleUseCase extends CalendarScopedUseCase {
                     lessonsCountBySubjectToday
                 )
             ) {
+                recordRejection(
+                    rejectionReasonsByItemId,
+                    itemId,
+                    "Достигнут дневной лимит занятий по предмету."
+                );
                 continue;
             }
             if (
@@ -1125,10 +1259,20 @@ public class ScheduleUseCase extends CalendarScopedUseCase {
                     rulesBySubject
                 )
             ) {
+                recordRejection(
+                    rejectionReasonsByItemId,
+                    itemId,
+                    "Есть запрет ставить предмет в один день с уже размещённым предметом."
+                );
                 continue;
             }
             String roomName = resolveRoomForSubject(rule, rooms);
             if (roomName == null) {
+                recordRejection(
+                    rejectionReasonsByItemId,
+                    itemId,
+                    "Фиксированный кабинет из правила не найден в справочнике."
+                );
                 continue;
             }
             if (
@@ -1140,6 +1284,11 @@ public class ScheduleUseCase extends CalendarScopedUseCase {
                     rulesBySubject
                 )
             ) {
+                recordRejection(
+                    rejectionReasonsByItemId,
+                    itemId,
+                    "Есть запрет ставить предмет рядом с соседним предметом."
+                );
                 continue;
             }
 
@@ -1154,6 +1303,11 @@ public class ScheduleUseCase extends CalendarScopedUseCase {
                 roomName
             );
             if (fullCandidate == null) {
+                recordRejection(
+                    rejectionReasonsByItemId,
+                    itemId,
+                    "Нет доступного преподавателя с учётом рабочих дней и нарядов."
+                );
                 continue;
             }
             if (fallbackCandidate == null) {
@@ -1504,13 +1658,14 @@ public class ScheduleUseCase extends CalendarScopedUseCase {
     private boolean canPlaceConsecutiveBlock(
         Set<Integer> occupiedSlotIndexes,
         int startSlotIndex,
-        int durationHours
+        int durationHours,
+        int slotCount
     ) {
         if (durationHours <= 0) {
             return false;
         }
         int endExclusive = startSlotIndex + durationHours;
-        if (endExclusive > LESSON_SLOT_START_TIMES.size()) {
+        if (endExclusive > slotCount) {
             return false;
         }
         for (int i = startSlotIndex; i < endExclusive; i++) {

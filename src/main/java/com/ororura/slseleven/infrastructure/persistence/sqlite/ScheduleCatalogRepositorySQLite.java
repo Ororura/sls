@@ -10,6 +10,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.EnumSet;
@@ -20,6 +21,16 @@ import java.util.Set;
 import java.util.UUID;
 
 public class ScheduleCatalogRepositorySQLite implements ScheduleCatalogRepository {
+    private static final List<LocalTime> DEFAULT_SLOTS = List.of(
+        LocalTime.of(9, 0),
+        LocalTime.of(9, 50),
+        LocalTime.of(10, 50),
+        LocalTime.of(11, 40),
+        LocalTime.of(12, 40),
+        LocalTime.of(13, 30),
+        LocalTime.of(16, 0),
+        LocalTime.of(16, 50)
+    );
 
     private final SQLiteConnectionProvider provider;
 
@@ -79,6 +90,60 @@ public class ScheduleCatalogRepositorySQLite implements ScheduleCatalogRepositor
             statement.executeBatch();
         } catch (Exception exception) {
             throw new RuntimeException("Ошибка при сохранении настроек", exception);
+        }
+    }
+
+    @Override
+    public List<LocalTime> getScheduleSlots(String calendarId) {
+        String sql =
+            "SELECT start_time FROM schedule_slots WHERE calendar_id = ? ORDER BY slot_index";
+        List<LocalTime> slots = new ArrayList<>();
+        try (
+            Connection connection = provider.getConnection();
+            PreparedStatement statement = connection.prepareStatement(sql)
+        ) {
+            statement.setString(1, calendarId);
+            ResultSet resultSet = statement.executeQuery();
+            while (resultSet.next()) {
+                slots.add(LocalTime.parse(resultSet.getString("start_time")));
+            }
+        } catch (Exception exception) {
+            throw new RuntimeException("Ошибка при чтении слотов расписания", exception);
+        }
+        if (slots.isEmpty()) {
+            return DEFAULT_SLOTS;
+        }
+        return slots;
+    }
+
+    @Override
+    public void saveScheduleSlots(String calendarId, List<LocalTime> slots) {
+        if (slots == null || slots.isEmpty()) {
+            throw new IllegalArgumentException("Нужно указать хотя бы один слот");
+        }
+        String deleteSql = "DELETE FROM schedule_slots WHERE calendar_id = ?";
+        String insertSql =
+            "INSERT INTO schedule_slots (calendar_id, slot_index, start_time) VALUES (?, ?, ?)";
+        try (
+            Connection connection = provider.getConnection();
+            PreparedStatement deleteStatement =
+                connection.prepareStatement(deleteSql);
+            PreparedStatement insertStatement =
+                connection.prepareStatement(insertSql)
+        ) {
+            connection.setAutoCommit(false);
+            deleteStatement.setString(1, calendarId);
+            deleteStatement.executeUpdate();
+            for (int i = 0; i < slots.size(); i++) {
+                insertStatement.setString(1, calendarId);
+                insertStatement.setInt(2, i);
+                insertStatement.setString(3, slots.get(i).toString());
+                insertStatement.addBatch();
+            }
+            insertStatement.executeBatch();
+            connection.commit();
+        } catch (Exception exception) {
+            throw new RuntimeException("Ошибка при сохранении слотов расписания", exception);
         }
     }
 
