@@ -32,7 +32,7 @@ jobs:
           if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then
             TAG="$GITHUB_REF_NAME"
           else
-            TAG="$(tr -d '\\r\\n ' < release-version.txt)"
+            TAG="$(tr -d '[:space:]' < release-version.txt)"
           fi
           if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "Expected version v1.2.3; got: $TAG" >&2
@@ -119,7 +119,7 @@ jobs:
           sha256sum ./*.dmg ./*.exe > SHA256SUMS.txt
           cat SHA256SUMS.txt
       - name: Publish installers
-        uses: softprops/action-gh-release@v3
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.verify.outputs.tag }}
           target_commitish: ${{ github.sha }}
