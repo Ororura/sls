@@ -2,8 +2,11 @@ name: Release
 
 on:
   push:
+    branches: [main]
     tags:
       - 'v*'
+    paths:
+      - 'release-version.txt'
 
 permissions:
   contents: read
@@ -19,17 +22,28 @@ jobs:
     timeout-minutes: 20
     outputs:
       version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
     steps:
-      - name: Validate version tag
+      - uses: actions/checkout@v4
+      - name: Validate release version
         id: version
         shell: bash
         run: |
-          if [[ ! "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "Expected a tag like v1.2.3; got: $GITHUB_REF_NAME" >&2
+          if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then
+            TAG="$GITHUB_REF_NAME"
+          else
+            TAG="$(tr -d '\\r\\n ' < release-version.txt)"
+          fi
+          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Expected version v1.2.3; got: $TAG" >&2
             exit 1
           fi
-          echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
-      - uses: actions/checkout@v4
+          if [[ "$GITHUB_REF_TYPE" != "tag" ]] && git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null; then
+            echo "Tag $TAG already exists. Bump release-version.txt instead." >&2
+            exit 1
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -68,6 +82,17 @@ jobs:
           cache: maven
       - name: Build versioned installer
         run: ${{ matrix.maven }} -B -ntp clean package -DskipTests -Dapp.version=${{ needs.verify.outputs.version }} -P${{ matrix.profile }}
+      - name: Give installer a platform-specific filename
+        shell: bash
+        run: |
+          shopt -s nullglob
+          files=(target/installer/*)
+          if (( ${#files[@]} != 1 )); then
+            echo "Expected exactly one installer, found ${#files[@]}" >&2
+            exit 1
+          fi
+          file="${files[0]}"
+          mv "$file" "${file%.*}-${{ matrix.name }}.${file##*.}"
       - uses: actions/upload-artifact@v4
         with:
           name: release-${{ matrix.name }}
@@ -94,8 +119,10 @@ jobs:
           sha256sum ./*.dmg ./*.exe > SHA256SUMS.txt
           cat SHA256SUMS.txt
       - name: Publish installers
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
+          tag_name: ${{ needs.verify.outputs.tag }}
+          target_commitish: ${{ github.sha }}
           name: SLSEleven ${{ needs.verify.outputs.version }}
           generate_release_notes: true
           fail_on_unmatched_files: true
