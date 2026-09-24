@@ -49,7 +49,7 @@ jobs:
             profile: mac-x64
             maven: ./mvnw
           - name: macos-apple-silicon
-            os: macos-15-arm64
+            os: macos-15
             profile: mac-arm
             maven: ./mvnw
           - name: windows-x64
