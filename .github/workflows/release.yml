@@ -64,18 +64,12 @@ jobs:
           - name: macos-intel
             os: macos-15-intel
             profile: mac-x64
-            maven: ./mvnw
-            shell: bash
           - name: macos-apple-silicon
             os: macos-15
             profile: mac-arm
-            maven: ./mvnw
-            shell: bash
           - name: windows-x64
             os: windows-2022
             profile: windows
-            maven: .\\mvnw.cmd
-            shell: cmd
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -84,9 +78,14 @@ jobs:
           distribution: temurin
           java-version: '21'
           cache: maven
-      - name: Build versioned installer
-        shell: ${{ matrix.shell }}
-        run: ${{ matrix.maven }} -B -ntp clean package -DskipTests -Dapp.version=${{ needs.verify.outputs.version }} -P${{ matrix.profile }}
+      - name: Build versioned installer (macOS)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: ./mvnw -B -ntp clean package -DskipTests -Dapp.version=${{ needs.verify.outputs.version }} -P${{ matrix.profile }}
+      - name: Build versioned installer (Windows)
+        if: runner.os == 'Windows'
+        shell: cmd
+        run: .\\mvnw.cmd -B -ntp clean package -DskipTests -Dapp.version=${{ needs.verify.outputs.version }} -P${{ matrix.profile }}
       - name: Give installer a platform-specific filename
         shell: bash
         run: |
