@@ -118,3 +118,10 @@
 - [BUILD.md](BUILD.md)
 - [BUILD_DMG.md](BUILD_DMG.md)
 - [BUILD_DMG_WITH_JRE.md](BUILD_DMG_WITH_JRE.md)
+
+## Автоматические сборки и релизы
+
+При Pull Request и обновлениях `main` GitHub Actions запускает тесты и собирает установщики для macOS Intel, macOS Apple Silicon и Windows x64. Тег `v1.2.3` запускает публикацию этих установщиков в GitHub Releases (если все проверки прошли).
+
+Инструкция по настройке и выпуску версий: [CI/CD](docs/CI_CD.md).
+

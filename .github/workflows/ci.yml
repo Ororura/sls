@@ -1,0 +1,75 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    name: Tests (Linux)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - name: Compile and run JUnit tests
+        run: ./mvnw -B -ntp clean verify
+      - name: Upload JUnit reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: junit-reports
+          path: target/surefire-reports/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  installers:
+    name: Installer (${{ matrix.name }})
+    needs: tests
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macos-intel
+            os: macos-15-intel
+            profile: mac-x64
+            maven: ./mvnw
+          - name: macos-apple-silicon
+            os: macos-15-arm64
+            profile: mac-arm
+            maven: ./mvnw
+          - name: windows-x64
+            os: windows-2022
+            profile: windows
+            maven: .\\mvnw.cmd
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - name: Build native installer
+        run: ${{ matrix.maven }} -B -ntp clean package -DskipTests -P${{ matrix.profile }}
+      - name: Upload installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: slseleven-${{ matrix.name }}
+          path: target/installer/*
+          if-no-files-found: error
+          retention-days: 7
